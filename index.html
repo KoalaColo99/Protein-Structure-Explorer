@@ -4141,7 +4141,7 @@ END
         state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
         document.getElementById('conservedCount').textContent = 'unavailable';
         document.getElementById('homologCount').textContent = 'unavailable';
-        document.getElementById('conservationNote').innerHTML = `<strong>Conservation unavailable for ${state.structureId}</strong>No curated related-structure set is currently available for this loaded protein. Other overlays still use the ${state.structureId} coordinates.`;
+        document.getElementById('conservationNote').innerHTML = `<strong>Conservation unavailable for ${state.structureId}</strong>No curated related-structure set is currently available inside the browser app for this loaded protein. Other overlays still use the ${state.structureId} coordinates.<br><br><strong>Build one with the included Python pipeline</strong>Choose 4-6 related PDB IDs, then run:<br><code>python3 conservation_pipeline.py --reference ${state.structureId} --comparisons PDB1 PDB2 PDB3 PDB4 --out conservation_${state.structureId}</code><br><br>The pipeline downloads RCSB structures/sequences, aligns them, calculates conservation, maps scores to reference B-factors, and exports a PyMOL/ChimeraX-ready PDB plus a CSV table. It is in this repository as <code>conservation_pipeline.py</code>.`;
         state.viewer.zoomTo({ hetflag: false });
         return;
       }
