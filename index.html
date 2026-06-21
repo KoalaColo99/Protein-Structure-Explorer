@@ -590,7 +590,12 @@
 
       <section class="section mode-panel hidden" id="conservationPanel">
         <h2>Conservation Overlay</h2>
-        <p>Shows conservation only when a curated related-structure set is available for the loaded protein.</p>
+        <p>Compare the loaded reference protein with 4-6 related PDB structures. Choose proteins that are genuinely homologous for meaningful conservation.</p>
+        <div class="row">
+          <label for="conservationComparisons">Compare</label>
+          <input id="conservationComparisons" type="text" placeholder="e.g., 1YOG 1M6M 3VM9 1WLA">
+        </div>
+        <button id="buildConservation">Build conservation overlay</button>
         <div class="stats">
           <div class="stat"><strong id="conservedCount">-</strong><span>fully conserved residues</span></div>
           <div class="stat"><strong id="homologCount">-</strong><span>related structures</span></div>
@@ -2551,6 +2556,7 @@ END
       solvent: [],
       sasa: [],
       conservation: [],
+      conservationSources: [],
       sheets: [],
       mode: 'overview',
       selectedHbond: null,
@@ -2574,6 +2580,7 @@ END
       selectedHelixBond: null,
       betaType: 'all',
       selectedSheetKey: null,
+      conservationComparisons: '',
       proteinPreset: ''
     };
 
@@ -3348,13 +3355,82 @@ END
 
     function computeConservation(residues) {
       const ref = homologSequences[0].sequence;
-      const aligned = homologSequences.map(item => alignToReference(ref, item.sequence));
+      const aligned = homologSequences.slice(1).map(item => alignToReference(ref, item.sequence));
       return residues.map((residue, index) => {
         const chars = aligned.map(seq => seq[index]).filter(char => char && char !== '-');
         const refChar = ref[index];
         const same = chars.filter(char => char === refChar).length;
         return { residue, refChar, same, total: chars.length, score: chars.length ? same / chars.length : 0, chars };
       });
+    }
+
+    function sequenceFromResidues(residues) {
+      const threeToOne = {
+        ALA: 'A', ARG: 'R', ASN: 'N', ASP: 'D', CYS: 'C', GLN: 'Q', GLU: 'E',
+        GLY: 'G', HIS: 'H', ILE: 'I', LEU: 'L', LYS: 'K', MET: 'M', PHE: 'F',
+        PRO: 'P', SER: 'S', THR: 'T', TRP: 'W', TYR: 'Y', VAL: 'V'
+      };
+      return residues.map(residue => threeToOne[residue.resn] || 'X').join('');
+    }
+
+    function computeConservationFromSequences(residues, comparisonItems) {
+      const ref = sequenceFromResidues(residues);
+      const aligned = comparisonItems.map(item => ({ ...item, mapped: alignToReference(ref, item.sequence) }));
+      return residues.map((residue, index) => {
+        const refChar = ref[index];
+        const chars = aligned.map(item => item.mapped[index]).filter(char => char && char !== '-');
+        const same = chars.filter(char => char === refChar).length;
+        return {
+          residue,
+          refChar,
+          same,
+          total: chars.length,
+          score: chars.length ? same / chars.length : 0,
+          chars,
+          sources: aligned.filter(item => item.mapped[index] === refChar).map(item => item.id)
+        };
+      });
+    }
+
+    function parseComparisonIds(text) {
+      return [...new Set(text.toUpperCase().split(/[\s,;]+/).map(item => item.trim()).filter(Boolean))]
+        .filter(item => /^[A-Z0-9]{4}$/.test(item) && item !== state.structureId);
+    }
+
+    async function buildConservationFromInput() {
+      const input = document.getElementById('conservationComparisons');
+      const ids = parseComparisonIds(input.value);
+      if (ids.length < 4 || ids.length > 6) {
+        document.getElementById('conservationNote').innerHTML = `<strong>Choose 4-6 related PDB IDs</strong>Enter four to six homologous comparison structures, separated by spaces or commas. The reference ${state.structureId} is already loaded, so do not include it in the comparison list.`;
+        return;
+      }
+      document.getElementById('status').textContent = `Building conservation overlay for ${state.structureId}...`;
+      document.getElementById('conservationNote').innerHTML = `<strong>Building conservation overlay</strong>Fetching ${ids.join(', ')} from RCSB, parsing protein sequences, and aligning them to ${state.structureId}.`;
+      try {
+        const comparisonItems = [];
+        for (const id of ids) {
+          const response = await fetch(`https://files.rcsb.org/download/${id}.pdb`);
+          if (!response.ok) throw new Error(`${id} returned ${response.status}`);
+          const pdb = await response.text();
+          const parsed = parsePdb(pdb);
+          if (!parsed.residues.length) throw new Error(`${id} has no parsed protein residues`);
+          comparisonItems.push({
+            id,
+            residues: parsed.residues,
+            sequence: sequenceFromResidues(parsed.residues)
+          });
+        }
+        state.conservation = computeConservationFromSequences(state.residues, comparisonItems);
+        state.conservationSources = comparisonItems.map(item => item.id);
+        state.conservationComparisons = ids.join(' ');
+        applyMode();
+      } catch (error) {
+        console.error(error);
+        state.conservation = [];
+        state.conservationSources = [];
+        document.getElementById('status').textContent = 'Conservation overlay could not be built.';
+        document.getElementById('conservationNote').innerHTML = `<strong>Could not build conservation overlay</strong>${error.message}. Check that each comparison PDB ID is valid and related to ${state.structureId}.`;
+      }
     }
 
     function atomSpec(atom) {
@@ -4137,11 +4213,13 @@ END
 
     function drawConservation() {
       const c = colors();
+      const input = document.getElementById('conservationComparisons');
+      if (input && input.value !== state.conservationComparisons) input.value = state.conservationComparisons;
       if (!state.conservation.length) {
         state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
         document.getElementById('conservedCount').textContent = 'unavailable';
         document.getElementById('homologCount').textContent = 'unavailable';
-        document.getElementById('conservationNote').innerHTML = `<strong>Conservation unavailable for ${state.structureId}</strong>No curated related-structure set is currently available inside the browser app for this loaded protein. Other overlays still use the ${state.structureId} coordinates.<br><br><strong>Build one with the included Python pipeline</strong>Choose 4-6 related PDB IDs, then run:<br><code>python3 conservation_pipeline.py --reference ${state.structureId} --comparisons PDB1 PDB2 PDB3 PDB4 --out conservation_${state.structureId}</code><br><br>The pipeline downloads RCSB structures/sequences, aligns them, calculates conservation, maps scores to reference B-factors, and exports a PyMOL/ChimeraX-ready PDB plus a CSV table. It is in this repository as <code>conservation_pipeline.py</code>.`;
+        document.getElementById('conservationNote').innerHTML = `<strong>Conservation unavailable for ${state.structureId}</strong>No comparison set has been built yet for this loaded protein. Enter 4-6 related PDB IDs above and click Build conservation overlay. The browser will fetch those structures from RCSB and map residue conservation onto ${state.structureId}.<br><br><strong>For PyMOL/ChimeraX files</strong>The repository also includes <code>conservation_pipeline.py</code>, which exports a B-factor-colored PDB plus CSV.`;
         state.viewer.zoomTo({ hetflag: false });
         return;
       }
@@ -4154,8 +4232,10 @@ END
         }
       });
       document.getElementById('conservedCount').textContent = countWithPercent(conserved.length, state.residues.length);
-      document.getElementById('homologCount').textContent = homologSequences.length;
-      document.getElementById('conservationNote').innerHTML = `<strong>Small RCSB comparison set</strong>Using 1MBN, 1YOG, 1M6M, and 3VM9. Blue residues are identical across all four aligned sequences; gold residues are mostly conserved. This is a compact classroom overlay, not a full evolutionary tree.`;
+      const sourceCount = state.conservationSources.length || homologSequences.length;
+      const sourceLabel = state.conservationSources.length ? state.conservationSources.join(', ') : '1MBN, 1YOG, 1M6M, and 3VM9';
+      document.getElementById('homologCount').textContent = sourceCount;
+      document.getElementById('conservationNote').innerHTML = `<strong>Conservation overlay for ${state.structureId}</strong>Using comparison structures: ${sourceLabel}. Blue residues are identical across all comparison sequences; gold residues are mostly conserved. This is a sequence-alignment teaching overlay, not a full evolutionary tree.`;
       state.viewer.zoomTo({ hetflag: false });
     }
 
@@ -4735,6 +4815,7 @@ END
       state.selectedResidueIndex = 0;
       state.selectedIonIndex = 0;
       state.lessonIndex = 0;
+      state.conservationComparisons = '';
     }
 
     function applyParsedStructure(pdb, id = '1MBN', label = 'Myoglobin') {
@@ -4750,6 +4831,7 @@ END
       state.solvent = computeSolventAccess(state.residues);
       state.sasa = computeSasa(state.residues, state.atoms);
       state.conservation = state.structureId === '1MBN' ? computeConservation(state.residues) : [];
+      state.conservationSources = state.structureId === '1MBN' ? homologSequences.map(item => item.id).filter(id => id !== '1MBN') : [];
       resetStructureState();
       document.getElementById('structureTitle').textContent = `${state.structureId} ${state.structureLabel}`;
       document.getElementById('structureSubtitle').textContent = `${state.residues.length} amino-acid residues detected; features recomputed from loaded coordinates`;
@@ -4895,6 +4977,8 @@ END
       state.mutation = event.target.value;
       applyMode();
     });
+
+    document.getElementById('buildConservation').addEventListener('click', buildConservationFromInput);
 
     document.getElementById('lessonFeedback').addEventListener('click', giveLessonFeedback);
     document.getElementById('lessonKey').addEventListener('click', showLessonKey);
