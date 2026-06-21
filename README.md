@@ -4,6 +4,18 @@ An interactive browser-based teaching tool for connecting protein structure, non
 
 Open `index.html` in a browser, or publish this folder with GitHub Pages.
 
+## Entering PDB Codes
+
+Use **Gallery Builder** in the app to load a reference structure. Type one 4-character RCSB PDB ID in the **PDB ID** box, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`, then click **Load structure**.
+
+For the in-app Conservation panel, type 4-6 related comparison PDB IDs in the **Compare** box, separated by spaces or commas, such as:
+
+```text
+1YOG 1M6M 3VM9 1WLA
+```
+
+Do not enter protein names, full RCSB URLs, or the reference PDB ID in the comparison list.
+
 ## Included Files
 
 - `index.html`: the full static web app.

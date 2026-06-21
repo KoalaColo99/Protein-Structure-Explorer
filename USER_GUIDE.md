@@ -22,7 +22,35 @@ The default palette is color-blind safe. The atom zoom option shows more atom de
 
 ## Loading Proteins
 
-Use Gallery Builder to choose a class of protein and suggested examples, or enter a 4-character PDB ID manually. When a new structure loads, the tool recomputes residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, solvent accessibility, hydrophobic regions, charge surfaces, beta-sheet records, ligand/cofactor contacts, and helix-pattern candidates from the loaded coordinates.
+Use Gallery Builder to choose a class of protein and suggested examples, or enter a 4-character PDB ID manually.
+
+To enter your own structure:
+
+1. Click **Gallery Builder**.
+2. Find the **PDB ID** text box.
+3. Type one valid 4-character RCSB PDB code, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`.
+4. Use letters and numbers only. Spaces, punctuation, protein names, and full URLs should not be entered in this box.
+5. Click **Load structure**.
+
+Correct examples:
+
+```text
+1MBN
+1CA2
+2PTN
+6LU7
+```
+
+Incorrect examples:
+
+```text
+myoglobin
+PDB 1MBN
+https://www.rcsb.org/structure/1MBN
+1MBN, 1YOG
+```
+
+The manual PDB ID box loads **one reference structure at a time**. When a new structure loads, the tool recomputes residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, solvent accessibility, hydrophobic regions, charge surfaces, beta-sheet records, ligand/cofactor contacts, and helix-pattern candidates from the loaded coordinates.
 
 Some features require curated comparison data. If that data is not available, the tool says unavailable instead of showing unrelated results.
 
@@ -128,7 +156,38 @@ Students can glean:
 
 ### Conservation
 
-Shows conservation only when a curated related-structure set is available for the loaded protein. For the built-in myoglobin example, a small myoglobin comparison set is available. For other proteins, the panel reports unavailable unless a curated homolog set has been added.
+The Conservation panel can compare the currently loaded reference protein with 4-6 related PDB structures. Conservation is meaningful only when the comparison structures are homologous or otherwise biologically appropriate comparisons.
+
+To build an in-app conservation overlay:
+
+1. Load the reference protein first using **Gallery Builder** or the **PDB ID** box.
+2. Click **Conservation**.
+3. Find the **Compare** text box.
+4. Enter 4-6 valid 4-character PDB IDs for related structures.
+5. Separate codes with spaces, commas, or semicolons.
+6. Do not include the reference PDB ID in the comparison list.
+7. Click **Build conservation overlay**.
+
+Correct comparison-list examples:
+
+```text
+1YOG 1M6M 3VM9 1WLA
+1YOG, 1M6M, 3VM9, 1WLA
+1YOG; 1M6M; 3VM9; 1WLA
+```
+
+Incorrect comparison-list examples:
+
+```text
+1MBN
+1MBN 1YOG
+myoglobin horse myoglobin
+https://www.rcsb.org/structure/1YOG
+```
+
+The first incorrect example has too few comparison structures. The second includes the reference structure itself. The third uses protein names instead of PDB IDs. The fourth uses a URL instead of the 4-character PDB code.
+
+For the built-in myoglobin example, a small myoglobin comparison set is available. For other proteins, students or instructors should enter related comparison PDB IDs in the **Compare** box.
 
 Students can glean:
 
