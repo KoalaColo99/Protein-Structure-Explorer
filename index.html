@@ -211,6 +211,40 @@
       white-space: pre-wrap;
     }
 
+    .table-wrap {
+      max-height: 270px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      margin-top: 10px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th, td {
+      border-bottom: 1px solid #edf1f5;
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      color: var(--ink);
+      cursor: pointer;
+      z-index: 1;
+    }
+
+    td { color: var(--muted); }
+    td strong { color: var(--ink); }
+
     input[type="range"] { width: 100%; }
 
     .stats {
@@ -596,11 +630,52 @@
           <input id="conservationComparisons" type="text" placeholder="e.g., 1YOG 1M6M 3VM9 1WLA">
         </div>
         <button id="buildConservation">Build conservation overlay</button>
+        <div class="row">
+          <label for="conservationLayer">Layer</label>
+          <select id="conservationLayer">
+            <option value="sequence">Sequence conservation</option>
+            <option value="structural">Structural conservation</option>
+            <option value="secondary">Secondary structure conservation</option>
+            <option value="activeSite">Active-site conservation</option>
+            <option value="ligandPocket">Ligand/cofactor pocket conservation</option>
+            <option value="metalCoordination">Metal coordination conservation</option>
+            <option value="sideChain">Side-chain interaction conservation</option>
+            <option value="backboneHbond">Backbone H-bond conservation</option>
+            <option value="solvent">Solvent accessibility conservation</option>
+            <option value="tertiary">Tertiary contact conservation</option>
+            <option value="quaternary">Quaternary interface conservation</option>
+            <option value="bfactor">B-factor/flexibility conservation</option>
+          </select>
+        </div>
+        <label class="check-row">
+          <input id="conservedOnlyToggle" type="checkbox">
+          <span>Show conserved residues in this layer only.</span>
+        </label>
         <div class="stats">
           <div class="stat"><strong id="conservedCount">-</strong><span>fully conserved residues</span></div>
           <div class="stat"><strong id="homologCount">-</strong><span>related structures</span></div>
         </div>
+        <div class="stats">
+          <div class="stat"><strong id="layerResidueCount">-</strong><span>residues in selected layer</span></div>
+          <div class="stat"><strong id="layerConservedCount">-</strong><span>conserved in selected layer</span></div>
+        </div>
         <div class="chem-note" id="conservationNote"></div>
+        <div class="table-wrap">
+          <table id="conservationTable">
+            <thead>
+              <tr>
+                <th data-sort="resi">Residue</th>
+                <th data-sort="identity">Identity</th>
+                <th data-sort="score">Score</th>
+                <th data-sort="role">Structural role</th>
+                <th data-sort="annotation">Functional annotation</th>
+                <th data-sort="prompt">Student interpretation prompt</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="chem-note" id="cerNote"></div>
       </section>
 
       <section class="section mode-panel hidden" id="mutationPanel">
@@ -2581,6 +2656,9 @@ END
       betaType: 'all',
       selectedSheetKey: null,
       conservationComparisons: '',
+      conservationLayer: 'sequence',
+      conservationShowConservedOnly: false,
+      conservationSort: { key: 'score', dir: 'desc' },
       proteinPreset: ''
     };
 
@@ -2595,6 +2673,7 @@ END
     const negative = new Set(['ASP','GLU']);
     const proteinAtoms = new Set(['N','CA','C','O','CB','CG','CG1','CG2','CD','CD1','CD2','CE','CE1','CE2','CE3','CZ','CZ2','CZ3','CH2','NE','NE1','NE2','NH1','NH2','ND1','ND2','NZ','OE1','OE2','OD1','OD2','OG','OG1','OH','SD','SG']);
     const backboneNames = new Set(['N','CA','C','O','OXT']);
+    const metalElements = new Set(['FE','ZN','MG','MN','CA','CU','NI','CO','NA','K']);
     const ionizableInfo = {
       ASP: { pKa: 3.9, type: 'acid', charged: 'COO-', neutral: 'COOH', note: 'A deprotonated carboxylate shares negative charge over two oxygens.' },
       GLU: { pKa: 4.2, type: 'acid', charged: 'COO-', neutral: 'COOH', note: 'A deprotonated carboxylate is resonance-stabilized.' },
@@ -2846,6 +2925,104 @@ END
         diagram: 'porphyrin N: -> Fe <- :N His93\n\nTeaching cue: coordination is directional electron-pair donation into the metal center.'
       }
     };
+    const conservationLayers = {
+      sequence: {
+        label: 'Sequence conservation',
+        measures: 'Residue identity across the aligned homolog set.',
+        visualized: 'Conserved residues are colored blue; mostly conserved residues are gold; variable residues remain gray.',
+        why: 'Slowly changing positions often mark structural or functional constraints.',
+        student: 'Ask what evolutionary pressure might preserve this residue identity.',
+        filter: 'All residues are included.'
+      },
+      structural: {
+        label: 'Structural conservation',
+        measures: 'Conserved residues that also occupy stabilizing structural roles such as buried core, secondary structure, or contact networks.',
+        visualized: 'Conserved structural residues are emphasized on the fold.',
+        why: 'A conserved residue in a structural role may be needed to maintain folding, packing, or local geometry.',
+        student: 'Connect conservation to a structural constraint, not just to sequence identity.',
+        filter: 'Residues with secondary-structure, buried, or contact roles.'
+      },
+      secondary: {
+        label: 'Secondary structure conservation',
+        measures: 'Conserved residues located in helices or beta-sheet assignments/candidates.',
+        visualized: 'Conserved secondary-structure residues are colored within cartoon elements.',
+        why: 'Conservation in helices or sheets may preserve the fold scaffold.',
+        student: 'Ask whether conservation supports a helix, sheet, or turn needed for the protein shape.',
+        filter: 'Helix candidates, beta-sheet records, or backbone H-bond regions.'
+      },
+      activeSite: {
+        label: 'Active-site conservation',
+        measures: 'Conserved residues near ligands/metals or chemically strong contacts.',
+        visualized: 'Likely functional residues are highlighted near pockets or contact clusters.',
+        why: 'Catalytic and binding residues often evolve slowly because mutation disrupts function.',
+        student: 'Use conservation plus chemistry to argue whether a residue may be functional.',
+        filter: 'Ligand/metal-near residues and strong polar/charged contacts.'
+      },
+      ligandPocket: {
+        label: 'Ligand/cofactor pocket conservation',
+        measures: 'Conserved residues within about 4 Å of non-water ligands or cofactors.',
+        visualized: 'Pocket residues surrounding ligands/cofactors are highlighted.',
+        why: 'Binding pockets often conserve shape, polarity, and interaction atoms.',
+        student: 'Ask how the conserved residue helps recognize or position the ligand/cofactor.',
+        filter: 'Residues near non-water HETATM groups.'
+      },
+      metalCoordination: {
+        label: 'Metal coordination conservation',
+        measures: 'Conserved residues within coordination distance of metal atoms.',
+        visualized: 'Metal-near residues are highlighted around the ion.',
+        why: 'Metal ligands are often conserved because geometry and donor atoms are strict.',
+        student: 'Ask which atom donates electron density to the metal and why mutation may disrupt activity.',
+        filter: 'Residues near metal atoms such as Zn, Fe, Mg, Mn, Ca, Cu, Ni, or Co.'
+      },
+      sideChain: {
+        label: 'Side-chain interaction conservation',
+        measures: 'Conserved residues that form salt bridges, side-chain H-bonds, or hydrophobic contacts.',
+        visualized: 'Interacting conserved side chains are highlighted with contact context.',
+        why: 'Side-chain networks can stabilize tertiary structure or tune function.',
+        student: 'Ask what interaction would be lost if this conserved side chain changed.',
+        filter: 'Residues in detected side-chain contacts.'
+      },
+      backboneHbond: {
+        label: 'Backbone H-bond conservation',
+        measures: 'Conserved residues participating in candidate backbone H-bonds.',
+        visualized: 'Residues in conserved H-bond patterns are highlighted.',
+        why: 'Backbone H-bond networks stabilize helices, sheets, and turns.',
+        student: 'Ask whether the conserved position supports secondary-structure geometry.',
+        filter: 'Backbone H-bond donor/acceptor residues.'
+      },
+      solvent: {
+        label: 'Solvent accessibility conservation',
+        measures: 'Conserved residues interpreted by solvent exposure or burial.',
+        visualized: 'Conserved exposed and buried residues are highlighted with SASA context.',
+        why: 'Buried conserved residues often stabilize the core; exposed conserved residues may mediate binding.',
+        student: 'Ask whether the conservation is more likely structural, interaction-facing, or both.',
+        filter: 'Residues with high or low solvent accessibility.'
+      },
+      tertiary: {
+        label: 'Tertiary contact conservation',
+        measures: 'Conserved residues that contact distant residues in the folded 3D structure.',
+        visualized: 'Conserved contact-network residues are highlighted.',
+        why: 'Long-range contacts stabilize the folded tertiary structure.',
+        student: 'Ask how sequence-distant residues become functionally close in 3D.',
+        filter: 'Residues in contacts separated by at least 8 sequence positions or different chains.'
+      },
+      quaternary: {
+        label: 'Quaternary interface conservation',
+        measures: 'Conserved residues contacting another protein chain.',
+        visualized: 'Inter-chain contact residues are highlighted when multiple chains are present.',
+        why: 'Interfaces can be conserved when oligomerization or partner binding is required.',
+        student: 'Ask whether conservation supports assembly, recognition, or regulation.',
+        filter: 'Residues with detected inter-chain contacts.'
+      },
+      bfactor: {
+        label: 'B-factor/flexibility conservation',
+        measures: 'Optional comparison of conservation with deposited B-factors/flexibility.',
+        visualized: 'Conserved residues with lower or higher B-factor context are highlighted.',
+        why: 'Rigid conserved residues may anchor structure, while flexible conserved residues may support motion or binding.',
+        student: 'Ask whether conservation preserves rigidity, flexibility, or a conformational change.',
+        filter: 'Residues with parsed B-factor values.'
+      }
+    };
     const vdwRadii = { H: 1.2, C: 1.7, N: 1.55, O: 1.52, S: 1.8, FE: 1.8 };
     const helixTypes = {
       '310': {
@@ -2987,6 +3164,7 @@ END
           x: Number(line.slice(30, 38)),
           y: Number(line.slice(38, 46)),
           z: Number(line.slice(46, 54)),
+          b: Number(line.slice(60, 66)),
           elem: (line.slice(76, 78).trim() || line.slice(12, 14).trim()[0]).toUpperCase()
         };
         atoms.push(atom);
@@ -3823,8 +4001,131 @@ END
           const key = `${atom.resn}:${atom.chain}:${atom.resi}`;
           if (!groups.has(key)) groups.set(key, { key, resn: atom.resn, chain: atom.chain, resi: atom.resi, atoms: [] });
           groups.get(key).atoms.push(atom);
-        });
+      });
       return [...groups.values()].sort((a, b) => b.atoms.length - a.atoms.length);
+    }
+
+    function residueSasaEntry(residue) {
+      return state.sasa.find(entry => entry.residue === residue);
+    }
+
+    function residueSheetMembership(residue) {
+      return state.sheets.some(sheet => sheetResidues(sheet).some(member => member.key === residue.key));
+    }
+
+    function residueBackboneHbondCount(residue) {
+      return state.hbonds.filter(hbond => hbond.from === residue || hbond.to === residue).length;
+    }
+
+    function residueContactList(residue) {
+      return state.contacts.filter(contact => contact.resA === residue || contact.resB === residue);
+    }
+
+    function residueNearLigand(residue, cutoff = 4.0) {
+      const ligands = ligandGroups().filter(group => !group.atoms.some(atom => metalElements.has(atom.elem)));
+      return ligands.some(group => closestPair(residue.atoms, group.atoms, cutoff));
+    }
+
+    function residueNearMetal(residue, cutoff = 3.0) {
+      const metals = state.atoms.filter(atom => atom.record === 'HETATM' && metalElements.has(atom.elem));
+      return Boolean(closestPair(residue.atoms, metals, cutoff));
+    }
+
+    function residueMeanBfactor(residue) {
+      const values = residue.atoms.map(atom => atom.b).filter(value => Number.isFinite(value));
+      return mean(values);
+    }
+
+    function residueInterchainContact(residue) {
+      return state.residues.some(other => {
+        if (other === residue || other.chain === residue.chain) return false;
+        return closestPair(sideAtoms(residue).length ? sideAtoms(residue) : residue.atoms, sideAtoms(other).length ? sideAtoms(other) : other.atoms, 4.2);
+      });
+    }
+
+    function residueDistantContact(residue) {
+      return state.contacts.some(contact => {
+        const other = contact.resA === residue ? contact.resB : contact.resB === residue ? contact.resA : null;
+        return other && other.label !== 'Heme' && (other.chain !== residue.chain || Math.abs(other.resi - residue.resi) >= 8);
+      });
+    }
+
+    function residueRoleInfo(residue) {
+      const sasa = residueSasaEntry(residue);
+      const contacts = residueContactList(residue);
+      const hbondCount = residueBackboneHbondCount(residue);
+      const inSheet = residueSheetMembership(residue);
+      const inHelixCandidate = state.hbonds.some(hbond => (hbond.from === residue || hbond.to === residue) && hbondGap(hbond) >= 3 && hbondGap(hbond) <= 5);
+      const buried = sasa ? sasa.area < 55 : false;
+      const exposed = sasa ? sasa.area >= 55 : false;
+      const nearLigand = residueNearLigand(residue);
+      const nearMetal = residueNearMetal(residue);
+      const interchain = residueInterchainContact(residue);
+      const distant = residueDistantContact(residue);
+      const bfactor = residueMeanBfactor(residue);
+      const active = nearLigand || nearMetal || contacts.some(contact => ['salt','sideHbond'].includes(contact.type) && contact.distance < 3.2);
+      const roles = [];
+      if (inHelixCandidate) roles.push('helix/H-bond pattern');
+      if (inSheet) roles.push('beta sheet');
+      if (buried) roles.push('buried core');
+      if (exposed) roles.push('solvent exposed');
+      if (nearLigand) roles.push('ligand/cofactor pocket');
+      if (nearMetal) roles.push('metal coordination');
+      if (contacts.length) roles.push('side-chain contact');
+      if (hbondCount) roles.push('backbone H-bond');
+      if (distant) roles.push('tertiary contact');
+      if (interchain) roles.push('quaternary interface');
+      if (Number.isFinite(bfactor)) roles.push(`B-factor ${bfactor.toFixed(1)}`);
+      return { sasa, contacts, hbondCount, inSheet, inHelixCandidate, buried, exposed, nearLigand, nearMetal, interchain, distant, bfactor, active, roles };
+    }
+
+    function layerApplies(layer, info) {
+      if (layer === 'sequence') return true;
+      if (layer === 'structural') return info.buried || info.inSheet || info.inHelixCandidate || info.contacts.length || info.hbondCount;
+      if (layer === 'secondary') return info.inSheet || info.inHelixCandidate || info.hbondCount;
+      if (layer === 'activeSite') return info.active;
+      if (layer === 'ligandPocket') return info.nearLigand;
+      if (layer === 'metalCoordination') return info.nearMetal;
+      if (layer === 'sideChain') return info.contacts.length > 0;
+      if (layer === 'backboneHbond') return info.hbondCount > 0;
+      if (layer === 'solvent') return Boolean(info.sasa);
+      if (layer === 'tertiary') return info.distant;
+      if (layer === 'quaternary') return info.interchain;
+      if (layer === 'bfactor') return Number.isFinite(info.bfactor);
+      return true;
+    }
+
+    function conservationRowsForLayer() {
+      return state.conservation.map(entry => {
+        const info = residueRoleInfo(entry.residue);
+        const applies = layerApplies(state.conservationLayer, info);
+        const role = info.roles.length ? info.roles.join(', ') : 'general sequence position';
+        const annotation = conservationAnnotation(entry, info);
+        const prompt = conservationPrompt(entry, info);
+        return { entry, info, applies, role, annotation, prompt };
+      }).filter(row => row.applies && (!state.conservationShowConservedOnly || row.entry.score >= 0.75));
+    }
+
+    function conservationAnnotation(entry, info) {
+      const conserved = entry.score === 1 ? 'fully conserved' : entry.score >= 0.75 ? 'mostly conserved' : entry.score >= 0.5 ? 'partly conserved' : 'variable';
+      if (info.nearMetal) return `${conserved}; possible metal-coordination environment`;
+      if (info.nearLigand) return `${conserved}; near ligand/cofactor pocket`;
+      if (info.active) return `${conserved}; possible active-site or polar contact role`;
+      if (info.interchain) return `${conserved}; possible interface role`;
+      if (info.buried) return `${conserved}; buried structural packing role`;
+      if (info.exposed) return `${conserved}; exposed surface residue`;
+      if (info.hbondCount) return `${conserved}; backbone H-bond network`;
+      return `${conserved}; interpret with structural context`;
+    }
+
+    function conservationPrompt(entry, info) {
+      if (entry.score >= 0.75 && info.nearMetal) return 'How might mutation alter metal binding geometry or donor atoms?';
+      if (entry.score >= 0.75 && info.nearLigand) return 'How might this residue help recognize, position, or stabilize the ligand?';
+      if (entry.score >= 0.75 && info.buried) return 'How might this residue preserve fold stability or core packing?';
+      if (entry.score >= 0.75 && info.interchain) return 'How might this residue contribute to assembly or partner recognition?';
+      if (entry.score >= 0.75 && info.hbondCount) return 'How might this position preserve secondary-structure geometry?';
+      if (entry.score < 0.5 && info.exposed) return 'Could variability be tolerated because this residue is surface exposed?';
+      return 'What structural or biochemical reason could explain this conservation pattern?';
     }
 
     function carboxylateAtoms(residue) {
@@ -4215,28 +4516,86 @@ END
       const c = colors();
       const input = document.getElementById('conservationComparisons');
       if (input && input.value !== state.conservationComparisons) input.value = state.conservationComparisons;
+      document.getElementById('conservationLayer').value = state.conservationLayer;
+      document.getElementById('conservedOnlyToggle').checked = state.conservationShowConservedOnly;
       if (!state.conservation.length) {
         state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
         document.getElementById('conservedCount').textContent = 'unavailable';
         document.getElementById('homologCount').textContent = 'unavailable';
+        document.getElementById('layerResidueCount').textContent = 'unavailable';
+        document.getElementById('layerConservedCount').textContent = 'unavailable';
         document.getElementById('conservationNote').innerHTML = `<strong>Conservation unavailable for ${state.structureId}</strong>No comparison set has been built yet for this loaded protein. Enter 4-6 related PDB IDs above and click Build conservation overlay. The browser will fetch those structures from RCSB and map residue conservation onto ${state.structureId}.<br><br><strong>For PyMOL/ChimeraX files</strong>The repository also includes <code>conservation_pipeline.py</code>, which exports a B-factor-colored PDB plus CSV.`;
+        renderConservationTable([]);
+        renderCerGenerator([]);
         state.viewer.zoomTo({ hetflag: false });
         return;
       }
       const conserved = state.conservation.filter(entry => entry.score === 1);
+      const layerRows = conservationRowsForLayer();
+      const layerConserved = layerRows.filter(row => row.entry.score >= 0.75);
       state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.35 } });
-      state.conservation.forEach(entry => {
-        const color = entry.score === 1 ? c.exposed : entry.score >= 0.75 ? c.selected : '#cbd5e1';
-        if (entry.score >= 0.75) {
-          state.viewer.setStyle(residueSpec(entry.residue), { cartoon: { color }, stick: { colorscheme: 'Jmol', radius: 0.1 } });
+      layerRows.forEach(row => {
+        const color = row.entry.score === 1 ? c.exposed : row.entry.score >= 0.75 ? c.selected : row.entry.score >= 0.5 ? '#94a3b8' : '#cbd5e1';
+        if (row.entry.score >= 0.5 || state.conservationLayer !== 'sequence') {
+          state.viewer.setStyle(residueSpec(row.entry.residue), { cartoon: { color }, stick: { colorscheme: 'Jmol', radius: 0.1 } });
         }
       });
       document.getElementById('conservedCount').textContent = countWithPercent(conserved.length, state.residues.length);
       const sourceCount = state.conservationSources.length || homologSequences.length;
-      const sourceLabel = state.conservationSources.length ? state.conservationSources.join(', ') : '1MBN, 1YOG, 1M6M, and 3VM9';
+      const sourceLabel = state.conservationSources.length ? state.conservationSources.join(', ') : 'user-entered comparison set';
       document.getElementById('homologCount').textContent = sourceCount;
-      document.getElementById('conservationNote').innerHTML = `<strong>Conservation overlay for ${state.structureId}</strong>Using comparison structures: ${sourceLabel}. Blue residues are identical across all comparison sequences; gold residues are mostly conserved. This is a sequence-alignment teaching overlay, not a full evolutionary tree.`;
+      document.getElementById('layerResidueCount').textContent = countWithPercent(layerRows.length, state.residues.length);
+      document.getElementById('layerConservedCount').textContent = countWithPercent(layerConserved.length, layerRows.length);
+      const layer = conservationLayers[state.conservationLayer];
+      document.getElementById('conservationNote').innerHTML = `<strong>${layer.label} for ${state.structureId}</strong><strong>Measured</strong>${layer.measures}<br><strong>Visualized</strong>${layer.visualized}<br><strong>Why it matters</strong>${layer.why}<br><strong>Student explanation</strong>${layer.student}<br><strong>Filter</strong>${layer.filter}<br><br><strong>Comparison set</strong>${sourceLabel}. This is a teaching overlay from sequence alignment plus structural features, not a full phylogenetic Rate4Site analysis.`;
+      renderConservationTable(layerRows);
+      renderCerGenerator(layerRows);
       state.viewer.zoomTo({ hetflag: false });
+    }
+
+    function sortedConservationRows(rows) {
+      const { key, dir } = state.conservationSort;
+      const sign = dir === 'asc' ? 1 : -1;
+      return rows.slice().sort((a, b) => {
+        const values = {
+          resi: [a.entry.residue.resi, b.entry.residue.resi],
+          identity: [a.entry.residue.resn, b.entry.residue.resn],
+          score: [a.entry.score, b.entry.score],
+          role: [a.role, b.role],
+          annotation: [a.annotation, b.annotation],
+          prompt: [a.prompt, b.prompt]
+        }[key] || [a.entry.score, b.entry.score];
+        if (typeof values[0] === 'number') return (values[0] - values[1]) * sign;
+        return String(values[0]).localeCompare(String(values[1])) * sign;
+      });
+    }
+
+    function renderConservationTable(rows) {
+      const tbody = document.querySelector('#conservationTable tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      sortedConservationRows(rows).slice(0, 120).forEach(row => {
+        const residue = row.entry.residue;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${residue.resi}</strong></td><td>${residue.label}</td><td>${Math.round(row.entry.score * 100)}% (${row.entry.same}/${row.entry.total})</td><td>${row.role}</td><td>${row.annotation}</td><td>${row.prompt}</td>`;
+        tr.addEventListener('click', () => {
+          state.viewer.zoomTo(residueSpec(residue));
+          state.viewer.render();
+        });
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderCerGenerator(rows) {
+      const panel = document.getElementById('cerNote');
+      if (!panel) return;
+      if (!rows.length) {
+        panel.innerHTML = '<strong>CER generator</strong>Build or select a conservation layer to generate a Claim-Evidence-Reasoning scaffold.';
+        return;
+      }
+      const layer = conservationLayers[state.conservationLayer];
+      const best = rows.filter(row => row.entry.score >= 0.75).sort((a, b) => b.entry.score - a.entry.score)[0] || rows[0];
+      panel.innerHTML = `<strong>CER generator</strong><strong>Claim</strong>In ${state.structureId}, ${best.entry.residue.label} may be important because it is conserved in the ${layer.label.toLowerCase()} layer.<br><strong>Evidence</strong>${best.entry.residue.label} has a conservation score of ${Math.round(best.entry.score * 100)}% (${best.entry.same}/${best.entry.total} comparison sequences) and is annotated as: ${best.annotation}.<br><strong>Reasoning</strong>If evolution preserves a residue that also has a structural or biochemical role, mutation may disrupt ${best.role}. ${best.prompt}`;
     }
 
     function drawMutation() {
@@ -4979,6 +5338,28 @@ END
     });
 
     document.getElementById('buildConservation').addEventListener('click', buildConservationFromInput);
+
+    document.getElementById('conservationLayer').addEventListener('change', event => {
+      state.conservationLayer = event.target.value;
+      applyMode();
+    });
+
+    document.getElementById('conservedOnlyToggle').addEventListener('change', event => {
+      state.conservationShowConservedOnly = event.target.checked;
+      applyMode();
+    });
+
+    document.querySelectorAll('#conservationTable th[data-sort]').forEach(header => {
+      header.addEventListener('click', () => {
+        const key = header.dataset.sort;
+        if (state.conservationSort.key === key) {
+          state.conservationSort.dir = state.conservationSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.conservationSort = { key, dir: key === 'resi' ? 'asc' : 'desc' };
+        }
+        applyMode();
+      });
+    });
 
     document.getElementById('lessonFeedback').addEventListener('click', giveLessonFeedback);
     document.getElementById('lessonKey').addEventListener('click', showLessonKey);

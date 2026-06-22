@@ -156,7 +156,11 @@ Students can glean:
 
 ### Conservation
 
-The Conservation panel can compare the currently loaded reference protein with 4-6 related PDB structures. Conservation is meaningful only when the comparison structures are homologous or otherwise biologically appropriate comparisons.
+The Conservation panel compares the currently loaded reference protein with 4-6 related PDB structures, maps sequence conservation onto the reference structure, and then asks students to interpret that conservation in structural and biochemical context.
+
+This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is a classroom reasoning tool: it lets students choose a reference PDB structure and a small homolog set, see a direct conservation overlay, filter conserved residues by structural role, and build a Claim-Evidence-Reasoning explanation from the 3D evidence. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
+
+Conservation is meaningful only when the comparison structures are homologous or otherwise biologically appropriate comparisons. Unrelated proteins will give misleading conservation scores.
 
 To build an in-app conservation overlay:
 
@@ -194,6 +198,44 @@ Students can glean:
 - Which residues are conserved across a comparison set.
 - Which conserved residues may be functionally or structurally important.
 - Why conservation requires careful selection and alignment of related proteins.
+
+After conservation is built, use the **Layer** menu to ask more specific questions:
+
+- **Sequence conservation** measures residue identity across the aligned comparison set. Conserved positions are colored on the reference structure so students can ask what evolutionary pressure might preserve that residue.
+- **Structural conservation** filters for conserved residues with stabilizing structural roles, such as buried core positions, secondary structure, contact networks, or H-bond regions. This helps students connect conservation to folding and packing.
+- **Secondary structure conservation** filters conserved residues in helix candidates, beta-sheet records, or backbone H-bond patterns. This helps students decide whether conservation supports the fold scaffold.
+- **Active-site conservation** filters conserved residues near ligands, metals, or strong polar/charged contacts. This helps students connect conservation to catalysis, recognition, or biochemical activity.
+- **Ligand/cofactor pocket conservation** filters conserved residues close to non-water ligands or cofactors. This helps students ask how a pocket preserves shape, polarity, or binding atoms.
+- **Metal coordination conservation** filters conserved residues close to metal ions such as zinc, iron, magnesium, manganese, calcium, copper, nickel, or cobalt. This helps students identify donor atoms and coordination geometry.
+- **Side-chain interaction conservation** filters conserved residues that form salt bridges, side-chain hydrogen bonds, or hydrophobic contacts. This helps students ask what interaction would be lost after mutation.
+- **Backbone hydrogen-bond conservation** filters conserved residues that participate in candidate backbone H-bonds. This helps students connect conservation to helix, sheet, or turn geometry.
+- **Solvent accessibility conservation** combines conservation with exposure or burial. Conserved buried residues often stabilize the core; conserved exposed residues may support binding or recognition.
+- **Tertiary contact conservation** filters conserved residues that contact sequence-distant residues in the folded 3D structure. This helps students see that far-apart sequence positions can become close in space.
+- **Quaternary interface conservation** filters conserved residues that contact another protein chain when multiple chains are present. This helps students reason about assembly and partner recognition.
+- **B-factor/flexibility conservation** optionally compares conservation with deposited B-factors. Conserved low-B-factor regions may anchor the structure, while conserved flexible regions may support motion or binding.
+
+The **Show conserved residues in this layer only** checkbox narrows the view to residues with stronger conservation within the selected layer.
+
+The sortable Conservation Table includes:
+
+- **Residue number**: the residue position in the loaded reference structure.
+- **Residue identity**: the reference amino acid and residue label.
+- **Conservation score**: the fraction of comparison structures that match the reference residue at the aligned position.
+- **Structural role**: the detected structural context, such as buried core, ligand pocket, side-chain contact, backbone H-bond, interface, or B-factor context.
+- **Functional annotation**: a short interpretation of the residue's possible role.
+- **Student interpretation prompt**: a question students can use to turn the observation into a biochemical explanation.
+
+Clicking a table row zooms to that residue in the structure.
+
+The **CER generator** provides a starter scaffold:
+
+```text
+Claim:
+Evidence:
+Reasoning:
+```
+
+Students should revise the scaffold in their own words. A strong CER answer should state why a residue may matter, cite visual evidence from conservation and structure, and explain how that evidence connects to folding, binding, catalysis, stability, or regulation.
 
 ### Mutation Sandbox
 

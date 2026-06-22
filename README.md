@@ -32,6 +32,10 @@ python3 conservation_pipeline.py --reference 1MBN --comparisons 1YOG 1M6M 3VM9 1
 
 The pipeline writes a B-factor-colored reference PDB, a residue conservation CSV, and helper scripts for PyMOL and ChimeraX.
 
+## In-App Conservation Tab
+
+The app also includes an interactive Conservation tab. After students enter 4-6 related comparison PDB IDs, the app aligns the loaded reference sequence with the comparison structures, maps conservation onto the reference model, and lets students filter conserved residues by sequence, structural role, secondary structure, active-site context, ligand/cofactor pocket, metal coordination, side-chain interactions, backbone hydrogen bonds, solvent accessibility, tertiary contacts, quaternary interfaces, and optional B-factor/flexibility context. A sortable table and CER generator help students connect evolutionary conservation to biochemical function.
+
 ## GitHub Pages
 
 Because this is a static app, it can be published directly from the repository root or from this folder. If publishing from a repository root, keep `index.html`, `3Dmol-min.js`, and `1MBN.pdb` together in the same directory.
