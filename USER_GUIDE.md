@@ -179,29 +179,32 @@ Students can glean:
 
 ### Conservation
 
-The Conservation panel lets students choose a curated protein family, inspect the reference PDB ID, select or remove curated homolog structures, optionally add custom 4-character PDB IDs, and compute a teaching conservation analysis from the selected set.
+The Conservation panel lets students choose a **Learning Classification** and **Course Protein**, inspect the reference PDB ID, select or remove suggested comparison structures, optionally add custom 4-character PDB IDs, and compute a teaching conservation analysis from the selected set. The Course Protein is the assigned structure students are investigating. Suggested Comparison Structures are related structures used to estimate conservation.
 
-This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is a classroom reasoning tool: students choose a reference PDB structure and a small homolog set, then use the result to connect conservation with structural layers and Claim-Evidence-Reasoning explanations. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
+This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is a classroom reasoning tool: students choose a reference PDB structure and a small comparison set, then use the result to connect conservation with structural layers and Claim-Evidence-Reasoning explanations. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
 
 Conservation is meaningful only when the comparison structures are homologous or otherwise biologically appropriate comparisons. Unrelated proteins will give misleading conservation scores.
 
-To compute conservation from a selected homolog set:
+Not every course protein currently has a prebuilt suggested comparison set. If the checklist says no curated set is available yet, students can manually add 4-6 related PDB IDs. Conservation quality depends on choosing biologically related structures with comparable sequences, structures, and functions.
+
+To compute conservation from a selected comparison set:
 
 1. Click **Conservation**.
-2. Choose a protein family from the **Protein family** dropdown.
-3. Review the reference PDB ID, biological function, and key functional features.
-4. Click **Load Reference Structure** if you want that family reference in the viewer.
-5. Select or deselect curated homolog structures in the checklist.
-6. Optionally type one custom 4-character PDB ID and click **Add**.
-7. Use the readiness summary to check whether the set has 4-6 comparison structures.
-8. Click **Compute Conservation**.
-9. Review the results status, attempted/used/skipped counts, and any warnings.
-10. Use the table to compare residue conservation score, category, functional annotation, and interpretation prompt.
-11. Click **Map Conservation to Structure** to color the loaded reference structure.
-12. Use the visualization controls to show all residues, highlight highly conserved residues, highlight variable residues, highlight functional features, or reset the conservation coloring.
-13. Inspect the **Functional Features to Inspect** panel to compare known family features with their conservation scores when those residues are mappable.
-14. Use **Interpret Your Conservation Map** questions to turn the color pattern into structure-function reasoning.
-15. Use **Generate CER Scaffold** as a starting point, then revise the claim, evidence, and reasoning in your own words.
+2. Choose a learning classification from the **Learning Classification** dropdown.
+3. Choose a course protein from the **Course Protein** dropdown.
+4. Review the reference PDB ID, biological function, and key functional features.
+5. Click **Load Reference Structure** if you want that course-protein reference in the viewer.
+6. Select or deselect suggested comparison structures in the checklist, when available.
+7. Optionally type one custom 4-character PDB ID and click **Add**.
+8. Use the readiness summary to check whether the set has 4-6 comparison structures.
+9. Click **Compute Conservation**.
+10. Review the results status, attempted/used/skipped counts, and any warnings.
+11. Use the table to compare residue conservation score, category, functional annotation, and interpretation prompt.
+12. Click **Map Conservation to Structure** to color the loaded reference structure.
+13. Use the visualization controls to show all residues, highlight highly conserved residues, highlight variable residues, highlight functional features, or reset the conservation coloring.
+14. Inspect the **Functional Features to Inspect** panel to compare known course-protein features with their conservation scores when those residues are mappable.
+15. Use **Interpret Your Conservation Map** questions to turn the color pattern into structure-function reasoning.
+16. Use **Generate CER Scaffold** as a starting point, then revise the claim, evidence, and reasoning in your own words.
 
 Custom PDB IDs should use this format:
 
@@ -262,9 +265,9 @@ Classroom use:
 
 For assignments, students should include:
 
-- Selected protein family.
+- Selected course protein and learning classification.
 - Reference PDB.
-- Homologs used.
+- Comparison structures used.
 - Screenshot of the conservation map.
 - One highly conserved region.
 - One variable region.
@@ -273,7 +276,7 @@ For assignments, students should include:
 
 Limitations:
 
-This tool uses a simplified teaching-level conservation workflow. Results depend on homolog choice, chain selection, sequence quality, and PDB structure completeness. Conservation maps should be interpreted alongside biochemical context.
+This tool uses a simplified teaching-level conservation workflow. Results depend on comparison-structure choice, chain selection, sequence quality, and PDB structure completeness. Conservation maps should be interpreted alongside biochemical context.
 
 Use the **Layer** menu to ask more specific questions:
 

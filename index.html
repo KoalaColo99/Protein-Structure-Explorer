@@ -834,13 +834,13 @@
 
       <section class="section mode-panel hidden" id="conservationPanel">
         <h2>Conservation</h2>
-        <p>Choose a protein family, prepare a homolog comparison set, compute conservation, map results onto the structure, and turn the pattern into structure-function reasoning.</p>
+        <p>Choose a course protein, prepare a biologically related comparison set, compute conservation, map results onto the structure, and turn the pattern into structure-function reasoning.</p>
         <div class="mini-card">
           <h3>Recommended Student Workflow</h3>
           <ol>
-            <li>Select a protein family.</li>
+            <li>Select a learning classification and course protein.</li>
             <li>Load the reference structure.</li>
-            <li>Review or customize homologs.</li>
+            <li>Review or customize comparison structures.</li>
             <li>Compute conservation.</li>
             <li>Map conservation to the structure.</li>
             <li>Inspect conserved residues.</li>
@@ -848,7 +848,11 @@
           </ol>
         </div>
         <div class="row">
-          <label for="conservationFamily">Protein family</label>
+          <label for="conservationClassification">Learning classification</label>
+          <select id="conservationClassification"></select>
+        </div>
+        <div class="row">
+          <label for="conservationFamily">Course Protein</label>
           <select id="conservationFamily"></select>
         </div>
         <div class="mini-card" id="conservationFamilyInfo"></div>
@@ -858,7 +862,7 @@
           <button id="loadConservationReference">Load Reference Structure</button>
         </div>
         <div class="mini-card">
-          <h3>Curated Homolog Selector</h3>
+          <h3>Suggested Comparison Structures</h3>
           <p>Select related structures to prepare the comparison set.</p>
           <div class="check-list" id="curatedHomologList"></div>
         </div>
@@ -872,18 +876,18 @@
           <div class="warning-text" id="customConservationMessage"></div>
         </div>
         <div class="mini-card">
-          <h3>Selected Structures</h3>
+          <h3>Selected Comparison Structures</h3>
           <div id="selectedConservationStructures"></div>
         </div>
         <div class="mini-card">
-          <h3>Why compare homologs?</h3>
-          <p>Homologous proteins often preserve important structural and functional features across evolution. Comparing related proteins can help identify residues and regions that may be important for stability, ligand binding, catalysis, or biological function.</p>
+          <h3>Why compare related structures?</h3>
+          <p>Related proteins often preserve important structural and functional features across evolution. Comparing biologically appropriate structures can help identify residues and regions that may be important for stability, ligand binding, catalysis, or biological function.</p>
         </div>
         <div class="mini-card">
           <h3>Conservation Readiness Summary</h3>
           <div class="stats">
             <div class="stat"><strong id="readinessReference">-</strong><span>reference structure</span></div>
-            <div class="stat"><strong id="readinessHomologCount">-</strong><span>selected homolog count</span></div>
+            <div class="stat"><strong id="readinessHomologCount">-</strong><span>selected comparison structures</span></div>
           </div>
           <div class="stats">
             <div class="stat"><strong id="readinessCustomCount">-</strong><span>custom structures</span></div>
@@ -895,7 +899,7 @@
         <div class="chem-note" id="conservationPrepNote"></div>
         <div class="mini-card">
           <h3>Conservation Results</h3>
-          <div class="chem-note"><strong>Caution</strong>This conservation analysis is designed for teaching and exploration. Results depend on homolog choice, chain selection, sequence quality, and structural similarity. Interpret conservation as evidence, not absolute proof.</div>
+          <div class="chem-note"><strong>Caution</strong>This conservation analysis is designed for teaching and exploration. Results depend on comparison-structure choice, chain selection, sequence quality, and structural similarity. Interpret conservation as evidence, not absolute proof.</div>
           <div class="stats">
             <div class="stat"><strong id="conservationResultStatus">Not computed yet</strong><span>status</span></div>
             <div class="stat"><strong id="resultReference">-</strong><span>reference PDB</span></div>
@@ -975,7 +979,7 @@
         </label>
         <div class="stats">
           <div class="stat"><strong id="conservedCount">-</strong><span>fully conserved residues</span></div>
-          <div class="stat"><strong id="homologCount">-</strong><span>related structures</span></div>
+          <div class="stat"><strong id="homologCount">-</strong><span>comparison structures</span></div>
         </div>
         <div class="stats">
           <div class="stat"><strong id="layerResidueCount">-</strong><span>residues in selected layer</span></div>
@@ -2984,6 +2988,7 @@ END
       conservationLayer: 'sequence',
       conservationShowConservedOnly: false,
       conservationSort: { key: 'score', dir: 'desc' },
+      conservationClassification: 'Oxygen Transport & Storage',
       conservationFamily: 'myoglobin',
       selectedCuratedHomologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS'],
       customConservationIds: [],
@@ -3060,56 +3065,119 @@ END
       { id: '3VM9', label: 'horse myoglobin', sequence: 'GLSDGEWQQVLNVWGKVEADIAGHGQEVLIRLFTGHPETLEKFDKFKHLKTEAEMKASEDLKKHGTVVLTALGGILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISDAIIHVLHSKHPGDFGADAQGAMTKALELFRNDIAAKYKELGFQG' },
       { id: '1YOG', label: 'sperm whale cobalt myoglobin', sequence: 'VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG' }
     ];
-    const conservationFamilies = {
+    const learningClassifications = [
+      'Oxygen Transport & Storage',
+      'Enzymes: Metabolism & Catalysis',
+      'Proteases & Drug Targets',
+      'DNA/RNA Binding & Information Flow',
+      'Signaling & Hormones',
+      'Membrane Proteins & Transport',
+      'Structural/Fibrous/Assembly Proteins',
+      'Misfolding, Disease & Extremes'
+    ];
+    const curatedComparisonSets = {
       myoglobin: {
-        name: 'Myoglobin',
-        reference: '1MBN',
         function: 'Oxygen storage protein found in muscle.',
         features: ['Heme binding pocket', 'Distal histidine', 'Proximal histidine'],
         functionalSites: { 64: 'Distal histidine near the oxygen-binding pocket', 93: 'Proximal histidine that coordinates heme iron' },
         homologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS']
       },
       hemoglobin: {
-        name: 'Hemoglobin',
-        reference: '1A3N',
         function: 'Oxygen transport protein that uses multiple subunits to bind and release oxygen cooperatively.',
         features: ['Heme groups', 'Alpha/beta subunits', 'Quaternary structure and subunit interfaces'],
         functionalSites: { 58: 'Distal histidine region near heme in globin chains', 87: 'Proximal histidine region near heme in globin chains' },
         homologs: ['2MHB', '1HDA', '1FSX', '2QSP', '6II1']
       },
       carbonicAnhydrase: {
-        name: 'Carbonic Anhydrase',
-        reference: '1CA2',
         function: 'Zinc metalloenzyme that helps interconvert carbon dioxide and bicarbonate.',
         features: ['Zinc active site', 'Histidine metal ligands', 'Acid-base catalysis'],
         functionalSites: { 94: 'Zinc-binding histidine ligand', 96: 'Zinc-binding histidine ligand', 119: 'Zinc-binding histidine ligand' },
         homologs: ['3HS4', '1V9E', '4QSU', '6CMB', '2CAB']
       },
       lysozyme: {
-        name: 'Lysozyme',
-        reference: '1LYZ',
         function: 'Antibacterial enzyme that cleaves polysaccharides in bacterial cell walls.',
         features: ['Catalytic cleft', 'Acid/base residues', 'Substrate-binding groove'],
         functionalSites: { 35: 'Catalytic acid/base residue in the lysozyme cleft', 52: 'Catalytic residue in the lysozyme cleft' },
         homologs: ['1HEL', '2LZT', '1REX', '1JSF', '3LZT']
       },
       triosephosphateIsomerase: {
-        name: 'Triosephosphate Isomerase',
-        reference: '1TIM',
         function: 'Glycolytic enzyme that interconverts dihydroxyacetone phosphate and glyceraldehyde-3-phosphate.',
         features: ['TIM barrel fold', 'Catalytic loop', 'Active-site acid/base chemistry'],
         functionalSites: { 13: 'Active-site lysine region', 95: 'Active-site histidine region', 165: 'Catalytic glutamate region' },
         homologs: ['7TIM', '1NEY', '4TIM', '1TRE', '1BTM']
       },
       chymotrypsin: {
-        name: 'Chymotrypsin',
-        reference: '1YPH',
         function: 'Serine protease that cleaves peptide bonds near bulky hydrophobic residues.',
         features: ['Catalytic triad', 'Oxyanion hole', 'Specificity pocket'],
         functionalSites: { 57: 'Catalytic triad histidine', 102: 'Catalytic triad aspartate', 195: 'Catalytic triad serine' },
         homologs: ['1GCT', '1ACB', '1MTN', '1OXG', '4H4F']
       }
     };
+    const courseProteinEntries = [
+      { key: 'myoglobin', classification: 'Oxygen Transport & Storage', reference: '1MBN', name: 'Myoglobin' },
+      { key: 'hemoglobin', classification: 'Oxygen Transport & Storage', reference: '2HHB', name: 'Hemoglobin' },
+      { key: 'oxyhemoglobin', classification: 'Oxygen Transport & Storage', reference: '1HHO', name: 'Oxyhemoglobin' },
+      { key: 'hemerythrin', classification: 'Oxygen Transport & Storage', reference: '3SDH', name: 'Hemerythrin' },
+      { key: 'leghemoglobin', classification: 'Oxygen Transport & Storage', reference: '1ASH', name: 'Leghemoglobin' },
+      { key: 'adenylateKinase', classification: 'Enzymes: Metabolism & Catalysis', reference: '4AKE', name: 'Adenylate Kinase' },
+      { key: 'lactateDehydrogenase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1LDN', name: 'Lactate Dehydrogenase' },
+      { key: 'lysozyme', classification: 'Enzymes: Metabolism & Catalysis', reference: '1BNA', name: 'Lysozyme' },
+      { key: 'triosephosphateIsomerase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1TIM', name: 'Triosephosphate Isomerase' },
+      { key: 'carbonicAnhydrase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1CA2', name: 'Carbonic Anhydrase II' },
+      { key: 'dihydrofolateReductase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1RX2', name: 'Dihydrofolate Reductase' },
+      { key: 'catalase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1A4Y', name: 'Catalase' },
+      { key: 'alcoholDehydrogenase', classification: 'Enzymes: Metabolism & Catalysis', reference: '3HHR', name: 'Alcohol Dehydrogenase' },
+      { key: 'citrateSynthase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1MCT', name: 'Citrate Synthase' },
+      { key: 'hexokinase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1DGK', name: 'Hexokinase' },
+      { key: 'sarsCov2MainProtease', classification: 'Proteases & Drug Targets', reference: '7BRO', name: 'SARS-CoV-2 Main Protease' },
+      { key: 'hivProtease', classification: 'Proteases & Drug Targets', reference: '1HVR', name: 'HIV Protease' },
+      { key: 'acetylcholinesterase', classification: 'Proteases & Drug Targets', reference: '4EY7', name: 'Acetylcholinesterase' },
+      { key: 'cox2', classification: 'Proteases & Drug Targets', reference: '5IKR', name: 'COX-2' },
+      { key: 'trypsin', classification: 'Proteases & Drug Targets', reference: '1GCT', name: 'Trypsin' },
+      { key: 'chymotrypsin', classification: 'Proteases & Drug Targets', reference: '1YPH', name: 'Chymotrypsin' },
+      { key: 'thrombin', classification: 'Proteases & Drug Targets', reference: '1FQG', name: 'Thrombin' },
+      { key: 'lambdaRepressor', classification: 'DNA/RNA Binding & Information Flow', reference: '1LMB', name: 'Lambda Repressor DNA Complex' },
+      { key: 'tataBindingProtein', classification: 'DNA/RNA Binding & Information Flow', reference: '1A1F', name: 'TATA Binding Protein' },
+      { key: 'dnaDoubleHelix', classification: 'DNA/RNA Binding & Information Flow', reference: '1BNA', name: 'DNA Double Helix' },
+      { key: 'zincFingerDnaComplex', classification: 'DNA/RNA Binding & Information Flow', reference: '1FJL', name: 'Zinc Finger DNA Complex' },
+      { key: 'nucleosomeCore', classification: 'DNA/RNA Binding & Information Flow', reference: '1EHZ', name: 'Nucleosome Core Particle' },
+      { key: 'ribosome', classification: 'DNA/RNA Binding & Information Flow', reference: '4V6X', name: 'Ribosome' },
+      { key: 'rnaPolymeraseFragment', classification: 'DNA/RNA Binding & Information Flow', reference: '1QYL', name: 'RNA Polymerase Fragment' },
+      { key: 'crpDnaComplex', classification: 'DNA/RNA Binding & Information Flow', reference: '2CGP', name: 'CRP DNA Complex' },
+      { key: 'insulin', classification: 'Signaling & Hormones', reference: '1GFL', name: 'Insulin' },
+      { key: 'beta2AdrenergicReceptor', classification: 'Signaling & Hormones', reference: '3SN6', name: 'Beta-2 Adrenergic Receptor' },
+      { key: 'estrogenReceptor', classification: 'Signaling & Hormones', reference: '1NQL', name: 'Estrogen Receptor' },
+      { key: 'fibronectinDomain', classification: 'Signaling & Hormones', reference: '1FIN', name: 'Fibronectin Domain' },
+      { key: 'immunoglobulin', classification: 'Signaling & Hormones', reference: '1IGT', name: 'Immunoglobulin' },
+      { key: 'potassiumChannel', classification: 'Membrane Proteins & Transport', reference: '1F88', name: 'Potassium Channel' },
+      { key: 'aquaporin', classification: 'Membrane Proteins & Transport', reference: '1PW4', name: 'Aquaporin' },
+      { key: 'glut1', classification: 'Membrane Proteins & Transport', reference: '4DX5', name: 'Glucose Transporter GLUT1' },
+      { key: 'rhodopsin', classification: 'Membrane Proteins & Transport', reference: '2RH1', name: 'GPCR Rhodopsin' },
+      { key: 'atpSynthaseFragment', classification: 'Membrane Proteins & Transport', reference: '3QE7', name: 'ATP Synthase Fragment' },
+      { key: 'collagenLikePeptide', classification: 'Structural/Fibrous/Assembly Proteins', reference: '1BKV', name: 'Collagen-like Peptide' },
+      { key: 'microtubule', classification: 'Structural/Fibrous/Assembly Proteins', reference: '3J3Q', name: 'Microtubule' },
+      { key: 'actin', classification: 'Structural/Fibrous/Assembly Proteins', reference: '1MBO', name: 'Actin' },
+      { key: 'keratinFragment', classification: 'Structural/Fibrous/Assembly Proteins', reference: '1CGD', name: 'Keratin Fragment' },
+      { key: 'intermediateFilament', classification: 'Structural/Fibrous/Assembly Proteins', reference: '1IFR', name: 'Intermediate Filament Protein' },
+      { key: 'prionProtein', classification: 'Misfolding, Disease & Extremes', reference: '1HZ3', name: 'Prion Protein' },
+      { key: 'amyloidBetaFragment', classification: 'Misfolding, Disease & Extremes', reference: '2BEG', name: 'Amyloid beta Fragment' },
+      { key: 'p53DnaBindingDomain', classification: 'Misfolding, Disease & Extremes', reference: '1IYT', name: 'p53 DNA Binding Domain' },
+      { key: 'greenFluorescentProtein', classification: 'Misfolding, Disease & Extremes', reference: '1CAG', name: 'Green Fluorescent Protein' },
+      { key: 'heatShockProtein', classification: 'Misfolding, Disease & Extremes', reference: '1JFF', name: 'Heat Shock Protein' }
+    ];
+    function defaultCourseDescription(entry) {
+      return `Course example for exploring how the ${entry.classification.toLowerCase()} context shapes structure, chemistry, and biochemical function.`;
+    }
+    const conservationFamilies = Object.fromEntries(courseProteinEntries.map(entry => {
+      const curated = curatedComparisonSets[entry.key] || {};
+      return [entry.key, {
+        ...entry,
+        function: curated.function || defaultCourseDescription(entry),
+        features: curated.features || ['Overall fold', 'Functional regions', 'Structure-function relationships'],
+        functionalSites: curated.functionalSites || {},
+        homologs: curated.homologs || []
+      }];
+    }));
     const lessonScenes = [
       {
         title: '1. Start With The Fold',
@@ -3349,7 +3417,7 @@ END
     const conservationLayers = {
       sequence: {
         label: 'Sequence conservation',
-        measures: 'Residue identity across the aligned homolog set.',
+        measures: 'Residue identity across the aligned comparison set.',
         visualized: 'Conserved residues are colored blue; mostly conserved residues are gold; variable residues remain gray.',
         why: 'Slowly changing positions often mark structural or functional constraints.',
         student: 'Ask what evolutionary pressure might preserve this residue identity.',
@@ -4025,7 +4093,7 @@ END
           attempted: 0,
           used: 0,
           skipped: 0,
-          warnings: ['Select at least one homolog or custom comparison structure before computing conservation.']
+          warnings: ['Select at least one suggested or custom comparison structure before computing conservation.']
         };
         applyMode();
         return;
@@ -4621,7 +4689,7 @@ END
       const family = currentConservationFamily();
       const knownFeature = family.functionalSites?.[entry.residue.resi];
       if (knownFeature) return knownFeature;
-      if (entry.score >= 0.9) return `Highly conserved in a family known for: ${family.features.join(', ')}.`;
+      if (entry.score >= 0.9) return `Highly conserved in this course-protein comparison set. Features to inspect: ${family.features.join(', ')}.`;
       return conservationAnnotation(entry, info);
     }
 
@@ -5237,6 +5305,10 @@ END
       return conservationFamilies[state.conservationFamily] || conservationFamilies.myoglobin;
     }
 
+    function courseProteinsForClassification(classification) {
+      return courseProteinEntries.filter(entry => entry.classification === classification);
+    }
+
     function resetConservationResult(status = 'Not computed yet') {
       const family = currentConservationFamily();
       state.conservation = [];
@@ -5255,6 +5327,7 @@ END
 
     function syncConservationFamilySelection() {
       const family = currentConservationFamily();
+      state.conservationClassification = family.classification;
       state.selectedCuratedHomologs = family.homologs.slice();
       state.customConservationIds = [];
       state.conservationComparisons = '';
@@ -5268,16 +5341,34 @@ END
     }
 
     function renderConservationFamilyControls() {
+      const classificationSelect = document.getElementById('conservationClassification');
       const familySelect = document.getElementById('conservationFamily');
       if (!familySelect) return;
-      if (!familySelect.options.length) {
-        Object.entries(conservationFamilies).forEach(([key, family]) => {
+      const family = currentConservationFamily();
+      if (!learningClassifications.includes(state.conservationClassification)) {
+        state.conservationClassification = family.classification || learningClassifications[0];
+      }
+      if (classificationSelect && !classificationSelect.options.length) {
+        learningClassifications.forEach(classification => {
           const option = document.createElement('option');
-          option.value = key;
-          option.textContent = family.name;
-          familySelect.appendChild(option);
+          option.value = classification;
+          option.textContent = classification;
+          classificationSelect.appendChild(option);
         });
       }
+      if (classificationSelect) classificationSelect.value = state.conservationClassification;
+      const proteins = courseProteinsForClassification(state.conservationClassification);
+      if (!proteins.some(entry => entry.key === state.conservationFamily)) {
+        state.conservationFamily = proteins[0]?.key || 'myoglobin';
+        syncConservationFamilySelection();
+      }
+      familySelect.innerHTML = '';
+      courseProteinsForClassification(state.conservationClassification).forEach(entry => {
+        const option = document.createElement('option');
+        option.value = entry.key;
+        option.textContent = `${entry.reference} - ${entry.name}`;
+        familySelect.appendChild(option);
+      });
       familySelect.value = state.conservationFamily;
       renderConservationPrep();
     }
@@ -5285,7 +5376,10 @@ END
     function renderConservationPrep() {
       const family = currentConservationFamily();
       document.getElementById('conservationReferenceId').textContent = family.reference;
-      document.getElementById('conservationFamilyInfo').innerHTML = `<h3>${family.name}</h3><p><strong>Reference Structure:</strong> ${family.reference}</p><p><strong>Function:</strong> ${family.function}</p><p><strong>Key Features:</strong></p><ul>${family.features.map(feature => `<li>${feature}</li>`).join('')}</ul>`;
+      const comparisonText = family.homologs.length
+        ? family.homologs.join(', ')
+        : 'No curated comparison set is available yet for this course protein. You may manually add 4-6 related PDB structures for conservation analysis.';
+      document.getElementById('conservationFamilyInfo').innerHTML = `<h3>Protein Information</h3><p><strong>Protein:</strong> ${family.name}</p><p><strong>Reference PDB:</strong> ${family.reference}</p><p><strong>Learning classification:</strong> ${family.classification}</p><p><strong>Description:</strong> ${family.function}</p><p><strong>Key features to inspect:</strong></p><ul>${family.features.map(feature => `<li>${feature}</li>`).join('')}</ul><p><strong>Suggested comparison structures:</strong> ${comparisonText}</p>`;
       renderCuratedHomologList(family);
       renderSelectedConservationStructures(family);
       renderConservationReadiness(family);
@@ -5297,6 +5391,10 @@ END
       const list = document.getElementById('curatedHomologList');
       if (!list) return;
       list.innerHTML = '';
+      if (!family.homologs.length) {
+        list.innerHTML = '<p>No curated comparison set is available yet for this course protein. You may manually add 4-6 related PDB structures for conservation analysis.</p>';
+        return;
+      }
       family.homologs.forEach(id => {
         const label = document.createElement('label');
         label.className = 'check-row';
@@ -5314,8 +5412,8 @@ END
       panel.innerHTML = `
         <p><strong>Reference Structure</strong></p>
         <div class="structure-pill"><span>${family.reference}</span></div>
-        <p><strong>Selected Homologs</strong></p>
-        ${curated.length ? curated.map(id => `<div class="structure-pill"><span>${id}</span>${removeButton(id, 'curated')}</div>`).join('') : '<p>No curated homologs selected.</p>'}
+        <p><strong>Selected Comparison Structures</strong></p>
+        ${curated.length ? curated.map(id => `<div class="structure-pill"><span>${id}</span>${removeButton(id, 'curated')}</div>`).join('') : '<p>No suggested comparison structures selected.</p>'}
         <p><strong>Custom Structures</strong></p>
         ${custom.length ? custom.map(id => `<div class="structure-pill"><span>${id}</span>${removeButton(id, 'custom')}</div>`).join('') : '<p>No custom structures added.</p>'}
       `;
@@ -5327,7 +5425,7 @@ END
       const customCount = state.customConservationIds.length;
       const ready = selected.length >= 4 && selected.length <= 6;
       const computing = state.conservationResult?.status === 'Computing conservation...';
-      const status = ready ? 'Ready for conservation analysis' : 'Choose 4-6 homologs';
+      const status = ready ? 'Ready for conservation analysis' : 'Choose 4-6 comparison structures';
       document.getElementById('readinessReference').textContent = family.reference;
       document.getElementById('readinessHomologCount').textContent = curatedCount;
       document.getElementById('readinessCustomCount').textContent = customCount;
@@ -5387,8 +5485,8 @@ END
         const button = row ? `<button data-highlight-feature="${resi}">Highlight in Structure</button>` : '';
         return `<div class="structure-pill"><span><strong>${row ? row.entry.residue.label : `Residue ${resi}`}</strong><br>Role: ${role}<br>Conservation: ${score}<br>Category: ${category}</span>${button}</div>`;
       });
-      const broadFeatures = family.features.map(feature => `<div class="structure-pill"><span><strong>${feature}</strong><br>Role: family-level feature to inspect in the structure.</span></div>`);
-      panel.innerHTML = `${featureRows.length ? featureRows.join('') : '<p>No residue-numbered functional features are currently listed for this family.</p>'}${broadFeatures.join('')}`;
+      const broadFeatures = family.features.map(feature => `<div class="structure-pill"><span><strong>${feature}</strong><br>Role: course-protein feature to inspect in the structure.</span></div>`);
+      panel.innerHTML = `${featureRows.length ? featureRows.join('') : '<p>No residue-numbered functional features are currently listed for this course protein.</p>'}${broadFeatures.join('')}`;
     }
 
     function addCustomConservationId() {
@@ -5625,7 +5723,7 @@ END
         all: 'Showing all mapped residues with conservation colors. Mapping follows the reference sequence positions represented in the loaded PDB.',
         high: 'Highlighting residues with conservation score >= 0.90; other residues are de-emphasized.',
         variable: 'Highlighting residues with conservation score < 0.50; other residues are de-emphasized.',
-        features: 'Highlighting family functional feature residues when their residue numbers are present in the loaded reference structure.'
+        features: 'Highlighting course-protein functional feature residues when their residue numbers are present in the loaded reference structure.'
       }[mode];
       document.getElementById('conservationMapNote').innerHTML = `<strong>Structure coloring limitation</strong>${note} Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations.`;
     }
@@ -5644,7 +5742,7 @@ END
         const status = state.conservationResult?.status || 'Not computed yet';
         document.getElementById('conservationNote').innerHTML = status === 'Computing conservation...'
           ? '<strong>Computing conservation...</strong>Fetching structures from RCSB and aligning valid sequences to the selected reference.'
-          : `<strong>Conservation not computed yet</strong>Prepare a homolog set for ${currentConservationFamily().name}, then click Compute Conservation. The table will appear after at least one valid comparison structure is used.`;
+          : `<strong>Conservation not computed yet</strong>Prepare a comparison set for ${currentConservationFamily().name}, then click Compute Conservation. The table will appear after at least one valid comparison structure is used.`;
         renderConservationTable([]);
         renderCerGenerator([]);
         state.viewer.zoomTo({ hetflag: false });
@@ -6072,7 +6170,7 @@ END
         solvent: 'Solvent-accessible surface area',
         hydrophobic: 'Hydrophobic core and exposed patches',
         chargeSurface: 'pH-colored acidic/basic surface',
-        conservation: 'Conservation overlay / homolog readiness',
+        conservation: 'Conservation overlay / comparison readiness',
         mutation: 'Mutation sandbox',
         lesson: 'Guided lesson mode',
         gallery: 'Protein gallery builder',
@@ -6345,7 +6443,7 @@ END
       applyParsedStructure(pdb, code, label || selectedPresetLabel(code));
       state.mode = 'overview';
       renderCurrentModel();
-      document.getElementById('galleryNote').innerHTML = `<strong>${code} loaded</strong>The viewer recomputed residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, SASA, hydrophobic regions, charge surfaces, beta sheets, ligand/cofactor contacts, and helix-pattern candidates from the loaded structure. Conservation still needs a curated homolog set for non-1MBN proteins.`;
+      document.getElementById('galleryNote').innerHTML = `<strong>${code} loaded</strong>The viewer recomputed residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, SASA, hydrophobic regions, charge surfaces, beta sheets, ligand/cofactor contacts, and helix-pattern candidates from the loaded structure. Conservation still needs a biologically related comparison set for newly loaded proteins.`;
     }
 
     async function init() {
@@ -6476,6 +6574,14 @@ END
 
     document.getElementById('mutationSelect').addEventListener('change', event => {
       state.mutation = event.target.value;
+      applyMode();
+    });
+
+    document.getElementById('conservationClassification').addEventListener('change', event => {
+      state.conservationClassification = event.target.value;
+      const firstProtein = courseProteinsForClassification(state.conservationClassification)[0];
+      if (firstProtein) state.conservationFamily = firstProtein.key;
+      syncConservationFamilySelection();
       applyMode();
     });
 
