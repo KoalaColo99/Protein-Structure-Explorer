@@ -631,21 +631,42 @@
       </section>
 
       <section class="section mode-panel hidden" id="phPanel">
-        <h2>pH & Protonation State</h2>
-        <p>Move the pH slider to estimate what fraction of an ionizable side chain is charged. These are typical teaching pKa values, not a full protein microenvironment calculation.</p>
+        <h2>pH & Charge</h2>
+        <p>Use the Henderson-Hasselbalch relationship to connect pH, pKa, protonation state, and expected charge. These are typical teaching pKa values, not protein microenvironment calculations.</p>
         <div class="row">
-          <label for="ionResidue">Residue</label>
-          <select id="ionResidue"></select>
+          <label for="hhGroup">Ionizable group</label>
+          <select id="hhGroup"></select>
         </div>
         <div class="row">
           <label for="phSlider">pH</label>
-          <input id="phSlider" type="range" min="0" max="14" step="0.1" value="7.4">
+          <input id="phSlider" type="range" min="0" max="14" step="0.1" value="7.0">
         </div>
         <div class="stats">
-          <div class="stat"><strong id="phValue">7.4</strong><span>solution pH</span></div>
-          <div class="stat"><strong id="chargedFraction">-</strong><span>fraction charged</span></div>
+          <div class="stat"><strong id="phValue">7.0</strong><span>current pH</span></div>
+          <div class="stat"><strong id="hhPka">-</strong><span>pKa</span></div>
         </div>
-        <div class="chem-note" id="phNote"></div>
+        <div class="stats">
+          <div class="stat"><strong id="percentProtonated">-</strong><span>protonated</span></div>
+          <div class="stat"><strong id="percentDeprotonated">-</strong><span>deprotonated</span></div>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong id="dominantForm">-</strong><span>dominant form</span></div>
+          <div class="stat"><strong id="expectedCharge">-</strong><span>expected charge</span></div>
+        </div>
+        <div class="chem-note" id="hhDisplay"></div>
+        <div class="chem-note" id="hhInterpretation"></div>
+        <div class="mini-card">
+          <h3>Loaded Protein Example</h3>
+          <p>Optional: inspect an ionizable residue from the loaded structure using the same pH value.</p>
+          <div class="row">
+            <label for="ionResidue">Protein residue</label>
+            <select id="ionResidue"></select>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="chargedFraction">-</strong><span>fraction charged</span></div>
+          </div>
+          <div class="chem-note" id="phNote"></div>
+        </div>
       </section>
 
       <section class="section mode-panel hidden" id="solventPanel">
@@ -2825,7 +2846,8 @@ END
       contactType: 'all',
       chemFeature: 'backbone',
       functionalGroup: 'backbone',
-      pH: 7.4,
+      pH: 7.0,
+      hhGroup: 'ASP',
       selectedIonIndex: 0,
       paletteMode: 'safe',
       proteinView: 'cartoon',
@@ -2881,6 +2903,17 @@ END
       TYR: { pKa: 10.1, type: 'acid', charged: 'O-', neutral: 'OH', note: 'Tyrosine is usually neutral near physiological pH.' },
       LYS: { pKa: 10.5, type: 'base', charged: 'NH3+', neutral: 'NH2', note: 'Lysine is usually positively charged near physiological pH.' },
       ARG: { pKa: 12.5, type: 'base', charged: 'guanidinium+', neutral: 'guanidine', note: 'Arginine stays protonated over most biological pH values.' }
+    };
+    const hhGroups = {
+      ASP: { label: 'Aspartate side chain', pKa: 3.9, type: 'acid', protonated: 'COOH', deprotonated: 'COO-' },
+      GLU: { label: 'Glutamate side chain', pKa: 4.2, type: 'acid', protonated: 'COOH', deprotonated: 'COO-' },
+      HIS: { label: 'Histidine side chain', pKa: 6.0, type: 'base', protonated: 'HisH+', deprotonated: 'His' },
+      CYS: { label: 'Cysteine side chain', pKa: 8.3, type: 'acid', protonated: 'SH', deprotonated: 'S-' },
+      TYR: { label: 'Tyrosine side chain', pKa: 10.1, type: 'acid', protonated: 'Tyr-OH', deprotonated: 'Tyr-O-' },
+      LYS: { label: 'Lysine side chain', pKa: 10.5, type: 'base', protonated: 'NH3+', deprotonated: 'NH2' },
+      ARG: { label: 'Arginine side chain', pKa: 12.5, type: 'base', protonated: 'guanidinium+', deprotonated: 'guanidine' },
+      NTERM: { label: 'N-terminus', pKa: 8.5, type: 'base', protonated: 'NH3+', deprotonated: 'NH2' },
+      CTERM: { label: 'C-terminus', pKa: 2.5, type: 'acid', protonated: 'COOH', deprotonated: 'COO-' }
     };
     const homologSequences = [
       { id: '1MBN', label: 'sperm whale myoglobin', sequence: 'VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG' },
@@ -4697,6 +4730,69 @@ END
       return 1 / (1 + Math.pow(10, pH - info.pKa));
     }
 
+    function percentProtonated(pH, pKa) {
+      return 100 / (1 + Math.pow(10, pH - pKa));
+    }
+
+    function hhExpectedCharge(group, protonatedFraction) {
+      if (group.type === 'acid') return -1 * (1 - protonatedFraction);
+      return protonatedFraction;
+    }
+
+    function hhInterpretationText(group, protonated, deprotonated) {
+      const delta = state.pH - group.pKa;
+      const parts = [];
+      if (Math.abs(delta) < 0.05) {
+        parts.push('At pH = pKa, the group is approximately 50% protonated and 50% deprotonated.');
+      } else if (protonated > 90) {
+        parts.push('This group is mostly protonated.');
+      } else if (deprotonated > 90) {
+        parts.push('This group is mostly deprotonated.');
+      } else {
+        parts.push('Both protonated and deprotonated forms are present in meaningful amounts.');
+      }
+      if (Math.abs(delta) <= 1) {
+        parts.push('The pH is within 1 unit of the pKa, so this is a strong buffering region.');
+      }
+      parts.push(group.type === 'acid'
+        ? 'For acid-type groups, protonated is neutral and deprotonated is negative.'
+        : 'For base-type groups, protonated is positive and deprotonated is neutral.');
+      return parts.join(' ');
+    }
+
+    function populateHhGroups() {
+      const select = document.getElementById('hhGroup');
+      if (!select || select.options.length) return;
+      Object.entries(hhGroups).forEach(([key, group]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = `${group.label}, pKa ${group.pKa}, ${group.type} type`;
+        select.appendChild(option);
+      });
+      select.value = state.hhGroup;
+    }
+
+    function drawHhExplorer() {
+      populateHhGroups();
+      const group = hhGroups[state.hhGroup] || hhGroups.ASP;
+      const protonated = percentProtonated(state.pH, group.pKa);
+      const deprotonated = 100 - protonated;
+      const protonatedFraction = protonated / 100;
+      const charge = hhExpectedCharge(group, protonatedFraction);
+      const dominant = protonated >= deprotonated ? `Protonated (${group.protonated})` : `Deprotonated (${group.deprotonated})`;
+      document.getElementById('hhGroup').value = state.hhGroup;
+      document.getElementById('phSlider').value = state.pH;
+      document.getElementById('phValue').textContent = state.pH.toFixed(1);
+      document.getElementById('hhPka').textContent = group.pKa.toFixed(1);
+      document.getElementById('percentProtonated').textContent = `${protonated.toFixed(1)}%`;
+      document.getElementById('percentDeprotonated').textContent = `${deprotonated.toFixed(1)}%`;
+      document.getElementById('dominantForm').textContent = dominant;
+      document.getElementById('expectedCharge').textContent = charge.toFixed(2);
+      const reaction = group.type === 'acid' ? 'HA ⇌ H+ + A−' : 'BH+ ⇌ H+ + B';
+      document.getElementById('hhDisplay').innerHTML = `<strong>${group.label}</strong><strong>Reaction</strong>${reaction}<br><strong>Acid/base classification</strong>${group.type} type<br><strong>Charge rule</strong>${group.type === 'acid' ? 'protonated form is neutral; deprotonated form is negative' : 'protonated form is positive; deprotonated form is neutral'}.`;
+      document.getElementById('hhInterpretation').innerHTML = `<strong>Interpretation</strong>${hhInterpretationText(group, protonated, deprotonated)}`;
+    }
+
     function sideChainChargeAtoms(residue) {
       const names = {
         ASP: ['OD1','OD2'],
@@ -4711,8 +4807,13 @@ END
     }
 
     function drawPhMode() {
+      drawHhExplorer();
       const residue = state.ionizable[state.selectedIonIndex] || state.ionizable[0];
-      if (!residue) return;
+      if (!residue) {
+        document.getElementById('chargedFraction').textContent = 'n/a';
+        document.getElementById('phNote').innerHTML = `<strong>No ionizable protein residue detected</strong>The Henderson-Hasselbalch explorer above still works for representative ionizable groups.`;
+        return;
+      }
       const info = ionizableInfo[residue.resn];
       const charged = fractionCharged(residue, state.pH);
       const color = info.type === 'acid' ? colors().negative : colors().positive;
@@ -4723,7 +4824,6 @@ END
       if (info.type === 'acid') addCarboxylateChemistry(residue);
       addResidueLabel(residue, color);
       state.viewer.zoomTo(residueSpec(residue));
-      document.getElementById('phValue').textContent = state.pH.toFixed(1);
       document.getElementById('chargedFraction').textContent = `${chargedPercent}%`;
       document.getElementById('phNote').innerHTML = `<strong>${residue.label}: ${info.neutral} ⇌ ${info.charged}</strong>At pH ${state.pH.toFixed(1)}, about ${chargedPercent}% is in the charged form and ${neutralPercent}% is neutral. ${info.note}`;
     }
@@ -5760,6 +5860,7 @@ END
 
       populateContactList();
       populateHelixPatternList();
+      populateHhGroups();
     }
 
     function populateHelixPatternList() {
@@ -6052,6 +6153,11 @@ END
 
     document.getElementById('ionResidue').addEventListener('change', event => {
       state.selectedIonIndex = Number(event.target.value);
+      applyMode();
+    });
+
+    document.getElementById('hhGroup').addEventListener('change', event => {
+      state.hhGroup = event.target.value;
       applyMode();
     });
 

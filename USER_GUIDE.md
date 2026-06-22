@@ -116,13 +116,25 @@ Students can glean:
 
 ### pH & Charge
 
-Uses typical teaching pKa values to estimate the fraction of an ionizable group that is charged at a selected pH. This is not a full microenvironment pKa calculation, but it helps students connect pH, pKa, protonation, and charge state.
+Uses typical teaching pKa values to estimate the fraction of an ionizable group that is protonated or deprotonated at a selected pH. This is not a full microenvironment pKa calculation, but it helps students connect pH, pKa, protonation, and charge state.
+
+Using the pH & Charge Tab:
+
+- **pH** describes how acidic or basic the solution is.
+- **pKa** is the pH where an ionizable group is about 50% protonated and 50% deprotonated.
+- **Percent protonation** estimates the fraction of molecules carrying the protonated form.
+- **Percent deprotonation** estimates the fraction of molecules carrying the deprotonated form.
+- For acid-type groups, the protonated form is neutral and the deprotonated form is negative.
+- For base-type groups, the protonated form is positive and the deprotonated form is neutral.
+- Charge changes with pH because changing pH changes the balance between protonated and deprotonated forms.
+- This matters for proteins because protonation can alter salt bridges, hydrogen bonding, ligand binding, folding stability, and interactions with water or other molecules.
 
 Students can glean:
 
 - Why protonated and deprotonated forms can coexist.
 - How pH changes alter the fraction of charged molecules.
 - Which residues are usually charged near physiological pH.
+- Why groups buffer most strongly when pH is close to pKa.
 
 ### Solvent Access
 
