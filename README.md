@@ -36,6 +36,8 @@ The pipeline writes a B-factor-colored reference PDB, a residue conservation CSV
 
 The app includes a student-friendly Conservation tab. Students can choose a protein family, review the reference PDB ID and functional features, select or remove curated homologs, add optional custom PDB IDs, load the reference structure, and compute a teaching conservation analysis. The results include a status summary, skipped/failed structure warnings, conservation categories, functional feature panels, guided interpretation questions, CER scaffolding, and residue-level 3D coloring on the reference structure.
 
+Conservation results are intended for teaching and exploration. They depend on homolog choice, chain selection, sequence quality, and PDB completeness, so students should interpret them alongside structural and biochemical context.
+
 ## GitHub Pages
 
 Because this is a static app, it can be published directly from the repository root or from this folder. If publishing from a repository root, keep `index.html`, `3Dmol-min.js`, and `1MBN.pdb` together in the same directory.

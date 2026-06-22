@@ -235,6 +235,23 @@ How to interpret conservation maps:
 - Conservation is evidence, not proof. A variable residue is not automatically unimportant, and a conserved residue may be conserved for several possible reasons.
 - CER scaffold responses should be revised by the student and should not be treated as final generated answers.
 
+Classroom use:
+
+For assignments, students should include:
+
+- Selected protein family.
+- Reference PDB.
+- Homologs used.
+- Screenshot of the conservation map.
+- One highly conserved region.
+- One variable region.
+- Claim-Evidence-Reasoning explanation.
+- One limitation of the analysis.
+
+Limitations:
+
+This tool uses a simplified teaching-level conservation workflow. Results depend on homolog choice, chain selection, sequence quality, and PDB structure completeness. Conservation maps should be interpreted alongside biochemical context.
+
 Use the **Layer** menu to ask more specific questions:
 
 - **Sequence conservation** measures residue identity across the aligned comparison set. Conserved positions are colored on the reference structure so students can ask what evolutionary pressure might preserve that residue.

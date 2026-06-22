@@ -698,7 +698,19 @@
 
       <section class="section mode-panel hidden" id="conservationPanel">
         <h2>Conservation</h2>
-        <p>Prepare a homolog comparison set before conservation analysis. Phase 1 helps students choose a protein family, load the reference structure, and manage curated or custom homologs.</p>
+        <p>Choose a protein family, prepare a homolog comparison set, compute conservation, map results onto the structure, and turn the pattern into structure-function reasoning.</p>
+        <div class="mini-card">
+          <h3>Recommended Student Workflow</h3>
+          <ol>
+            <li>Select a protein family.</li>
+            <li>Load the reference structure.</li>
+            <li>Review or customize homologs.</li>
+            <li>Compute conservation.</li>
+            <li>Map conservation to the structure.</li>
+            <li>Inspect conserved residues.</li>
+            <li>Generate and revise your CER response.</li>
+          </ol>
+        </div>
         <div class="row">
           <label for="conservationFamily">Protein family</label>
           <select id="conservationFamily"></select>
@@ -743,6 +755,7 @@
           </div>
         </div>
         <button id="computeConservation">Compute Conservation</button>
+        <div class="warning-text" id="computeReadinessNote"></div>
         <div class="chem-note" id="conservationPrepNote"></div>
         <div class="mini-card">
           <h3>Conservation Results</h3>
@@ -775,6 +788,7 @@
             <div class="legend-item"><span class="swatch" style="background:#2563eb"></span>Blue: Variable</div>
             <div class="legend-item"><span class="swatch" style="background:#d1d5db"></span>Gray: Unmapped or unavailable</div>
           </div>
+          <p><strong>What do the colors mean?</strong> Red/orange residues are more conserved. Blue residues are more variable. Gray residues could not be mapped or are unavailable.</p>
           <div class="chem-note" id="conservationMapNote"><strong>Structure coloring limitation</strong>Structure coloring is mapped from conservation scores onto the reference PDB. Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations.</div>
         </div>
         <div class="mini-card">
@@ -3856,6 +3870,7 @@ END
       state.conservation = [];
       state.conservationSources = [];
       renderConservationResultSummary();
+      renderConservationReadiness(family);
       document.getElementById('status').textContent = `Computing conservation for ${family.reference}...`;
       document.getElementById('conservationNote').innerHTML = `<strong>Computing conservation...</strong>Fetching ${comparisonIds.join(', ')} from RCSB and aligning valid sequences to ${family.reference}.`;
 
@@ -4936,11 +4951,21 @@ END
       const selected = selectedConservationIds();
       const curatedCount = state.selectedCuratedHomologs.filter(id => family.homologs.includes(id)).length;
       const customCount = state.customConservationIds.length;
-      const status = selected.length >= 4 && selected.length <= 6 ? 'Ready for conservation analysis' : 'Choose 4-6 homologs';
+      const ready = selected.length >= 4 && selected.length <= 6;
+      const computing = state.conservationResult?.status === 'Computing conservation...';
+      const status = ready ? 'Ready for conservation analysis' : 'Choose 4-6 homologs';
       document.getElementById('readinessReference').textContent = family.reference;
       document.getElementById('readinessHomologCount').textContent = curatedCount;
       document.getElementById('readinessCustomCount').textContent = customCount;
       document.getElementById('readinessStatus').textContent = status;
+      const computeButton = document.getElementById('computeConservation');
+      if (computeButton) {
+        computeButton.disabled = !ready || computing;
+        computeButton.textContent = computing ? 'Computing conservation...' : 'Compute Conservation';
+      }
+      document.getElementById('computeReadinessNote').textContent = ready
+        ? 'Ready: this set has 4-6 comparison structures.'
+        : `Select 4-6 total comparison structures before computing. Current total: ${selected.length}.`;
       document.getElementById('conservationPrepNote').innerHTML = `<strong>Prepared comparison set</strong>Selected comparison structures: ${selected.length ? selected.join(', ') : 'none selected'}. Click Compute Conservation to calculate scores, then Map Conservation to Structure to color the reference model.`;
       document.getElementById('homologCount').textContent = selected.length;
     }
