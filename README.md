@@ -8,13 +8,13 @@ Open `index.html` in a browser, or publish this folder with GitHub Pages.
 
 Use **Gallery Builder** in the app to load a reference structure. Type one 4-character RCSB PDB ID in the **PDB ID** box, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`, then click **Load structure**.
 
-For the in-app Conservation panel, type 4-6 related comparison PDB IDs in the **Compare** box, separated by spaces or commas, such as:
+For the in-app Conservation panel, choose a curated protein family and use the checklist to select homologous comparison structures. Optional custom PDB IDs should be entered one at a time as exactly 4 letters/numbers, such as:
 
 ```text
-1YOG 1M6M 3VM9 1WLA
+1YOG
 ```
 
-Do not enter protein names, full RCSB URLs, or the reference PDB ID in the comparison list.
+Do not enter protein names, full RCSB URLs, or the selected reference PDB ID as a custom comparison structure.
 
 ## Included Files
 
@@ -34,7 +34,7 @@ The pipeline writes a B-factor-colored reference PDB, a residue conservation CSV
 
 ## In-App Conservation Tab
 
-The app also includes an interactive Conservation tab. After students enter 4-6 related comparison PDB IDs, the app aligns the loaded reference sequence with the comparison structures, maps conservation onto the reference model, and lets students filter conserved residues by sequence, structural role, secondary structure, active-site context, ligand/cofactor pocket, metal coordination, side-chain interactions, backbone hydrogen bonds, solvent accessibility, tertiary contacts, quaternary interfaces, and optional B-factor/flexibility context. A sortable table and CER generator help students connect evolutionary conservation to biochemical function.
+The app includes a Phase 1 Conservation tab for preparing a student-friendly homolog comparison set. Students can choose a protein family, review the reference PDB ID and functional features, select or remove curated homologs, add optional custom PDB IDs, load the reference structure, and check whether the set is ready for later conservation analysis.
 
 ## GitHub Pages
 

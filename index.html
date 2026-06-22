@@ -245,6 +245,59 @@
     td { color: var(--muted); }
     td strong { color: var(--ink); }
 
+    .conservation-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .mini-card h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .mini-card p {
+      margin: 4px 0;
+      color: var(--muted);
+    }
+
+    .check-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .structure-pill {
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 8px;
+      margin-top: 6px;
+    }
+
+    .structure-pill button {
+      width: auto;
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+
+    .warning-text {
+      color: #b45309;
+      font-size: 13px;
+      margin-top: 6px;
+    }
+
     input[type="range"] { width: 100%; }
 
     .stats {
@@ -623,13 +676,52 @@
       </section>
 
       <section class="section mode-panel hidden" id="conservationPanel">
-        <h2>Conservation Overlay</h2>
-        <p>Compare the loaded reference protein with 4-6 related PDB structures. Choose proteins that are genuinely homologous for meaningful conservation.</p>
+        <h2>Conservation</h2>
+        <p>Prepare a homolog comparison set before conservation analysis. Phase 1 helps students choose a protein family, load the reference structure, and manage curated or custom homologs.</p>
         <div class="row">
-          <label for="conservationComparisons">Compare</label>
-          <input id="conservationComparisons" type="text" placeholder="e.g., 1YOG 1M6M 3VM9 1WLA">
+          <label for="conservationFamily">Protein family</label>
+          <select id="conservationFamily"></select>
         </div>
-        <button id="buildConservation">Build conservation overlay</button>
+        <div class="mini-card" id="conservationFamilyInfo"></div>
+        <div class="mini-card">
+          <h3>Reference Structure</h3>
+          <p><strong id="conservationReferenceId">-</strong></p>
+          <button id="loadConservationReference">Load Reference Structure</button>
+        </div>
+        <div class="mini-card">
+          <h3>Curated Homolog Selector</h3>
+          <p>Select related structures to prepare the comparison set.</p>
+          <div class="check-list" id="curatedHomologList"></div>
+        </div>
+        <div class="mini-card">
+          <h3>Custom PDB ID</h3>
+          <div class="row">
+            <label for="customConservationId">Custom PDB ID</label>
+            <input id="customConservationId" type="text" maxlength="4" placeholder="e.g., 1ABC">
+          </div>
+          <button id="addCustomConservationId">Add</button>
+          <div class="warning-text" id="customConservationMessage"></div>
+        </div>
+        <div class="mini-card">
+          <h3>Selected Structures</h3>
+          <div id="selectedConservationStructures"></div>
+        </div>
+        <div class="mini-card">
+          <h3>Why compare homologs?</h3>
+          <p>Homologous proteins often preserve important structural and functional features across evolution. Comparing related proteins can help identify residues and regions that may be important for stability, ligand binding, catalysis, or biological function.</p>
+        </div>
+        <div class="mini-card">
+          <h3>Conservation Readiness Summary</h3>
+          <div class="stats">
+            <div class="stat"><strong id="readinessReference">-</strong><span>reference structure</span></div>
+            <div class="stat"><strong id="readinessHomologCount">-</strong><span>selected homolog count</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="readinessCustomCount">-</strong><span>custom structures</span></div>
+            <div class="stat"><strong id="readinessStatus">-</strong><span>status</span></div>
+          </div>
+        </div>
+        <div class="chem-note" id="conservationPrepNote"></div>
         <div class="row">
           <label for="conservationLayer">Layer</label>
           <select id="conservationLayer">
@@ -2659,6 +2751,9 @@ END
       conservationLayer: 'sequence',
       conservationShowConservedOnly: false,
       conservationSort: { key: 'score', dir: 'desc' },
+      conservationFamily: 'myoglobin',
+      selectedCuratedHomologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS'],
+      customConservationIds: [],
       proteinPreset: ''
     };
 
@@ -2689,6 +2784,50 @@ END
       { id: '3VM9', label: 'horse myoglobin', sequence: 'GLSDGEWQQVLNVWGKVEADIAGHGQEVLIRLFTGHPETLEKFDKFKHLKTEAEMKASEDLKKHGTVVLTALGGILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISDAIIHVLHSKHPGDFGADAQGAMTKALELFRNDIAAKYKELGFQG' },
       { id: '1YOG', label: 'sperm whale cobalt myoglobin', sequence: 'VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG' }
     ];
+    const conservationFamilies = {
+      myoglobin: {
+        name: 'Myoglobin',
+        reference: '1MBN',
+        function: 'Oxygen storage protein found in muscle.',
+        features: ['Heme binding pocket', 'Distal histidine', 'Proximal histidine'],
+        homologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS']
+      },
+      hemoglobin: {
+        name: 'Hemoglobin',
+        reference: '1A3N',
+        function: 'Oxygen transport protein that uses multiple subunits to bind and release oxygen cooperatively.',
+        features: ['Heme groups', 'Alpha/beta subunits', 'Quaternary structure and subunit interfaces'],
+        homologs: ['2MHB', '1HDA', '1FSX', '2QSP', '6II1']
+      },
+      carbonicAnhydrase: {
+        name: 'Carbonic Anhydrase',
+        reference: '1CA2',
+        function: 'Zinc metalloenzyme that helps interconvert carbon dioxide and bicarbonate.',
+        features: ['Zinc active site', 'Histidine metal ligands', 'Acid-base catalysis'],
+        homologs: ['3HS4', '1V9E', '4QSU', '6CMB', '2CAB']
+      },
+      lysozyme: {
+        name: 'Lysozyme',
+        reference: '1LYZ',
+        function: 'Antibacterial enzyme that cleaves polysaccharides in bacterial cell walls.',
+        features: ['Catalytic cleft', 'Acid/base residues', 'Substrate-binding groove'],
+        homologs: ['1HEL', '2LZT', '1REX', '1JSF', '3LZT']
+      },
+      triosephosphateIsomerase: {
+        name: 'Triosephosphate Isomerase',
+        reference: '1TIM',
+        function: 'Glycolytic enzyme that interconverts dihydroxyacetone phosphate and glyceraldehyde-3-phosphate.',
+        features: ['TIM barrel fold', 'Catalytic loop', 'Active-site acid/base chemistry'],
+        homologs: ['7TIM', '1NEY', '4TIM', '1TRE', '1BTM']
+      },
+      chymotrypsin: {
+        name: 'Chymotrypsin',
+        reference: '1YPH',
+        function: 'Serine protease that cleaves peptide bonds near bulky hydrophobic residues.',
+        features: ['Catalytic triad', 'Oxyanion hole', 'Specificity pocket'],
+        homologs: ['1GCT', '1ACB', '1MTN', '1OXG', '4H4F']
+      }
+    };
     const lessonScenes = [
       {
         title: '1. Start With The Fold',
@@ -3576,8 +3715,8 @@ END
     }
 
     async function buildConservationFromInput() {
-      const input = document.getElementById('conservationComparisons');
-      const ids = parseComparisonIds(input.value);
+      const input = document.querySelector('#conservationComparisons');
+      const ids = input ? parseComparisonIds(input.value) : selectedConservationIds();
       if (ids.length < 4 || ids.length > 6) {
         document.getElementById('conservationNote').innerHTML = `<strong>Choose 4-6 related PDB IDs</strong>Enter four to six homologous comparison structures, separated by spaces or commas. The reference ${state.structureId} is already loaded, so do not include it in the comparison list.`;
         return;
@@ -4512,19 +4651,125 @@ END
       });
     }
 
+    function currentConservationFamily() {
+      return conservationFamilies[state.conservationFamily] || conservationFamilies.myoglobin;
+    }
+
+    function syncConservationFamilySelection() {
+      const family = currentConservationFamily();
+      state.selectedCuratedHomologs = family.homologs.slice();
+      state.customConservationIds = [];
+      state.conservation = [];
+      state.conservationSources = [];
+      state.conservationComparisons = '';
+    }
+
+    function selectedConservationIds() {
+      const family = currentConservationFamily();
+      const curated = state.selectedCuratedHomologs.filter(id => family.homologs.includes(id));
+      return [...new Set([...curated, ...state.customConservationIds])].filter(id => id !== family.reference);
+    }
+
+    function renderConservationFamilyControls() {
+      const familySelect = document.getElementById('conservationFamily');
+      if (!familySelect) return;
+      if (!familySelect.options.length) {
+        Object.entries(conservationFamilies).forEach(([key, family]) => {
+          const option = document.createElement('option');
+          option.value = key;
+          option.textContent = family.name;
+          familySelect.appendChild(option);
+        });
+      }
+      familySelect.value = state.conservationFamily;
+      renderConservationPrep();
+    }
+
+    function renderConservationPrep() {
+      const family = currentConservationFamily();
+      document.getElementById('conservationReferenceId').textContent = family.reference;
+      document.getElementById('conservationFamilyInfo').innerHTML = `<h3>${family.name}</h3><p><strong>Reference Structure:</strong> ${family.reference}</p><p><strong>Function:</strong> ${family.function}</p><p><strong>Key Features:</strong></p><ul>${family.features.map(feature => `<li>${feature}</li>`).join('')}</ul>`;
+      renderCuratedHomologList(family);
+      renderSelectedConservationStructures(family);
+      renderConservationReadiness(family);
+    }
+
+    function renderCuratedHomologList(family) {
+      const list = document.getElementById('curatedHomologList');
+      if (!list) return;
+      list.innerHTML = '';
+      family.homologs.forEach(id => {
+        const label = document.createElement('label');
+        label.className = 'check-row';
+        label.innerHTML = `<input type="checkbox" data-homolog-id="${id}" ${state.selectedCuratedHomologs.includes(id) ? 'checked' : ''}><span>${id}</span>`;
+        list.appendChild(label);
+      });
+    }
+
+    function renderSelectedConservationStructures(family) {
+      const panel = document.getElementById('selectedConservationStructures');
+      if (!panel) return;
+      const curated = state.selectedCuratedHomologs.filter(id => family.homologs.includes(id));
+      const custom = state.customConservationIds;
+      const removeButton = (id, type) => `<button data-remove-conservation="${id}" data-remove-type="${type}">Remove</button>`;
+      panel.innerHTML = `
+        <p><strong>Reference Structure</strong></p>
+        <div class="structure-pill"><span>${family.reference}</span></div>
+        <p><strong>Selected Homologs</strong></p>
+        ${curated.length ? curated.map(id => `<div class="structure-pill"><span>${id}</span>${removeButton(id, 'curated')}</div>`).join('') : '<p>No curated homologs selected.</p>'}
+        <p><strong>Custom Structures</strong></p>
+        ${custom.length ? custom.map(id => `<div class="structure-pill"><span>${id}</span>${removeButton(id, 'custom')}</div>`).join('') : '<p>No custom structures added.</p>'}
+      `;
+    }
+
+    function renderConservationReadiness(family) {
+      const selected = selectedConservationIds();
+      const curatedCount = state.selectedCuratedHomologs.filter(id => family.homologs.includes(id)).length;
+      const customCount = state.customConservationIds.length;
+      const status = selected.length >= 4 && selected.length <= 6 ? 'Ready for conservation analysis' : 'Choose 4-6 homologs';
+      document.getElementById('readinessReference').textContent = family.reference;
+      document.getElementById('readinessHomologCount').textContent = curatedCount;
+      document.getElementById('readinessCustomCount').textContent = customCount;
+      document.getElementById('readinessStatus').textContent = status;
+      document.getElementById('conservationPrepNote').innerHTML = `<strong>Phase 1 preparation only</strong>This tab is collecting the comparison set. Conservation scores are not calculated yet. Selected comparison structures: ${selected.length ? selected.join(', ') : 'none selected'}.`;
+      document.getElementById('homologCount').textContent = selected.length;
+    }
+
+    function addCustomConservationId() {
+      const input = document.getElementById('customConservationId');
+      const message = document.getElementById('customConservationMessage');
+      const family = currentConservationFamily();
+      const id = input.value.trim().toUpperCase();
+      input.value = id;
+      if (!/^[A-Z0-9]{4}$/.test(id)) {
+        message.textContent = 'Please enter exactly 4 letters/numbers, such as 1ABC.';
+        return;
+      }
+      if (id === family.reference) {
+        message.textContent = 'The reference structure is already included separately.';
+        return;
+      }
+      if (family.homologs.includes(id) || state.customConservationIds.includes(id)) {
+        message.textContent = `${id} is already in the selected structure set.`;
+        return;
+      }
+      state.customConservationIds.push(id);
+      input.value = '';
+      message.textContent = `${id} added as a custom comparison structure.`;
+      renderConservationPrep();
+    }
+
     function drawConservation() {
       const c = colors();
-      const input = document.getElementById('conservationComparisons');
-      if (input && input.value !== state.conservationComparisons) input.value = state.conservationComparisons;
+      renderConservationFamilyControls();
       document.getElementById('conservationLayer').value = state.conservationLayer;
       document.getElementById('conservedOnlyToggle').checked = state.conservationShowConservedOnly;
       if (!state.conservation.length) {
         state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
-        document.getElementById('conservedCount').textContent = 'unavailable';
-        document.getElementById('homologCount').textContent = 'unavailable';
-        document.getElementById('layerResidueCount').textContent = 'unavailable';
-        document.getElementById('layerConservedCount').textContent = 'unavailable';
-        document.getElementById('conservationNote').innerHTML = `<strong>Conservation unavailable for ${state.structureId}</strong>No comparison set has been built yet for this loaded protein. Enter 4-6 related PDB IDs above and click Build conservation overlay. The browser will fetch those structures from RCSB and map residue conservation onto ${state.structureId}.<br><br><strong>For PyMOL/ChimeraX files</strong>The repository also includes <code>conservation_pipeline.py</code>, which exports a B-factor-colored PDB plus CSV.`;
+        document.getElementById('conservedCount').textContent = 'not run';
+        document.getElementById('layerResidueCount').textContent = 'not run';
+        document.getElementById('layerConservedCount').textContent = 'not run';
+        document.getElementById('conservationNote').innerHTML = `<strong>Conservation analysis not run yet</strong>Phase 1 prepares a family-specific homolog set for ${currentConservationFamily().name}. Use the checklist and custom PDB box to prepare 4-6 comparison structures. A later phase will connect this prepared set to the existing conservation calculation workflow.`;
         renderConservationTable([]);
         renderCerGenerator([]);
         state.viewer.zoomTo({ hetflag: false });
@@ -5189,8 +5434,8 @@ END
       state.ionizable = state.residues.filter(residue => ionizableInfo[residue.resn]);
       state.solvent = computeSolventAccess(state.residues);
       state.sasa = computeSasa(state.residues, state.atoms);
-      state.conservation = state.structureId === '1MBN' ? computeConservation(state.residues) : [];
-      state.conservationSources = state.structureId === '1MBN' ? homologSequences.map(item => item.id).filter(id => id !== '1MBN') : [];
+      state.conservation = [];
+      state.conservationSources = [];
       resetStructureState();
       document.getElementById('structureTitle').textContent = `${state.structureId} ${state.structureLabel}`;
       document.getElementById('structureSubtitle').textContent = `${state.residues.length} amino-acid residues detected; features recomputed from loaded coordinates`;
@@ -5337,7 +5582,55 @@ END
       applyMode();
     });
 
-    document.getElementById('buildConservation').addEventListener('click', buildConservationFromInput);
+    document.getElementById('conservationFamily').addEventListener('change', event => {
+      state.conservationFamily = event.target.value;
+      syncConservationFamilySelection();
+      applyMode();
+    });
+
+    document.getElementById('loadConservationReference').addEventListener('click', () => {
+      const family = currentConservationFamily();
+      loadStructureById(family.reference, family.name).catch(error => {
+        document.getElementById('conservationPrepNote').innerHTML = `<strong>Could not load ${family.reference}</strong>${error.message}`;
+      });
+    });
+
+    document.getElementById('curatedHomologList').addEventListener('change', event => {
+      const checkbox = event.target.closest('input[data-homolog-id]');
+      if (!checkbox) return;
+      const id = checkbox.dataset.homologId;
+      if (checkbox.checked && !state.selectedCuratedHomologs.includes(id)) {
+        state.selectedCuratedHomologs.push(id);
+      } else if (!checkbox.checked) {
+        state.selectedCuratedHomologs = state.selectedCuratedHomologs.filter(item => item !== id);
+      }
+      state.conservation = [];
+      state.conservationSources = [];
+      renderConservationPrep();
+    });
+
+    document.getElementById('addCustomConservationId').addEventListener('click', addCustomConservationId);
+
+    document.getElementById('customConservationId').addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addCustomConservationId();
+      }
+    });
+
+    document.getElementById('selectedConservationStructures').addEventListener('click', event => {
+      const button = event.target.closest('button[data-remove-conservation]');
+      if (!button) return;
+      const id = button.dataset.removeConservation;
+      if (button.dataset.removeType === 'curated') {
+        state.selectedCuratedHomologs = state.selectedCuratedHomologs.filter(item => item !== id);
+      } else {
+        state.customConservationIds = state.customConservationIds.filter(item => item !== id);
+      }
+      state.conservation = [];
+      state.conservationSources = [];
+      renderConservationPrep();
+    });
 
     document.getElementById('conservationLayer').addEventListener('change', event => {
       state.conservationLayer = event.target.value;
