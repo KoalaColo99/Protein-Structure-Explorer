@@ -424,6 +424,60 @@
       margin-bottom: 4px;
     }
 
+    .ph-scale {
+      position: relative;
+      height: 66px;
+      margin: 14px 0 8px;
+      border-bottom: 2px solid #94a3b8;
+    }
+
+    .ph-scale::before,
+    .ph-scale::after {
+      position: absolute;
+      bottom: -22px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .ph-scale::before {
+      content: "pH 0";
+      left: 0;
+    }
+
+    .ph-scale::after {
+      content: "pH 14";
+      right: 0;
+    }
+
+    .ph-range {
+      position: absolute;
+      bottom: -2px;
+      height: 8px;
+      border-radius: 99px;
+      background: rgba(0, 114, 178, .18);
+      border: 1px solid rgba(0, 114, 178, .45);
+    }
+
+    .ph-marker {
+      position: absolute;
+      bottom: -2px;
+      width: 2px;
+      height: 32px;
+      background: var(--ink);
+    }
+
+    .ph-marker span {
+      position: absolute;
+      left: 50%;
+      top: -23px;
+      transform: translateX(-50%);
+      min-width: 54px;
+      color: var(--ink);
+      font-size: 12px;
+      text-align: center;
+      white-space: nowrap;
+    }
+
     canvas {
       width: 100%;
       aspect-ratio: 1.12;
@@ -686,6 +740,35 @@
           </div>
           <div class="chem-note" id="aaInteractionNote"></div>
           <div class="chem-note" id="aaPromptNote"></div>
+        </div>
+        <div class="mini-card">
+          <h3>Buffer Explorer</h3>
+          <p>Explore how buffer effectiveness depends on the relationship between pH and pKa.</p>
+          <div class="row">
+            <label for="bufferPkaSlider">Buffer pKa</label>
+            <input id="bufferPkaSlider" type="range" min="0" max="14" step="0.1" value="7.4">
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="bufferPhValue">7.0</strong><span>current pH</span></div>
+            <div class="stat"><strong id="bufferPkaValue">7.4</strong><span>buffer pKa</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="bufferRatio">-</strong><span>[A-] / [HA]</span></div>
+            <div class="stat"><strong id="bufferEffectiveness">-</strong><span>buffer range</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="bufferAcidPercent">-</strong><span>acid form HA</span></div>
+            <div class="stat"><strong id="bufferBasePercent">-</strong><span>conjugate base A-</span></div>
+          </div>
+          <div id="bufferScale"></div>
+          <div class="button-row" id="bufferExampleButtons">
+            <button type="button" data-buffer-pka="4.76">Acetic acid / acetate, pKa 4.76</button>
+            <button type="button" data-buffer-pka="7.2">Phosphate buffer, pKa2 7.2</button>
+            <button type="button" data-buffer-pka="6.1">Bicarbonate buffer, apparent pKa 6.1</button>
+            <button type="button" data-buffer-pka="6.0">Histidine side chain, pKa 6.0</button>
+          </div>
+          <div class="chem-note" id="bufferExplanation"></div>
+          <div class="chem-note" id="bufferPrompts"></div>
         </div>
         <div class="mini-card">
           <h3>Loaded Protein Example</h3>
@@ -2881,6 +2964,7 @@ END
       pH: 7.0,
       hhGroup: 'ASP',
       selectedAminoAcid: 'ASP',
+      bufferPka: 7.4,
       selectedIonIndex: 0,
       paletteMode: 'safe',
       proteinView: 'cartoon',
@@ -4923,6 +5007,64 @@ END
       document.getElementById('aaPromptNote').innerHTML = `<strong>Educational prompts</strong>At pH ${state.pH.toFixed(1)}, is ${aa.label} mostly positive, negative, or neutral?<br>Which ionizable group contributes most to the net charge? Current strongest contributor: ${largest.name}.<br>Could this amino acid form a salt bridge at this pH?<br>How might changing pH alter its interaction potential?`;
     }
 
+    function bufferEffectivenessText(delta) {
+      const absDelta = Math.abs(delta);
+      if (absDelta <= 0.5) return 'Excellent buffer range';
+      if (absDelta <= 1.0) return 'Useful buffer range';
+      return 'Poor buffer range';
+    }
+
+    function formatBufferRatio(ratio) {
+      if (ratio >= 1000 || ratio < 0.01) return ratio.toExponential(2);
+      if (ratio >= 100) return ratio.toFixed(0);
+      if (ratio >= 10) return ratio.toFixed(1);
+      return ratio.toFixed(2);
+    }
+
+    function percentToLeft(value) {
+      return Math.min(100, Math.max(0, (value / 14) * 100));
+    }
+
+    function drawBufferExplorer() {
+      const pKa = state.bufferPka;
+      const ratio = Math.pow(10, state.pH - pKa);
+      const baseFraction = ratio / (1 + ratio);
+      const acidFraction = 1 / (1 + ratio);
+      const delta = state.pH - pKa;
+      const effectiveness = bufferEffectivenessText(delta);
+      const dominant = baseFraction > acidFraction ? 'A- dominates' : acidFraction > baseFraction ? 'HA dominates' : 'HA and A- are equal';
+      const rangeStart = Math.max(0, pKa - 1);
+      const rangeEnd = Math.min(14, pKa + 1);
+      document.getElementById('bufferPkaSlider').value = pKa;
+      document.getElementById('bufferPhValue').textContent = state.pH.toFixed(1);
+      document.getElementById('bufferPkaValue').textContent = pKa.toFixed(1);
+      document.getElementById('bufferRatio').textContent = formatBufferRatio(ratio);
+      document.getElementById('bufferEffectiveness').textContent = effectiveness;
+      document.getElementById('bufferAcidPercent').textContent = `${(acidFraction * 100).toFixed(1)}%`;
+      document.getElementById('bufferBasePercent').textContent = `${(baseFraction * 100).toFixed(1)}%`;
+      document.getElementById('bufferScale').innerHTML = `
+        <div class="ph-scale" aria-label="Horizontal pH scale from 0 to 14 showing current pH, buffer pKa, and pKa plus or minus one unit">
+          <div class="ph-range" style="left:${percentToLeft(rangeStart)}%; width:${percentToLeft(rangeEnd) - percentToLeft(rangeStart)}%;"></div>
+          <div class="ph-marker" style="left:${percentToLeft(state.pH)}%;"><span>pH ${state.pH.toFixed(1)}</span></div>
+          <div class="ph-marker" style="left:${percentToLeft(pKa)}%; background:var(--blue);"><span>pKa ${pKa.toFixed(1)}</span></div>
+          <div class="ph-marker" style="left:${percentToLeft(rangeStart)}%; background:#64748b;"><span>pKa - 1</span></div>
+          <div class="ph-marker" style="left:${percentToLeft(rangeEnd)}%; background:#64748b;"><span>pKa + 1</span></div>
+        </div>`;
+      const equalityText = Math.abs(delta) < 0.05
+        ? 'At this pH, pH is essentially equal to pKa, so HA and A- are present in nearly equal amounts.'
+        : 'At pH = pKa, acid and conjugate base forms are equal.';
+      const effectivenessReason = Math.abs(delta) <= 0.5
+        ? 'This is an excellent buffer range because pH is within 0.5 unit of pKa.'
+        : Math.abs(delta) <= 1
+          ? 'This is a useful buffer range because pH is within 1 unit of pKa.'
+          : 'This is a poor buffer range because pH differs by more than 1 unit from pKa.';
+      const capacityText = Math.abs(delta) > 1
+        ? 'Because pH is more than 1 unit from pKa, one form dominates and buffer capacity is reduced.'
+        : 'Because pH is within 1 unit of pKa, both HA and A- are present in meaningful amounts.';
+      document.getElementById('bufferExplanation').innerHTML = `<strong>Buffer capacity</strong>${equalityText} A buffer works best when both HA and A- are present in meaningful amounts. ${effectivenessReason} ${capacityText} Current dominant form: ${dominant}.`;
+      document.getElementById('bufferPrompts').innerHTML = `<strong>Student prompts</strong>Is this buffer effective at pH ${state.pH.toFixed(1)}?<br>Which form dominates, HA or A-?<br>What happens to buffer capacity when pH is more than 1 unit from pKa?<br>Why are buffers important for protein structure and enzyme function?`;
+    }
+
     function sideChainChargeAtoms(residue) {
       const names = {
         ASP: ['OD1','OD2'],
@@ -4939,6 +5081,7 @@ END
     function drawPhMode() {
       drawHhExplorer();
       drawAminoAcidChargeExplorer();
+      drawBufferExplorer();
       const residue = state.ionizable[state.selectedIonIndex] || state.ionizable[0];
       if (!residue) {
         document.getElementById('chargedFraction').textContent = 'n/a';
@@ -6296,6 +6439,18 @@ END
     document.getElementById('aminoAcidSelect').addEventListener('change', event => {
       state.selectedAminoAcid = event.target.value;
       applyMode();
+    });
+
+    document.getElementById('bufferPkaSlider').addEventListener('input', event => {
+      state.bufferPka = Number(event.target.value);
+      applyMode();
+    });
+
+    document.querySelectorAll('[data-buffer-pka]').forEach(button => {
+      button.addEventListener('click', event => {
+        state.bufferPka = Number(event.currentTarget.dataset.bufferPka);
+        applyMode();
+      });
     });
 
     document.getElementById('phSlider').addEventListener('input', event => {

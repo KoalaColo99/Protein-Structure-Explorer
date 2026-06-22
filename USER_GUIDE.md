@@ -132,6 +132,10 @@ Using the pH & Charge Tab:
 - Non-ionizable side chains are labeled clearly; their interaction potential depends on polarity, hydrogen bonding, aromaticity, hydrophobicity, or special structural behavior.
 - Histidine is especially important near physiological pH because its side chain can shift substantially between protonated and deprotonated forms.
 - The amino acid net-charge model is a teaching model for free amino acids. Residues inside proteins do not usually have free alpha amino and alpha carboxyl groups unless they are at the N- or C-terminus.
+- In the Buffer Explorer, compare the solution pH with a selected buffer pKa to estimate the ratio of conjugate base A- to acid HA.
+- Buffers resist pH change best when pH is close to pKa because meaningful amounts of both HA and A- are present.
+- The pKa +/- 1 rule is a useful guide: buffers are generally most useful within about one pH unit of their pKa.
+- Buffers matter for proteins because protein charge, salt bridges, hydrogen bonding, folding stability, and enzyme activity can all change when pH changes.
 
 Students can glean:
 
@@ -140,6 +144,8 @@ Students can glean:
 - Which residues are usually charged near physiological pH.
 - Why groups buffer most strongly when pH is close to pKa.
 - How side chains can change salt-bridge, hydrogen-bonding, hydrophobic, or metal-interaction potential.
+- Whether a selected buffer is excellent, useful, or poor for maintaining the current pH.
+- Why pH control is important for preserving protein structure and biochemical function.
 
 ### Solvent Access
 
