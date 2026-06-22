@@ -34,7 +34,7 @@ The pipeline writes a B-factor-colored reference PDB, a residue conservation CSV
 
 ## In-App Conservation Tab
 
-The app includes a student-friendly Conservation tab. Students can choose a protein family, review the reference PDB ID and functional features, select or remove curated homologs, add optional custom PDB IDs, load the reference structure, and compute a teaching conservation analysis. The results include a status summary, skipped/failed structure warnings, conservation categories, functional annotations when available, interpretation prompts, and residue-level 3D coloring on the reference structure.
+The app includes a student-friendly Conservation tab. Students can choose a protein family, review the reference PDB ID and functional features, select or remove curated homologs, add optional custom PDB IDs, load the reference structure, and compute a teaching conservation analysis. The results include a status summary, skipped/failed structure warnings, conservation categories, functional feature panels, guided interpretation questions, CER scaffolding, and residue-level 3D coloring on the reference structure.
 
 ## GitHub Pages
 

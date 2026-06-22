@@ -777,6 +777,31 @@
           </div>
           <div class="chem-note" id="conservationMapNote"><strong>Structure coloring limitation</strong>Structure coloring is mapped from conservation scores onto the reference PDB. Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations.</div>
         </div>
+        <div class="mini-card">
+          <h3>Functional Features to Inspect</h3>
+          <div id="functionalFeaturePanel"></div>
+        </div>
+        <div class="mini-card">
+          <h3>Interpret Your Conservation Map</h3>
+          <ul>
+            <li>Which residues or regions are most conserved?</li>
+            <li>Are conserved residues clustered near a ligand, cofactor, active site, or subunit interface?</li>
+            <li>What biochemical function might explain this conservation pattern?</li>
+            <li>Which regions are more variable?</li>
+            <li>Why might some surface residues tolerate more variation?</li>
+            <li>Choose one highly conserved residue. What might happen if it were mutated?</li>
+          </ul>
+        </div>
+        <div class="mini-card">
+          <h3>CER Scaffold Generator</h3>
+          <button id="generateCerScaffold">Generate CER Scaffold</button>
+          <textarea id="cerScaffoldText" placeholder="Generate a Claim-Evidence-Reasoning scaffold, then revise it in your own words."></textarea>
+          <button id="copyCerScaffold">Copy CER Scaffold</button>
+          <div class="warning-text" id="cerCopyMessage"></div>
+        </div>
+        <div class="chem-note">
+          <strong>Interpretation caution</strong>Conservation is evidence, not proof. A highly conserved residue may support function, folding, stability, or interaction with another molecule. A variable residue is not necessarily unimportant; it may tolerate substitution, occur on the surface, or vary among related species.
+        </div>
         <div class="row">
           <label for="conservationLayer">Layer</label>
           <select id="conservationLayer">
@@ -4876,6 +4901,7 @@ END
       renderSelectedConservationStructures(family);
       renderConservationReadiness(family);
       renderConservationResultSummary();
+      renderFunctionalFeaturePanel();
     }
 
     function renderCuratedHomologList(family) {
@@ -4934,6 +4960,38 @@ END
       if (mapButton) mapButton.disabled = !ready;
     }
 
+    function rowForFeatureResidue(resi) {
+      return state.conservation
+        .map(entry => {
+          const info = residueRoleInfo(entry.residue);
+          return {
+            entry,
+            info,
+            category: conservationCategory(entry.score),
+            functionalAnnotation: conservationFunctionalAnnotation(entry, info),
+            studentPrompt: conservationStudentPrompt(entry.score)
+          };
+        })
+        .find(row => row.entry.residue.resi === Number(resi));
+    }
+
+    function renderFunctionalFeaturePanel() {
+      const panel = document.getElementById('functionalFeaturePanel');
+      if (!panel) return;
+      const family = currentConservationFamily();
+      const sites = family.functionalSites || {};
+      const computed = state.conservation.length > 0;
+      const featureRows = Object.entries(sites).map(([resi, role]) => {
+        const row = computed ? rowForFeatureResidue(resi) : null;
+        const score = row ? row.entry.score.toFixed(2) : 'Compute conservation to see scores for these features.';
+        const category = row ? row.category : 'Not computed yet';
+        const button = row ? `<button data-highlight-feature="${resi}">Highlight in Structure</button>` : '';
+        return `<div class="structure-pill"><span><strong>${row ? row.entry.residue.label : `Residue ${resi}`}</strong><br>Role: ${role}<br>Conservation: ${score}<br>Category: ${category}</span>${button}</div>`;
+      });
+      const broadFeatures = family.features.map(feature => `<div class="structure-pill"><span><strong>${feature}</strong><br>Role: family-level feature to inspect in the structure.</span></div>`);
+      panel.innerHTML = `${featureRows.length ? featureRows.join('') : '<p>No residue-numbered functional features are currently listed for this family.</p>'}${broadFeatures.join('')}`;
+    }
+
     function addCustomConservationId() {
       const input = document.getElementById('customConservationId');
       const message = document.getElementById('customConservationMessage');
@@ -4957,6 +5015,83 @@ END
       input.value = '';
       message.textContent = `${id} added as a custom comparison structure.`;
       renderConservationPrep();
+    }
+
+    function topConservedRows(limit = 3) {
+      return state.conservation
+        .map(entry => {
+          const info = residueRoleInfo(entry.residue);
+          return {
+            entry,
+            info,
+            category: conservationCategory(entry.score),
+            functionalAnnotation: conservationFunctionalAnnotation(entry, info)
+          };
+        })
+        .sort((a, b) => b.entry.score - a.entry.score)
+        .slice(0, limit);
+    }
+
+    function familyFunctionLanguage(family) {
+      const text = `${family.name} ${family.features.join(' ')}`.toLowerCase();
+      if (text.includes('heme') || text.includes('oxygen')) return 'ligand/cofactor environment';
+      if (text.includes('zinc') || text.includes('metal')) return 'metal-coordination active site';
+      if (text.includes('catalytic') || text.includes('active')) return 'active site';
+      if (text.includes('interface') || text.includes('subunit')) return 'subunit interface';
+      return 'biochemical function';
+    }
+
+    function generateCerScaffoldText() {
+      const family = currentConservationFamily();
+      const functionLanguage = familyFunctionLanguage(family);
+      if (!state.conservation.length) {
+        return `Claim:\n${family.name} contains structural features that may be conserved because they support biochemical function.\n\nEvidence:\nAfter computing conservation for reference ${family.reference}, identify one highly conserved residue or region and describe where it appears in the structure.\n\nReasoning:\nEvolution tends to preserve residues or regions that are important for folding, binding, catalysis, or regulation. Revise this scaffold with your own structural evidence.`;
+      }
+      const top = topConservedRows(4);
+      const featureRows = Object.keys(family.functionalSites || {}).map(resi => rowForFeatureResidue(resi)).filter(Boolean);
+      const topText = top.map(row => `${row.entry.residue.label} (${Math.round(row.entry.score * 100)}%, ${row.category})`).join(', ');
+      const featureText = featureRows.length
+        ? featureRows.map(row => `${row.entry.residue.label} (${Math.round(row.entry.score * 100)}%, ${row.category}; ${row.functionalAnnotation})`).join('; ')
+        : 'No listed functional-feature residue was directly mapped in the current reference structure.';
+      return `Claim:\nThe ${functionLanguage} of ${family.name} is evolutionarily conserved because it supports the protein's biochemical role.\n\nEvidence:\nIn reference ${family.reference}, the conservation map shows highly conserved residues including ${topText}. Functional-feature evidence: ${featureText}.\n\nReasoning:\nConserved residues clustered near a ligand, cofactor, catalytic site, structural core, or interaction surface may be preserved because mutations there could disrupt folding, binding, catalysis, stability, or regulation. Revise this scaffold with your own observations from the 3D structure.`;
+    }
+
+    function generateCerScaffold() {
+      document.getElementById('cerScaffoldText').value = generateCerScaffoldText();
+      document.getElementById('cerCopyMessage').textContent = 'Scaffold generated. Please revise it in your own words before submitting.';
+    }
+
+    async function copyCerScaffold() {
+      const textArea = document.getElementById('cerScaffoldText');
+      if (!textArea.value.trim()) generateCerScaffold();
+      try {
+        await navigator.clipboard.writeText(textArea.value);
+        document.getElementById('cerCopyMessage').textContent = 'CER scaffold copied.';
+      } catch (error) {
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        document.getElementById('cerCopyMessage').textContent = 'CER scaffold selected and copied when supported by this browser.';
+      }
+    }
+
+    async function highlightFunctionalFeature(resi) {
+      if (!state.conservation.length) {
+        document.getElementById('conservationMapNote').innerHTML = '<strong>Compute conservation first</strong>Functional feature scores and mapped highlighting are available after conservation has been computed.';
+        return;
+      }
+      const loaded = await ensureConservationReferenceLoaded();
+      if (!loaded) return;
+      const row = rowForFeatureResidue(resi);
+      if (!row) {
+        document.getElementById('conservationMapNote').innerHTML = `<strong>Feature not mapped</strong>Residue ${resi} was not found in the current reference residue mapping.`;
+        return;
+      }
+      state.conservationMapMode = 'features';
+      state.selectedConservationResidueKey = row.entry.residue.key;
+      applyMode();
+      state.viewer.zoomTo(residueSpec(row.entry.residue));
+      state.viewer.render();
     }
 
     function conservationColor(score) {
@@ -5969,6 +6104,12 @@ END
       renderConservationPrep();
     });
 
+    document.getElementById('functionalFeaturePanel').addEventListener('click', event => {
+      const button = event.target.closest('button[data-highlight-feature]');
+      if (!button) return;
+      highlightFunctionalFeature(button.dataset.highlightFeature);
+    });
+
     document.getElementById('computeConservation').addEventListener('click', () => {
       computeConservationForIds(selectedConservationIds());
     });
@@ -5996,6 +6137,9 @@ END
     document.getElementById('resetConservationColoring').addEventListener('click', () => {
       setConservationMapMode('none');
     });
+
+    document.getElementById('generateCerScaffold').addEventListener('click', generateCerScaffold);
+    document.getElementById('copyCerScaffold').addEventListener('click', copyCerScaffold);
 
     document.getElementById('conservationLayer').addEventListener('change', event => {
       state.conservationLayer = event.target.value;

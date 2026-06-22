@@ -176,6 +176,9 @@ To compute conservation from a selected homolog set:
 10. Use the table to compare residue conservation score, category, functional annotation, and interpretation prompt.
 11. Click **Map Conservation to Structure** to color the loaded reference structure.
 12. Use the visualization controls to show all residues, highlight highly conserved residues, highlight variable residues, highlight functional features, or reset the conservation coloring.
+13. Inspect the **Functional Features to Inspect** panel to compare known family features with their conservation scores when those residues are mappable.
+14. Use **Interpret Your Conservation Map** questions to turn the color pattern into structure-function reasoning.
+15. Use **Generate CER Scaffold** as a starting point, then revise the claim, evidence, and reasoning in your own words.
 
 Custom PDB IDs should use this format:
 
@@ -222,6 +225,15 @@ The structure coloring uses:
 Clicking a Conservation Table row zooms to that residue and adds a label with the residue, conservation score, category, and functional annotation when available.
 
 Important limitation: structure coloring is mapped from conservation scores onto the reference PDB. Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations. Treat the colored structure as visual evidence to interpret, not as absolute proof.
+
+How to interpret conservation maps:
+
+- Red/highly conserved regions often deserve closer inspection because they may support folding, binding, catalysis, stability, or regulation.
+- Conserved clusters near ligands, cofactors, catalytic residues, or subunit interfaces may suggest functional importance.
+- Variable surface residues may reflect evolutionary flexibility, solvent exposure, or tolerance for substitution.
+- Students should support claims with both the conservation map and the structural location of the residue or region.
+- Conservation is evidence, not proof. A variable residue is not automatically unimportant, and a conserved residue may be conserved for several possible reasons.
+- CER scaffold responses should be revised by the student and should not be treated as final generated answers.
 
 Use the **Layer** menu to ask more specific questions:
 
