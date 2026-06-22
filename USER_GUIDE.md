@@ -128,6 +128,10 @@ Using the pH & Charge Tab:
 - For base-type groups, the protonated form is positive and the deprotonated form is neutral.
 - Charge changes with pH because changing pH changes the balance between protonated and deprotonated forms.
 - This matters for proteins because protonation can alter salt bridges, hydrogen bonding, ligand binding, folding stability, and interactions with water or other molecules.
+- In the Amino Acid Charge Explorer, a free amino acid's net charge is estimated by summing the charge contributions from the alpha carboxyl group, alpha amino group, and any ionizable side chain.
+- Non-ionizable side chains are labeled clearly; their interaction potential depends on polarity, hydrogen bonding, aromaticity, hydrophobicity, or special structural behavior.
+- Histidine is especially important near physiological pH because its side chain can shift substantially between protonated and deprotonated forms.
+- The amino acid net-charge model is a teaching model for free amino acids. Residues inside proteins do not usually have free alpha amino and alpha carboxyl groups unless they are at the N- or C-terminus.
 
 Students can glean:
 
@@ -135,6 +139,7 @@ Students can glean:
 - How pH changes alter the fraction of charged molecules.
 - Which residues are usually charged near physiological pH.
 - Why groups buffer most strongly when pH is close to pKa.
+- How side chains can change salt-bridge, hydrogen-bonding, hydrophobic, or metal-interaction potential.
 
 ### Solvent Access
 

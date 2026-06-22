@@ -656,6 +656,38 @@
         <div class="chem-note" id="hhDisplay"></div>
         <div class="chem-note" id="hhInterpretation"></div>
         <div class="mini-card">
+          <h3>Amino Acid Charge Explorer</h3>
+          <p>Estimate the net charge of a free amino acid by summing the charge contribution from each ionizable group at the selected pH.</p>
+          <div class="row">
+            <label for="aminoAcidSelect">Amino acid</label>
+            <select id="aminoAcidSelect"></select>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="aaNetCharge">-</strong><span>approximate net charge</span></div>
+            <div class="stat"><strong id="aaChargeCategory">-</strong><span>charge category</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="aaClassification">-</strong><span>classification</span></div>
+            <div class="stat"><strong id="aaSideChainStatus">-</strong><span>side chain</span></div>
+          </div>
+          <div class="table-wrap">
+            <table id="aaChargeTable">
+              <thead>
+                <tr>
+                  <th>Ionizable group</th>
+                  <th>pKa</th>
+                  <th>Protonated</th>
+                  <th>Deprotonated</th>
+                  <th>Charge contribution</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="chem-note" id="aaInteractionNote"></div>
+          <div class="chem-note" id="aaPromptNote"></div>
+        </div>
+        <div class="mini-card">
           <h3>Loaded Protein Example</h3>
           <p>Optional: inspect an ionizable residue from the loaded structure using the same pH value.</p>
           <div class="row">
@@ -2848,6 +2880,7 @@ END
       functionalGroup: 'backbone',
       pH: 7.0,
       hhGroup: 'ASP',
+      selectedAminoAcid: 'ASP',
       selectedIonIndex: 0,
       paletteMode: 'safe',
       proteinView: 'cartoon',
@@ -2914,6 +2947,28 @@ END
       ARG: { label: 'Arginine side chain', pKa: 12.5, type: 'base', protonated: 'guanidinium+', deprotonated: 'guanidine' },
       NTERM: { label: 'N-terminus', pKa: 8.5, type: 'base', protonated: 'NH3+', deprotonated: 'NH2' },
       CTERM: { label: 'C-terminus', pKa: 2.5, type: 'acid', protonated: 'COOH', deprotonated: 'COO-' }
+    };
+    const aminoAcidChargeData = {
+      ALA: { label: 'Alanine', classification: 'nonpolar', special: '', sideChain: null },
+      ARG: { label: 'Arginine', classification: 'basic', special: '', sideChain: { name: 'side chain guanidinium', pKa: 12.5, type: 'base' } },
+      ASN: { label: 'Asparagine', classification: 'polar uncharged', special: '', sideChain: null },
+      ASP: { label: 'Aspartate', classification: 'acidic', special: '', sideChain: { name: 'side chain carboxyl', pKa: 3.9, type: 'acid' } },
+      CYS: { label: 'Cysteine', classification: 'polar uncharged', special: 'can form disulfides; thiol can ionize at higher pH', sideChain: { name: 'side chain thiol', pKa: 8.3, type: 'acid' } },
+      GLN: { label: 'Glutamine', classification: 'polar uncharged', special: '', sideChain: null },
+      GLU: { label: 'Glutamate', classification: 'acidic', special: '', sideChain: { name: 'side chain carboxyl', pKa: 4.2, type: 'acid' } },
+      GLY: { label: 'Glycine', classification: 'special case', special: 'small and flexible', sideChain: null },
+      HIS: { label: 'Histidine', classification: 'basic', special: 'changes protonation significantly near physiological pH', sideChain: { name: 'side chain imidazole', pKa: 6.0, type: 'base' } },
+      ILE: { label: 'Isoleucine', classification: 'nonpolar', special: '', sideChain: null },
+      LEU: { label: 'Leucine', classification: 'nonpolar', special: '', sideChain: null },
+      LYS: { label: 'Lysine', classification: 'basic', special: '', sideChain: { name: 'side chain ammonium', pKa: 10.5, type: 'base' } },
+      MET: { label: 'Methionine', classification: 'nonpolar', special: 'thioether-containing', sideChain: null },
+      PHE: { label: 'Phenylalanine', classification: 'aromatic, nonpolar', special: '', sideChain: null },
+      PRO: { label: 'Proline', classification: 'special case, nonpolar', special: 'cyclic side chain restricts backbone geometry', sideChain: null },
+      SER: { label: 'Serine', classification: 'polar uncharged', special: '', sideChain: null },
+      THR: { label: 'Threonine', classification: 'polar uncharged', special: '', sideChain: null },
+      TRP: { label: 'Tryptophan', classification: 'aromatic, nonpolar', special: '', sideChain: null },
+      TYR: { label: 'Tyrosine', classification: 'aromatic, polar uncharged', special: 'phenol can ionize at high pH', sideChain: { name: 'side chain phenol', pKa: 10.1, type: 'acid' } },
+      VAL: { label: 'Valine', classification: 'nonpolar', special: '', sideChain: null }
     };
     const homologSequences = [
       { id: '1MBN', label: 'sperm whale myoglobin', sequence: 'VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG' },
@@ -4793,6 +4848,81 @@ END
       document.getElementById('hhInterpretation').innerHTML = `<strong>Interpretation</strong>${hhInterpretationText(group, protonated, deprotonated)}`;
     }
 
+    function populateAminoAcidSelect() {
+      const select = document.getElementById('aminoAcidSelect');
+      if (!select || select.options.length) return;
+      Object.entries(aminoAcidChargeData).forEach(([key, aa]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = aa.label;
+        select.appendChild(option);
+      });
+      select.value = state.selectedAminoAcid || 'ASP';
+    }
+
+    function aaIonizableGroups(aa) {
+      const groups = [
+        { name: 'alpha carboxyl group', pKa: 2.2, type: 'acid' },
+        { name: 'alpha amino group', pKa: 9.5, type: 'base' }
+      ];
+      if (aa.sideChain) groups.push(aa.sideChain);
+      return groups;
+    }
+
+    function groupChargeContribution(group, protonatedFraction) {
+      if (group.type === 'acid') return -1 * (1 - protonatedFraction);
+      return protonatedFraction;
+    }
+
+    function aaChargeCategory(netCharge) {
+      if (netCharge > 0.25) return 'Positive';
+      if (netCharge < -0.25) return 'Negative';
+      return 'Near neutral';
+    }
+
+    function aaInteractionText(key, aa, netCharge, category) {
+      const lines = [];
+      if (category === 'Positive') {
+        lines.push('At this pH, this amino acid can form salt bridges with negative groups and participate in electrostatic interactions.');
+      } else if (category === 'Negative') {
+        lines.push('At this pH, this amino acid can form salt bridges with positive groups and may coordinate some metals depending on context.');
+      } else {
+        lines.push('At this pH, this amino acid is near neutral; interaction potential depends on side-chain polarity, hydrogen bonding, hydrophobicity, and local context.');
+      }
+      if (key === 'HIS') lines.push('Histidine is especially important because its protonation changes significantly near physiological pH.');
+      if (aa.special) lines.push(aa.special);
+      return lines.join(' ');
+    }
+
+    function drawAminoAcidChargeExplorer() {
+      populateAminoAcidSelect();
+      const key = state.selectedAminoAcid || 'ASP';
+      const aa = aminoAcidChargeData[key] || aminoAcidChargeData.ASP;
+      const groups = aaIonizableGroups(aa).map(group => {
+        const protonated = percentProtonated(state.pH, group.pKa);
+        const deprotonated = 100 - protonated;
+        const charge = groupChargeContribution(group, protonated / 100);
+        return { ...group, protonated, deprotonated, charge };
+      });
+      const netCharge = groups.reduce((sum, group) => sum + group.charge, 0);
+      const category = aaChargeCategory(netCharge);
+      document.getElementById('aminoAcidSelect').value = key;
+      document.getElementById('aaNetCharge').textContent = netCharge.toFixed(2);
+      document.getElementById('aaChargeCategory').textContent = category;
+      document.getElementById('aaClassification').textContent = aa.classification;
+      document.getElementById('aaSideChainStatus').textContent = aa.sideChain ? `${aa.sideChain.name}, pKa ${aa.sideChain.pKa}` : 'No ionizable side chain in the usual biological pH range';
+      const tbody = document.querySelector('#aaChargeTable tbody');
+      tbody.innerHTML = '';
+      groups.forEach(group => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${group.name} (${group.type})</td><td>${group.pKa.toFixed(1)}</td><td>${group.protonated.toFixed(1)}%</td><td>${group.deprotonated.toFixed(1)}%</td><td>${group.charge.toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+      });
+      document.getElementById('aaInteractionNote').innerHTML = `<strong>Interaction potential</strong>${aaInteractionText(key, aa, netCharge, category)}`;
+      const largest = groups.slice().sort((a, b) => Math.abs(b.charge) - Math.abs(a.charge))[0];
+      document.getElementById('aaPromptNote').innerHTML = `<strong>Educational prompts</strong>At pH ${state.pH.toFixed(1)}, is ${aa.label} mostly positive, negative, or neutral?<br>Which ionizable group contributes most to the net charge? Current strongest contributor: ${largest.name}.<br>Could this amino acid form a salt bridge at this pH?<br>How might changing pH alter its interaction potential?`;
+    }
+
     function sideChainChargeAtoms(residue) {
       const names = {
         ASP: ['OD1','OD2'],
@@ -4808,6 +4938,7 @@ END
 
     function drawPhMode() {
       drawHhExplorer();
+      drawAminoAcidChargeExplorer();
       const residue = state.ionizable[state.selectedIonIndex] || state.ionizable[0];
       if (!residue) {
         document.getElementById('chargedFraction').textContent = 'n/a';
@@ -5861,6 +5992,7 @@ END
       populateContactList();
       populateHelixPatternList();
       populateHhGroups();
+      populateAminoAcidSelect();
     }
 
     function populateHelixPatternList() {
@@ -6158,6 +6290,11 @@ END
 
     document.getElementById('hhGroup').addEventListener('change', event => {
       state.hhGroup = event.target.value;
+      applyMode();
+    });
+
+    document.getElementById('aminoAcidSelect').addEventListener('change', event => {
+      state.selectedAminoAcid = event.target.value;
       applyMode();
     });
 
