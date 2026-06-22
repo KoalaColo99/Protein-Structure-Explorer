@@ -721,7 +721,25 @@
             <div class="stat"><strong id="readinessStatus">-</strong><span>status</span></div>
           </div>
         </div>
+        <button id="computeConservation">Compute Conservation</button>
         <div class="chem-note" id="conservationPrepNote"></div>
+        <div class="mini-card">
+          <h3>Conservation Results</h3>
+          <div class="chem-note"><strong>Caution</strong>This conservation analysis is designed for teaching and exploration. Results depend on homolog choice, chain selection, sequence quality, and structural similarity. Interpret conservation as evidence, not absolute proof.</div>
+          <div class="stats">
+            <div class="stat"><strong id="conservationResultStatus">Not computed yet</strong><span>status</span></div>
+            <div class="stat"><strong id="resultReference">-</strong><span>reference PDB</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="resultAttempted">0</strong><span>attempted</span></div>
+            <div class="stat"><strong id="resultUsed">0</strong><span>successfully used</span></div>
+          </div>
+          <div class="stats">
+            <div class="stat"><strong id="resultSkipped">0</strong><span>skipped/failed</span></div>
+            <div class="stat"><strong id="resultWarnings">0</strong><span>warnings</span></div>
+          </div>
+          <div class="warning-text" id="conservationWarnings"></div>
+        </div>
         <div class="row">
           <label for="conservationLayer">Layer</label>
           <select id="conservationLayer">
@@ -759,7 +777,7 @@
                 <th data-sort="resi">Residue</th>
                 <th data-sort="identity">Identity</th>
                 <th data-sort="score">Score</th>
-                <th data-sort="role">Structural role</th>
+                <th data-sort="category">Category</th>
                 <th data-sort="annotation">Functional annotation</th>
                 <th data-sort="prompt">Student interpretation prompt</th>
               </tr>
@@ -2754,6 +2772,14 @@ END
       conservationFamily: 'myoglobin',
       selectedCuratedHomologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS'],
       customConservationIds: [],
+      conservationResult: {
+        status: 'Not computed yet',
+        reference: '1MBN',
+        attempted: 0,
+        used: 0,
+        skipped: 0,
+        warnings: []
+      },
       proteinPreset: ''
     };
 
@@ -2790,6 +2816,7 @@ END
         reference: '1MBN',
         function: 'Oxygen storage protein found in muscle.',
         features: ['Heme binding pocket', 'Distal histidine', 'Proximal histidine'],
+        functionalSites: { 64: 'Distal histidine near the oxygen-binding pocket', 93: 'Proximal histidine that coordinates heme iron' },
         homologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS']
       },
       hemoglobin: {
@@ -2797,6 +2824,7 @@ END
         reference: '1A3N',
         function: 'Oxygen transport protein that uses multiple subunits to bind and release oxygen cooperatively.',
         features: ['Heme groups', 'Alpha/beta subunits', 'Quaternary structure and subunit interfaces'],
+        functionalSites: { 58: 'Distal histidine region near heme in globin chains', 87: 'Proximal histidine region near heme in globin chains' },
         homologs: ['2MHB', '1HDA', '1FSX', '2QSP', '6II1']
       },
       carbonicAnhydrase: {
@@ -2804,6 +2832,7 @@ END
         reference: '1CA2',
         function: 'Zinc metalloenzyme that helps interconvert carbon dioxide and bicarbonate.',
         features: ['Zinc active site', 'Histidine metal ligands', 'Acid-base catalysis'],
+        functionalSites: { 94: 'Zinc-binding histidine ligand', 96: 'Zinc-binding histidine ligand', 119: 'Zinc-binding histidine ligand' },
         homologs: ['3HS4', '1V9E', '4QSU', '6CMB', '2CAB']
       },
       lysozyme: {
@@ -2811,6 +2840,7 @@ END
         reference: '1LYZ',
         function: 'Antibacterial enzyme that cleaves polysaccharides in bacterial cell walls.',
         features: ['Catalytic cleft', 'Acid/base residues', 'Substrate-binding groove'],
+        functionalSites: { 35: 'Catalytic acid/base residue in the lysozyme cleft', 52: 'Catalytic residue in the lysozyme cleft' },
         homologs: ['1HEL', '2LZT', '1REX', '1JSF', '3LZT']
       },
       triosephosphateIsomerase: {
@@ -2818,6 +2848,7 @@ END
         reference: '1TIM',
         function: 'Glycolytic enzyme that interconverts dihydroxyacetone phosphate and glyceraldehyde-3-phosphate.',
         features: ['TIM barrel fold', 'Catalytic loop', 'Active-site acid/base chemistry'],
+        functionalSites: { 13: 'Active-site lysine region', 95: 'Active-site histidine region', 165: 'Catalytic glutamate region' },
         homologs: ['7TIM', '1NEY', '4TIM', '1TRE', '1BTM']
       },
       chymotrypsin: {
@@ -2825,6 +2856,7 @@ END
         reference: '1YPH',
         function: 'Serine protease that cleaves peptide bonds near bulky hydrophobic residues.',
         features: ['Catalytic triad', 'Oxyanion hole', 'Specificity pocket'],
+        functionalSites: { 57: 'Catalytic triad histidine', 102: 'Catalytic triad aspartate', 195: 'Catalytic triad serine' },
         homologs: ['1GCT', '1ACB', '1MTN', '1OXG', '4H4F']
       }
     };
@@ -3714,40 +3746,110 @@ END
         .filter(item => /^[A-Z0-9]{4}$/.test(item) && item !== state.structureId);
     }
 
+    async function fetchComparisonStructure(id) {
+      const response = await fetch(`https://files.rcsb.org/download/${id}.pdb`);
+      if (!response.ok) throw new Error(`${id} returned ${response.status}`);
+      const pdb = await response.text();
+      const parsed = parsePdb(pdb);
+      if (!parsed.residues.length) throw new Error(`${id} has no parsed protein residues`);
+      const sequence = sequenceFromResidues(parsed.residues);
+      if (!sequence || !sequence.replace(/X/g, '').length) throw new Error(`${id} has no usable standard amino-acid sequence`);
+      return { id, residues: parsed.residues, sequence };
+    }
+
     async function buildConservationFromInput() {
       const input = document.querySelector('#conservationComparisons');
       const ids = input ? parseComparisonIds(input.value) : selectedConservationIds();
-      if (ids.length < 4 || ids.length > 6) {
-        document.getElementById('conservationNote').innerHTML = `<strong>Choose 4-6 related PDB IDs</strong>Enter four to six homologous comparison structures, separated by spaces or commas. The reference ${state.structureId} is already loaded, so do not include it in the comparison list.`;
-        return;
-      }
-      document.getElementById('status').textContent = `Building conservation overlay for ${state.structureId}...`;
-      document.getElementById('conservationNote').innerHTML = `<strong>Building conservation overlay</strong>Fetching ${ids.join(', ')} from RCSB, parsing protein sequences, and aligning them to ${state.structureId}.`;
-      try {
-        const comparisonItems = [];
-        for (const id of ids) {
-          const response = await fetch(`https://files.rcsb.org/download/${id}.pdb`);
-          if (!response.ok) throw new Error(`${id} returned ${response.status}`);
-          const pdb = await response.text();
-          const parsed = parsePdb(pdb);
-          if (!parsed.residues.length) throw new Error(`${id} has no parsed protein residues`);
-          comparisonItems.push({
-            id,
-            residues: parsed.residues,
-            sequence: sequenceFromResidues(parsed.residues)
-          });
-        }
-        state.conservation = computeConservationFromSequences(state.residues, comparisonItems);
-        state.conservationSources = comparisonItems.map(item => item.id);
-        state.conservationComparisons = ids.join(' ');
-        applyMode();
-      } catch (error) {
-        console.error(error);
+      return computeConservationForIds(ids);
+    }
+
+    async function computeConservationForIds(ids) {
+      const family = currentConservationFamily();
+      const comparisonIds = [...new Set(ids)].filter(id => id && id !== family.reference);
+      if (!comparisonIds.length) {
         state.conservation = [];
         state.conservationSources = [];
-        document.getElementById('status').textContent = 'Conservation overlay could not be built.';
-        document.getElementById('conservationNote').innerHTML = `<strong>Could not build conservation overlay</strong>${error.message}. Check that each comparison PDB ID is valid and related to ${state.structureId}.`;
+        state.conservationResult = {
+          status: 'Conservation failed',
+          reference: family.reference,
+          attempted: 0,
+          used: 0,
+          skipped: 0,
+          warnings: ['Select at least one homolog or custom comparison structure before computing conservation.']
+        };
+        applyMode();
+        return;
       }
+
+      state.conservationResult = {
+        status: 'Computing conservation...',
+        reference: family.reference,
+        attempted: comparisonIds.length,
+        used: 0,
+        skipped: 0,
+        warnings: []
+      };
+      state.conservation = [];
+      state.conservationSources = [];
+      renderConservationResultSummary();
+      document.getElementById('status').textContent = `Computing conservation for ${family.reference}...`;
+      document.getElementById('conservationNote').innerHTML = `<strong>Computing conservation...</strong>Fetching ${comparisonIds.join(', ')} from RCSB and aligning valid sequences to ${family.reference}.`;
+
+      if (state.structureId !== family.reference) {
+        try {
+          await loadStructureById(family.reference, family.name);
+          state.mode = 'conservation';
+        } catch (error) {
+          state.conservationResult = {
+            status: 'Conservation failed',
+            reference: family.reference,
+            attempted: comparisonIds.length,
+            used: 0,
+            skipped: comparisonIds.length,
+            warnings: [`Reference ${family.reference} could not be loaded: ${error.message}`]
+          };
+          applyMode();
+          return;
+        }
+      }
+
+      const comparisonItems = [];
+      const warnings = [];
+      for (const id of comparisonIds) {
+        try {
+          comparisonItems.push(await fetchComparisonStructure(id));
+        } catch (error) {
+          warnings.push(error.message);
+        }
+      }
+
+      if (!comparisonItems.length) {
+        state.conservation = [];
+        state.conservationSources = [];
+        state.conservationResult = {
+          status: 'Conservation failed',
+          reference: family.reference,
+          attempted: comparisonIds.length,
+          used: 0,
+          skipped: comparisonIds.length,
+          warnings: warnings.length ? warnings : ['No comparison structures could be used.']
+        };
+        applyMode();
+        return;
+      }
+
+      state.conservation = computeConservationFromSequences(state.residues, comparisonItems);
+      state.conservationSources = comparisonItems.map(item => item.id);
+      state.conservationComparisons = comparisonIds.join(' ');
+      state.conservationResult = {
+        status: warnings.length ? 'Conservation computed with warnings' : 'Conservation computed successfully',
+        reference: family.reference,
+        attempted: comparisonIds.length,
+        used: comparisonItems.length,
+        skipped: warnings.length,
+        warnings
+      };
+      applyMode();
     }
 
     function atomSpec(atom) {
@@ -4241,8 +4343,33 @@ END
         const role = info.roles.length ? info.roles.join(', ') : 'general sequence position';
         const annotation = conservationAnnotation(entry, info);
         const prompt = conservationPrompt(entry, info);
-        return { entry, info, applies, role, annotation, prompt };
+        const category = conservationCategory(entry.score);
+        const functionalAnnotation = conservationFunctionalAnnotation(entry, info);
+        const studentPrompt = conservationStudentPrompt(entry.score);
+        return { entry, info, applies, role, annotation, prompt, category, functionalAnnotation, studentPrompt };
       }).filter(row => row.applies && (!state.conservationShowConservedOnly || row.entry.score >= 0.75));
+    }
+
+    function conservationCategory(score) {
+      if (score >= 0.9) return 'Highly conserved';
+      if (score >= 0.7) return 'Conserved';
+      if (score >= 0.5) return 'Moderately variable';
+      return 'Variable';
+    }
+
+    function conservationStudentPrompt(score) {
+      if (score >= 0.9) return 'Why might this residue be important for structure or function?';
+      if (score >= 0.7) return 'What role might this region play?';
+      if (score >= 0.5) return 'Could this residue tolerate substitution?';
+      return 'Why might this position be less constrained?';
+    }
+
+    function conservationFunctionalAnnotation(entry, info) {
+      const family = currentConservationFamily();
+      const knownFeature = family.functionalSites?.[entry.residue.resi];
+      if (knownFeature) return knownFeature;
+      if (entry.score >= 0.9) return `Highly conserved in a family known for: ${family.features.join(', ')}.`;
+      return conservationAnnotation(entry, info);
     }
 
     function conservationAnnotation(entry, info) {
@@ -4655,13 +4782,26 @@ END
       return conservationFamilies[state.conservationFamily] || conservationFamilies.myoglobin;
     }
 
+    function resetConservationResult(status = 'Not computed yet') {
+      const family = currentConservationFamily();
+      state.conservation = [];
+      state.conservationSources = [];
+      state.conservationResult = {
+        status,
+        reference: family.reference,
+        attempted: 0,
+        used: 0,
+        skipped: 0,
+        warnings: []
+      };
+    }
+
     function syncConservationFamilySelection() {
       const family = currentConservationFamily();
       state.selectedCuratedHomologs = family.homologs.slice();
       state.customConservationIds = [];
-      state.conservation = [];
-      state.conservationSources = [];
       state.conservationComparisons = '';
+      resetConservationResult();
     }
 
     function selectedConservationIds() {
@@ -4692,6 +4832,7 @@ END
       renderCuratedHomologList(family);
       renderSelectedConservationStructures(family);
       renderConservationReadiness(family);
+      renderConservationResultSummary();
     }
 
     function renderCuratedHomologList(family) {
@@ -4735,6 +4876,18 @@ END
       document.getElementById('homologCount').textContent = selected.length;
     }
 
+    function renderConservationResultSummary() {
+      const result = state.conservationResult || {};
+      const warnings = result.warnings || [];
+      document.getElementById('conservationResultStatus').textContent = result.status || 'Not computed yet';
+      document.getElementById('resultReference').textContent = result.reference || currentConservationFamily().reference;
+      document.getElementById('resultAttempted').textContent = result.attempted || 0;
+      document.getElementById('resultUsed').textContent = result.used || 0;
+      document.getElementById('resultSkipped').textContent = result.skipped || 0;
+      document.getElementById('resultWarnings').textContent = warnings.length;
+      document.getElementById('conservationWarnings').innerHTML = warnings.length ? `<strong>Warnings</strong><ul>${warnings.map(warning => `<li>${warning}</li>`).join('')}</ul>` : '';
+    }
+
     function addCustomConservationId() {
       const input = document.getElementById('customConservationId');
       const message = document.getElementById('customConservationMessage');
@@ -4754,6 +4907,7 @@ END
         return;
       }
       state.customConservationIds.push(id);
+      resetConservationResult();
       input.value = '';
       message.textContent = `${id} added as a custom comparison structure.`;
       renderConservationPrep();
@@ -4769,7 +4923,11 @@ END
         document.getElementById('conservedCount').textContent = 'not run';
         document.getElementById('layerResidueCount').textContent = 'not run';
         document.getElementById('layerConservedCount').textContent = 'not run';
-        document.getElementById('conservationNote').innerHTML = `<strong>Conservation analysis not run yet</strong>Phase 1 prepares a family-specific homolog set for ${currentConservationFamily().name}. Use the checklist and custom PDB box to prepare 4-6 comparison structures. A later phase will connect this prepared set to the existing conservation calculation workflow.`;
+        renderConservationResultSummary();
+        const status = state.conservationResult?.status || 'Not computed yet';
+        document.getElementById('conservationNote').innerHTML = status === 'Computing conservation...'
+          ? '<strong>Computing conservation...</strong>Fetching structures from RCSB and aligning valid sequences to the selected reference.'
+          : `<strong>Conservation not computed yet</strong>Prepare a homolog set for ${currentConservationFamily().name}, then click Compute Conservation. The table will appear after at least one valid comparison structure is used.`;
         renderConservationTable([]);
         renderCerGenerator([]);
         state.viewer.zoomTo({ hetflag: false });
@@ -4786,12 +4944,13 @@ END
         }
       });
       document.getElementById('conservedCount').textContent = countWithPercent(conserved.length, state.residues.length);
-      const sourceCount = state.conservationSources.length || homologSequences.length;
+      const sourceCount = state.conservationSources.length;
       const sourceLabel = state.conservationSources.length ? state.conservationSources.join(', ') : 'user-entered comparison set';
       document.getElementById('homologCount').textContent = sourceCount;
       document.getElementById('layerResidueCount').textContent = countWithPercent(layerRows.length, state.residues.length);
       document.getElementById('layerConservedCount').textContent = countWithPercent(layerConserved.length, layerRows.length);
       const layer = conservationLayers[state.conservationLayer];
+      renderConservationResultSummary();
       document.getElementById('conservationNote').innerHTML = `<strong>${layer.label} for ${state.structureId}</strong><strong>Measured</strong>${layer.measures}<br><strong>Visualized</strong>${layer.visualized}<br><strong>Why it matters</strong>${layer.why}<br><strong>Student explanation</strong>${layer.student}<br><strong>Filter</strong>${layer.filter}<br><br><strong>Comparison set</strong>${sourceLabel}. This is a teaching overlay from sequence alignment plus structural features, not a full phylogenetic Rate4Site analysis.`;
       renderConservationTable(layerRows);
       renderCerGenerator(layerRows);
@@ -4807,8 +4966,9 @@ END
           identity: [a.entry.residue.resn, b.entry.residue.resn],
           score: [a.entry.score, b.entry.score],
           role: [a.role, b.role],
-          annotation: [a.annotation, b.annotation],
-          prompt: [a.prompt, b.prompt]
+          category: [a.category, b.category],
+          annotation: [a.functionalAnnotation, b.functionalAnnotation],
+          prompt: [a.studentPrompt, b.studentPrompt]
         }[key] || [a.entry.score, b.entry.score];
         if (typeof values[0] === 'number') return (values[0] - values[1]) * sign;
         return String(values[0]).localeCompare(String(values[1])) * sign;
@@ -4822,7 +4982,7 @@ END
       sortedConservationRows(rows).slice(0, 120).forEach(row => {
         const residue = row.entry.residue;
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td><strong>${residue.resi}</strong></td><td>${residue.label}</td><td>${Math.round(row.entry.score * 100)}% (${row.entry.same}/${row.entry.total})</td><td>${row.role}</td><td>${row.annotation}</td><td>${row.prompt}</td>`;
+        tr.innerHTML = `<td><strong>${residue.resi}</strong></td><td>${residue.label}</td><td>${Math.round(row.entry.score * 100)}% (${row.entry.same}/${row.entry.total})</td><td>${row.category}</td><td>${row.functionalAnnotation}</td><td>${row.studentPrompt}</td>`;
         tr.addEventListener('click', () => {
           state.viewer.zoomTo(residueSpec(residue));
           state.viewer.render();
@@ -5604,8 +5764,7 @@ END
       } else if (!checkbox.checked) {
         state.selectedCuratedHomologs = state.selectedCuratedHomologs.filter(item => item !== id);
       }
-      state.conservation = [];
-      state.conservationSources = [];
+      resetConservationResult();
       renderConservationPrep();
     });
 
@@ -5627,9 +5786,12 @@ END
       } else {
         state.customConservationIds = state.customConservationIds.filter(item => item !== id);
       }
-      state.conservation = [];
-      state.conservationSources = [];
+      resetConservationResult();
       renderConservationPrep();
+    });
+
+    document.getElementById('computeConservation').addEventListener('click', () => {
+      computeConservationForIds(selectedConservationIds());
     });
 
     document.getElementById('conservationLayer').addEventListener('change', event => {

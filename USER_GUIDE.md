@@ -156,13 +156,13 @@ Students can glean:
 
 ### Conservation
 
-The Conservation panel currently begins with a Phase 1 setup workflow. Students choose a curated protein family, inspect the reference PDB ID, select or remove curated homolog structures, and optionally add custom 4-character PDB IDs. This prepares a comparison set without running conservation scores yet.
+The Conservation panel lets students choose a curated protein family, inspect the reference PDB ID, select or remove curated homolog structures, optionally add custom 4-character PDB IDs, and compute a teaching conservation analysis from the selected set.
 
-This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is being developed as a classroom reasoning tool: students first choose a reference PDB structure and a small homolog set, then later phases will connect that prepared set to structural layers and Claim-Evidence-Reasoning explanations. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
+This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is a classroom reasoning tool: students choose a reference PDB structure and a small homolog set, then use the result to connect conservation with structural layers and Claim-Evidence-Reasoning explanations. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
 
 Conservation is meaningful only when the comparison structures are homologous or otherwise biologically appropriate comparisons. Unrelated proteins will give misleading conservation scores.
 
-To prepare a conservation comparison set:
+To compute conservation from a selected homolog set:
 
 1. Click **Conservation**.
 2. Choose a protein family from the **Protein family** dropdown.
@@ -171,6 +171,9 @@ To prepare a conservation comparison set:
 5. Select or deselect curated homolog structures in the checklist.
 6. Optionally type one custom 4-character PDB ID and click **Add**.
 7. Use the readiness summary to check whether the set has 4-6 comparison structures.
+8. Click **Compute Conservation**.
+9. Review the results status, attempted/used/skipped counts, and any warnings.
+10. Use the table to compare residue conservation score, category, functional annotation, and interpretation prompt.
 
 Custom PDB IDs should use this format:
 
@@ -191,7 +194,7 @@ https://www.rcsb.org/structure/1YOG
 
 Use exactly four letters/numbers. Do not enter protein names, labels such as "PDB", full URLs, or the selected reference PDB ID.
 
-When the conservation analysis phase is connected, students will use the prepared set to calculate conservation and map it onto the reference structure.
+If one comparison structure cannot be fetched or parsed, the app reports a warning and continues with the valid structures that remain. If no comparison structures can be used, the result is marked failed instead of crashing.
 
 Students can glean:
 
@@ -199,7 +202,14 @@ Students can glean:
 - Which conserved residues may be functionally or structurally important.
 - Why conservation requires careful selection and alignment of related proteins.
 
-After conservation analysis is built in a later phase, use the **Layer** menu to ask more specific questions:
+Conservation categories are:
+
+- **Highly conserved**: 0.90-1.00
+- **Conserved**: 0.70-0.89
+- **Moderately variable**: 0.50-0.69
+- **Variable**: below 0.50
+
+Use the **Layer** menu to ask more specific questions:
 
 - **Sequence conservation** measures residue identity across the aligned comparison set. Conserved positions are colored on the reference structure so students can ask what evolutionary pressure might preserve that residue.
 - **Structural conservation** filters for conserved residues with stabilizing structural roles, such as buried core positions, secondary structure, contact networks, or H-bond regions. This helps students connect conservation to folding and packing.

@@ -34,7 +34,7 @@ The pipeline writes a B-factor-colored reference PDB, a residue conservation CSV
 
 ## In-App Conservation Tab
 
-The app includes a Phase 1 Conservation tab for preparing a student-friendly homolog comparison set. Students can choose a protein family, review the reference PDB ID and functional features, select or remove curated homologs, add optional custom PDB IDs, load the reference structure, and check whether the set is ready for later conservation analysis.
+The app includes a student-friendly Conservation tab. Students can choose a protein family, review the reference PDB ID and functional features, select or remove curated homologs, add optional custom PDB IDs, load the reference structure, and compute a teaching conservation analysis. The results include a status summary, skipped/failed structure warnings, conservation categories, functional annotations when available, and interpretation prompts.
 
 ## GitHub Pages
 
