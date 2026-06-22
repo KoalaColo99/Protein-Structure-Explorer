@@ -174,6 +174,8 @@ To compute conservation from a selected homolog set:
 8. Click **Compute Conservation**.
 9. Review the results status, attempted/used/skipped counts, and any warnings.
 10. Use the table to compare residue conservation score, category, functional annotation, and interpretation prompt.
+11. Click **Map Conservation to Structure** to color the loaded reference structure.
+12. Use the visualization controls to show all residues, highlight highly conserved residues, highlight variable residues, highlight functional features, or reset the conservation coloring.
 
 Custom PDB IDs should use this format:
 
@@ -208,6 +210,18 @@ Conservation categories are:
 - **Conserved**: 0.70-0.89
 - **Moderately variable**: 0.50-0.69
 - **Variable**: below 0.50
+
+The structure coloring uses:
+
+- **Red**: highly conserved
+- **Orange**: conserved
+- **Yellow**: moderately variable
+- **Blue**: variable
+- **Gray**: unmapped or unavailable
+
+Clicking a Conservation Table row zooms to that residue and adds a label with the residue, conservation score, category, and functional annotation when available.
+
+Important limitation: structure coloring is mapped from conservation scores onto the reference PDB. Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations. Treat the colored structure as visual evidence to interpret, not as absolute proof.
 
 Use the **Layer** menu to ask more specific questions:
 

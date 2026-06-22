@@ -298,6 +298,27 @@
       margin-top: 6px;
     }
 
+    .legend-row {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .legend-item {
+      align-items: center;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+    }
+
+    .swatch {
+      border: 1px solid rgba(15, 23, 42, .25);
+      border-radius: 4px;
+      height: 14px;
+      width: 22px;
+    }
+
     input[type="range"] { width: 100%; }
 
     .stats {
@@ -739,6 +760,22 @@
             <div class="stat"><strong id="resultWarnings">0</strong><span>warnings</span></div>
           </div>
           <div class="warning-text" id="conservationWarnings"></div>
+          <button id="mapConservation" disabled>Map Conservation to Structure</button>
+          <div class="button-row">
+            <button id="showAllConservation">Show all residues</button>
+            <button id="showHighConservation">Highlight highly conserved residues only</button>
+            <button id="showVariableConservation">Highlight variable residues only</button>
+            <button id="showFunctionalConservation">Highlight functional features</button>
+          </div>
+          <button id="resetConservationColoring">Reset conservation coloring</button>
+          <div class="legend-row" id="conservationLegend">
+            <div class="legend-item"><span class="swatch" style="background:#d73027"></span>Red: Highly conserved</div>
+            <div class="legend-item"><span class="swatch" style="background:#f97316"></span>Orange: Conserved</div>
+            <div class="legend-item"><span class="swatch" style="background:#fde047"></span>Yellow: Moderately variable</div>
+            <div class="legend-item"><span class="swatch" style="background:#2563eb"></span>Blue: Variable</div>
+            <div class="legend-item"><span class="swatch" style="background:#d1d5db"></span>Gray: Unmapped or unavailable</div>
+          </div>
+          <div class="chem-note" id="conservationMapNote"><strong>Structure coloring limitation</strong>Structure coloring is mapped from conservation scores onto the reference PDB. Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations.</div>
         </div>
         <div class="row">
           <label for="conservationLayer">Layer</label>
@@ -2772,6 +2809,8 @@ END
       conservationFamily: 'myoglobin',
       selectedCuratedHomologs: ['1DWR', '5ZZE', '3RGK', '1WLA', '2NSS'],
       customConservationIds: [],
+      conservationMapMode: 'none',
+      selectedConservationResidueKey: null,
       conservationResult: {
         status: 'Not computed yet',
         reference: '1MBN',
@@ -3841,6 +3880,8 @@ END
       state.conservation = computeConservationFromSequences(state.residues, comparisonItems);
       state.conservationSources = comparisonItems.map(item => item.id);
       state.conservationComparisons = comparisonIds.join(' ');
+      state.conservationMapMode = 'none';
+      state.selectedConservationResidueKey = null;
       state.conservationResult = {
         status: warnings.length ? 'Conservation computed with warnings' : 'Conservation computed successfully',
         reference: family.reference,
@@ -4786,6 +4827,8 @@ END
       const family = currentConservationFamily();
       state.conservation = [];
       state.conservationSources = [];
+      state.conservationMapMode = 'none';
+      state.selectedConservationResidueKey = null;
       state.conservationResult = {
         status,
         reference: family.reference,
@@ -4872,7 +4915,7 @@ END
       document.getElementById('readinessHomologCount').textContent = curatedCount;
       document.getElementById('readinessCustomCount').textContent = customCount;
       document.getElementById('readinessStatus').textContent = status;
-      document.getElementById('conservationPrepNote').innerHTML = `<strong>Phase 1 preparation only</strong>This tab is collecting the comparison set. Conservation scores are not calculated yet. Selected comparison structures: ${selected.length ? selected.join(', ') : 'none selected'}.`;
+      document.getElementById('conservationPrepNote').innerHTML = `<strong>Prepared comparison set</strong>Selected comparison structures: ${selected.length ? selected.join(', ') : 'none selected'}. Click Compute Conservation to calculate scores, then Map Conservation to Structure to color the reference model.`;
       document.getElementById('homologCount').textContent = selected.length;
     }
 
@@ -4886,6 +4929,9 @@ END
       document.getElementById('resultSkipped').textContent = result.skipped || 0;
       document.getElementById('resultWarnings').textContent = warnings.length;
       document.getElementById('conservationWarnings').innerHTML = warnings.length ? `<strong>Warnings</strong><ul>${warnings.map(warning => `<li>${warning}</li>`).join('')}</ul>` : '';
+      const ready = ['Conservation computed successfully', 'Conservation computed with warnings'].includes(result.status);
+      const mapButton = document.getElementById('mapConservation');
+      if (mapButton) mapButton.disabled = !ready;
     }
 
     function addCustomConservationId() {
@@ -4913,6 +4959,143 @@ END
       renderConservationPrep();
     }
 
+    function conservationColor(score) {
+      if (score >= 0.9) return '#d73027';
+      if (score >= 0.7) return '#f97316';
+      if (score >= 0.5) return '#fde047';
+      return '#2563eb';
+    }
+
+    function conservationRowsByResidueKey() {
+      return new Map(conservationRowsForLayer().map(row => [row.entry.residue.key, row]));
+    }
+
+    function conservationFeatureResidues() {
+      const sites = currentConservationFamily().functionalSites || {};
+      return state.residues.filter(residue => sites[residue.resi]);
+    }
+
+    function remapConservationToCurrentResidues(savedEntries) {
+      if (!savedEntries?.length) return;
+      state.conservation = state.residues.map((residue, index) => {
+        const saved = savedEntries[index];
+        if (!saved) return { residue, refChar: sequenceFromResidues([residue]), same: 0, total: 0, score: 0, chars: [], sources: [] };
+        return { ...saved, residue };
+      });
+      document.getElementById('conservationMapNote').innerHTML = '<strong>Structure coloring limitation</strong>The reference was reloaded, so conservation scores were remapped by reference sequence position. Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations.';
+    }
+
+    async function ensureConservationReferenceLoaded() {
+      const family = currentConservationFamily();
+      if (state.structureId === family.reference) return true;
+      const savedEntries = state.conservation.map(entry => ({
+        refChar: entry.refChar,
+        same: entry.same,
+        total: entry.total,
+        score: entry.score,
+        chars: entry.chars,
+        sources: entry.sources || []
+      }));
+      try {
+        await loadStructureById(family.reference, family.name);
+        state.mode = 'conservation';
+        remapConservationToCurrentResidues(savedEntries);
+        return true;
+      } catch (error) {
+        document.getElementById('conservationMapNote').innerHTML = `<strong>Could not load reference structure</strong>${error.message}`;
+        return false;
+      }
+    }
+
+    async function setConservationMapMode(mode) {
+      if (!state.conservation.length) {
+        document.getElementById('conservationMapNote').innerHTML = '<strong>Compute conservation first</strong>The structure cannot be colored until conservation results are available.';
+        return;
+      }
+      if (mode !== 'none') {
+        const loaded = await ensureConservationReferenceLoaded();
+        if (!loaded) return;
+      }
+      state.conservationMapMode = mode;
+      if (mode === 'none') {
+        state.selectedConservationResidueKey = null;
+        document.getElementById('conservationMapNote').innerHTML = '<strong>Conservation coloring reset</strong>The viewer is back to the normal structure representation. The computed conservation table is still available below.';
+      }
+      applyMode();
+    }
+
+    function labelConservationResidue(row) {
+      if (!row) return;
+      const residue = row.entry.residue;
+      const ca = residue.byName.get('CA') || residue.atoms[0];
+      if (!ca) return;
+      addResidueLabel(residue, conservationColor(row.entry.score));
+      state.viewer.addLabel(
+        `${residue.label}\nConservation score: ${Math.round(row.entry.score * 100)}%\nCategory: ${row.category}\n${row.functionalAnnotation}`,
+        {
+          position: { x: ca.x, y: ca.y + 1.0, z: ca.z },
+          fontColor: '#111827',
+          backgroundColor: 'white',
+          backgroundOpacity: 0.92,
+          borderColor: conservationColor(row.entry.score),
+          borderThickness: 1,
+          fontSize: 11,
+          inFront: false
+        }
+      );
+    }
+
+    function applyConservationStructureColoring(layerRows) {
+      const rows = layerRows.length ? layerRows : conservationRowsForLayer();
+      const byKey = new Map(rows.map(row => [row.entry.residue.key, row]));
+      const mode = state.conservationMapMode;
+      if (mode === 'none') {
+        const selected = state.selectedConservationResidueKey ? byKey.get(state.selectedConservationResidueKey) : null;
+        if (selected) {
+          state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.32 } });
+          state.viewer.setStyle(residueSpec(selected.entry.residue), { cartoon: { color: conservationColor(selected.entry.score) }, stick: { colorscheme: 'Jmol', radius: 0.18 }, sphere: { scale: 0.22 } });
+          labelConservationResidue(selected);
+        }
+        return;
+      }
+
+      state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#d1d5db', opacity: mode === 'all' ? 0.78 : 0.2 } });
+      if (mode === 'features') {
+        const featureResidues = conservationFeatureResidues();
+        featureResidues.forEach(residue => {
+          const row = byKey.get(residue.key);
+          const color = row ? conservationColor(row.entry.score) : '#111827';
+          state.viewer.setStyle(residueSpec(residue), { cartoon: { color }, stick: { colorscheme: 'Jmol', radius: 0.2 }, sphere: { scale: 0.24 } });
+          addResidueLabel(residue, color);
+        });
+        if (state.atoms.some(atom => atom.resn === 'HEM')) {
+          state.viewer.setStyle({ resn: 'HEM' }, { stick: { colorscheme: 'Jmol', radius: 0.25 }, sphere: { scale: 0.36 } });
+        }
+      } else {
+        rows.forEach(row => {
+          const score = row.entry.score;
+          const show = mode === 'all' || (mode === 'high' && score >= 0.9) || (mode === 'variable' && score < 0.5);
+          if (!show) return;
+          const style = { cartoon: { color: conservationColor(score), opacity: 0.9 }, stick: { colorscheme: 'Jmol', radius: mode === 'all' ? 0.08 : 0.18 } };
+          if (mode !== 'all') style.sphere = { scale: 0.2 };
+          state.viewer.setStyle(residueSpec(row.entry.residue), style);
+        });
+      }
+
+      const selected = state.selectedConservationResidueKey ? byKey.get(state.selectedConservationResidueKey) : null;
+      if (selected) {
+        state.viewer.setStyle(residueSpec(selected.entry.residue), { cartoon: { color: conservationColor(selected.entry.score) }, stick: { colorscheme: 'Jmol', radius: 0.22 }, sphere: { scale: 0.24 } });
+        labelConservationResidue(selected);
+      }
+      const note = {
+        all: 'Showing all mapped residues with conservation colors. Mapping follows the reference sequence positions represented in the loaded PDB.',
+        high: 'Highlighting residues with conservation score >= 0.90; other residues are de-emphasized.',
+        variable: 'Highlighting residues with conservation score < 0.50; other residues are de-emphasized.',
+        features: 'Highlighting family functional feature residues when their residue numbers are present in the loaded reference structure.'
+      }[mode];
+      document.getElementById('conservationMapNote').innerHTML = `<strong>Structure coloring limitation</strong>${note} Residue numbering and chain selection can affect interpretation, especially for structures with multiple chains, fragments, or engineered mutations.`;
+    }
+
     function drawConservation() {
       const c = colors();
       renderConservationFamilyControls();
@@ -4936,13 +5119,6 @@ END
       const conserved = state.conservation.filter(entry => entry.score === 1);
       const layerRows = conservationRowsForLayer();
       const layerConserved = layerRows.filter(row => row.entry.score >= 0.75);
-      state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.35 } });
-      layerRows.forEach(row => {
-        const color = row.entry.score === 1 ? c.exposed : row.entry.score >= 0.75 ? c.selected : row.entry.score >= 0.5 ? '#94a3b8' : '#cbd5e1';
-        if (row.entry.score >= 0.5 || state.conservationLayer !== 'sequence') {
-          state.viewer.setStyle(residueSpec(row.entry.residue), { cartoon: { color }, stick: { colorscheme: 'Jmol', radius: 0.1 } });
-        }
-      });
       document.getElementById('conservedCount').textContent = countWithPercent(conserved.length, state.residues.length);
       const sourceCount = state.conservationSources.length;
       const sourceLabel = state.conservationSources.length ? state.conservationSources.join(', ') : 'user-entered comparison set';
@@ -4952,6 +5128,7 @@ END
       const layer = conservationLayers[state.conservationLayer];
       renderConservationResultSummary();
       document.getElementById('conservationNote').innerHTML = `<strong>${layer.label} for ${state.structureId}</strong><strong>Measured</strong>${layer.measures}<br><strong>Visualized</strong>${layer.visualized}<br><strong>Why it matters</strong>${layer.why}<br><strong>Student explanation</strong>${layer.student}<br><strong>Filter</strong>${layer.filter}<br><br><strong>Comparison set</strong>${sourceLabel}. This is a teaching overlay from sequence alignment plus structural features, not a full phylogenetic Rate4Site analysis.`;
+      applyConservationStructureColoring(layerRows);
       renderConservationTable(layerRows);
       renderCerGenerator(layerRows);
       state.viewer.zoomTo({ hetflag: false });
@@ -4984,6 +5161,8 @@ END
         const tr = document.createElement('tr');
         tr.innerHTML = `<td><strong>${residue.resi}</strong></td><td>${residue.label}</td><td>${Math.round(row.entry.score * 100)}% (${row.entry.same}/${row.entry.total})</td><td>${row.category}</td><td>${row.functionalAnnotation}</td><td>${row.studentPrompt}</td>`;
         tr.addEventListener('click', () => {
+          state.selectedConservationResidueKey = residue.key;
+          applyMode();
           state.viewer.zoomTo(residueSpec(residue));
           state.viewer.render();
         });
@@ -5792,6 +5971,30 @@ END
 
     document.getElementById('computeConservation').addEventListener('click', () => {
       computeConservationForIds(selectedConservationIds());
+    });
+
+    document.getElementById('mapConservation').addEventListener('click', () => {
+      setConservationMapMode('all');
+    });
+
+    document.getElementById('showAllConservation').addEventListener('click', () => {
+      setConservationMapMode('all');
+    });
+
+    document.getElementById('showHighConservation').addEventListener('click', () => {
+      setConservationMapMode('high');
+    });
+
+    document.getElementById('showVariableConservation').addEventListener('click', () => {
+      setConservationMapMode('variable');
+    });
+
+    document.getElementById('showFunctionalConservation').addEventListener('click', () => {
+      setConservationMapMode('features');
+    });
+
+    document.getElementById('resetConservationColoring').addEventListener('click', () => {
+      setConservationMapMode('none');
     });
 
     document.getElementById('conservationLayer').addEventListener('change', event => {
