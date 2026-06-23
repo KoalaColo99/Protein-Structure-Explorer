@@ -18,6 +18,8 @@ Do not enter protein names, full RCSB URLs, or the selected reference PDB ID as 
 
 Not every course protein currently has a prebuilt suggested comparison set. When no suggested set is available, students may manually add 4-6 biologically related PDB structures. Conservation quality depends strongly on choosing related structures with comparable sequences, structures, and biological roles.
 
+The course list includes a lightweight validation check for duplicate PDB IDs and key name/code mappings. For example, `1LYZ` is used for Lysozyme, while `1BNA` is used only for the DNA Double Helix course entry.
+
 ## Included Files
 
 - `index.html`: the full static web app.

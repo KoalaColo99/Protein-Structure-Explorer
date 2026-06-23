@@ -856,6 +856,7 @@
           <select id="conservationFamily"></select>
         </div>
         <div class="mini-card" id="conservationFamilyInfo"></div>
+        <div class="warning-text" id="courseProteinValidationMessage"></div>
         <div class="mini-card">
           <h3>Reference Structure</h3>
           <p><strong id="conservationReferenceId">-</strong></p>
@@ -3121,7 +3122,7 @@ END
       { key: 'leghemoglobin', classification: 'Oxygen Transport & Storage', reference: '1ASH', name: 'Leghemoglobin' },
       { key: 'adenylateKinase', classification: 'Enzymes: Metabolism & Catalysis', reference: '4AKE', name: 'Adenylate Kinase' },
       { key: 'lactateDehydrogenase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1LDN', name: 'Lactate Dehydrogenase' },
-      { key: 'lysozyme', classification: 'Enzymes: Metabolism & Catalysis', reference: '1BNA', name: 'Lysozyme' },
+      { key: 'lysozyme', classification: 'Enzymes: Metabolism & Catalysis', reference: '1LYZ', name: 'Lysozyme' },
       { key: 'triosephosphateIsomerase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1TIM', name: 'Triosephosphate Isomerase' },
       { key: 'carbonicAnhydrase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1CA2', name: 'Carbonic Anhydrase II' },
       { key: 'dihydrofolateReductase', classification: 'Enzymes: Metabolism & Catalysis', reference: '1RX2', name: 'Dihydrofolate Reductase' },
@@ -3167,6 +3168,38 @@ END
     ];
     function defaultCourseDescription(entry) {
       return `Course example for exploring how the ${entry.classification.toLowerCase()} context shapes structure, chemistry, and biochemical function.`;
+    }
+    const requiredCourseProteinMappings = {
+      '1LYZ': 'Lysozyme',
+      '1BNA': 'DNA Double Helix'
+    };
+    function validateCourseProteinEntries() {
+      const issues = [];
+      const byReference = new Map();
+      courseProteinEntries.forEach(entry => {
+        const existing = byReference.get(entry.reference) || [];
+        existing.push(entry);
+        byReference.set(entry.reference, existing);
+      });
+      byReference.forEach((entries, reference) => {
+        if (entries.length > 1) {
+          issues.push(`Duplicate PDB ID ${reference}: ${entries.map(entry => `${entry.name} (${entry.classification})`).join('; ')}`);
+        }
+      });
+      Object.entries(requiredCourseProteinMappings).forEach(([reference, expectedName]) => {
+        const matching = courseProteinEntries.filter(entry => entry.reference === reference);
+        if (!matching.some(entry => entry.name === expectedName)) {
+          issues.push(`${reference} should map to ${expectedName}.`);
+        }
+        matching
+          .filter(entry => entry.name !== expectedName)
+          .forEach(entry => issues.push(`${reference} is assigned to ${entry.name}; expected ${expectedName}.`));
+      });
+      return issues;
+    }
+    const courseProteinValidationIssues = validateCourseProteinEntries();
+    if (courseProteinValidationIssues.length) {
+      console.warn('Course protein list validation issues:', courseProteinValidationIssues);
     }
     const conservationFamilies = Object.fromEntries(courseProteinEntries.map(entry => {
       const curated = curatedComparisonSets[entry.key] || {};
@@ -5380,6 +5413,9 @@ END
         ? family.homologs.join(', ')
         : 'No curated comparison set is available yet for this course protein. You may manually add 4-6 related PDB structures for conservation analysis.';
       document.getElementById('conservationFamilyInfo').innerHTML = `<h3>Protein Information</h3><p><strong>Protein:</strong> ${family.name}</p><p><strong>Reference PDB:</strong> ${family.reference}</p><p><strong>Learning classification:</strong> ${family.classification}</p><p><strong>Description:</strong> ${family.function}</p><p><strong>Key features to inspect:</strong></p><ul>${family.features.map(feature => `<li>${feature}</li>`).join('')}</ul><p><strong>Suggested comparison structures:</strong> ${comparisonText}</p>`;
+      document.getElementById('courseProteinValidationMessage').innerHTML = courseProteinValidationIssues.length
+        ? `<strong>Course protein list needs review:</strong><ul>${courseProteinValidationIssues.map(issue => `<li>${issue}</li>`).join('')}</ul>`
+        : '';
       renderCuratedHomologList(family);
       renderSelectedConservationStructures(family);
       renderConservationReadiness(family);

@@ -187,6 +187,8 @@ Conservation is meaningful only when the comparison structures are homologous or
 
 Not every course protein currently has a prebuilt suggested comparison set. If the checklist says no curated set is available yet, students can manually add 4-6 related PDB IDs. Conservation quality depends on choosing biologically related structures with comparable sequences, structures, and functions.
 
+The course list includes a validation check that flags duplicate PDB IDs or important code/name mismatches for review. In the current list, `1LYZ` is Lysozyme and `1BNA` is DNA Double Helix.
+
 To compute conservation from a selected comparison set:
 
 1. Click **Conservation**.
