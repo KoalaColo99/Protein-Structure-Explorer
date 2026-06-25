@@ -281,6 +281,21 @@
       margin-top: 8px;
     }
 
+    .viewer-controls {
+      margin-top: 12px;
+    }
+
+    .viewer-controls .button-row {
+      margin-top: 6px;
+    }
+
+    .viewer-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      margin: 8px 0 0;
+    }
+
     .chem-diagram {
       display: grid;
       gap: 8px;
@@ -627,6 +642,7 @@
 
     @media (max-width: 520px) {
       .atlas-tools { grid-template-columns: 1fr; }
+      .viewer-controls .button-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -732,6 +748,17 @@
           <input id="atomZoomToggle" type="checkbox" checked>
           Show the atoms that participate directly when zooming into an interaction.
         </label>
+        <div class="mini-card viewer-controls">
+          <h3>Structure View Controls</h3>
+          <div class="button-row">
+            <button id="fitWholeStructure">Fit Whole Structure</button>
+            <button id="focusSelectedResidue">Focus Selected Residue</button>
+            <button id="focusFunctionalSite">Focus Functional Site</button>
+            <button id="resetViewerView">Reset View</button>
+          </div>
+          <p class="viewer-note">Use “Fit Whole Structure” when you need context. Use “Focus Selected Residue” when you need molecular detail.</p>
+          <div class="warning-text" id="viewerControlMessage"></div>
+        </div>
       </section>
 
       <section class="section mode-panel" id="overviewPanel">
@@ -4580,6 +4607,126 @@ END
       setStatus();
     }
 
+    function setViewerControlMessage(message) {
+      const element = document.getElementById('viewerControlMessage');
+      if (element) element.textContent = message || '';
+    }
+
+    function zoomViewerTo(selection, message) {
+      if (!state.viewer || !selection) {
+        setViewerControlMessage('Load a structure before using the view controls.');
+        return;
+      }
+      state.viewer.zoomTo(selection);
+      state.viewer.render();
+      setViewerControlMessage(message);
+    }
+
+    function fitWholeStructure() {
+      zoomViewerTo({}, 'Showing the full loaded structure for whole-protein context.');
+    }
+
+    function resetViewerView() {
+      if (!state.viewer) {
+        setViewerControlMessage('Load a structure before resetting the view.');
+        return;
+      }
+      state.viewer.zoomTo({ hetflag: false });
+      state.viewer.render();
+      setViewerControlMessage('View reset to a broad whole-protein orientation.');
+    }
+
+    function selectedResidueFocus() {
+      if (state.selectedConservationResidueKey) {
+        const row = conservationRowsByResidueKey().get(state.selectedConservationResidueKey);
+        if (row) return { selection: residueSpec(row.entry.residue), label: row.entry.residue.label };
+      }
+
+      if (state.selectedContact) {
+        return {
+          selection: { or: [atomSpec(state.selectedContact.atomA), atomSpec(state.selectedContact.atomB)] },
+          label: `${state.selectedContact.resA.label} contact`
+        };
+      }
+
+      if (state.selectedHbond) {
+        return {
+          selection: { or: [residueSpec(state.selectedHbond.from), residueSpec(state.selectedHbond.to)] },
+          label: `${state.selectedHbond.from.label} to ${state.selectedHbond.to.label}`
+        };
+      }
+
+      if (state.selectedHelixBond) {
+        return {
+          selection: { or: [residueSpec(state.selectedHelixBond.from), residueSpec(state.selectedHelixBond.to)] },
+          label: `${state.selectedHelixBond.from.label} to ${state.selectedHelixBond.to.label}`
+        };
+      }
+
+      if (state.mode === 'ph' && state.ionizable.length) {
+        const residue = state.ionizable[state.selectedIonIndex] || state.ionizable[0];
+        return { selection: residueSpec(residue), label: residue.label };
+      }
+
+      const entry = state.torsions[state.selectedResidueIndex];
+      const residue = entry?.residue || state.residues[state.selectedResidueIndex] || state.residues[0];
+      return residue ? { selection: residueSpec(residue), label: residue.label } : null;
+    }
+
+    function focusSelectedResidue() {
+      const focus = selectedResidueFocus();
+      if (!focus) {
+        setViewerControlMessage('Select a residue, contact, hydrogen bond, or conservation-table row first.');
+        return;
+      }
+      zoomViewerTo(focus.selection, `Focused on ${focus.label}.`);
+    }
+
+    function functionalSiteFocus() {
+      const family = currentConservationFamily();
+      const featureResidues = state.structureId === family.reference
+        ? Object.keys(family.functionalSites || {})
+            .map(resi => state.residues.find(residue => String(residue.resi) === String(resi)))
+            .filter(Boolean)
+        : [];
+
+      if (featureResidues.length) {
+        return {
+          selection: { or: featureResidues.map(residueSpec) },
+          label: `${family.name} functional features`
+        };
+      }
+
+      const heme = ligandGroups().find(group => group.resn === 'HEM');
+      if (heme) {
+        return { selection: { resn: 'HEM' }, label: 'heme cofactor' };
+      }
+
+      const ligand = ligandGroups()[0];
+      if (ligand) {
+        return {
+          selection: { resn: ligand.resn, chain: ligand.chain, resi: ligand.resi },
+          label: `${ligand.resn} ligand/cofactor`
+        };
+      }
+
+      const metal = state.atoms.find(atom => metalElements.has(atom.elem));
+      if (metal) {
+        return { selection: atomSpec(metal), label: `${metal.elem} metal site` };
+      }
+
+      return null;
+    }
+
+    function focusFunctionalSite() {
+      const focus = functionalSiteFocus();
+      if (!focus) {
+        setViewerControlMessage('No mapped functional residue, ligand, cofactor, or metal site is available for the loaded structure.');
+        return;
+      }
+      zoomViewerTo(focus.selection, `Focused on ${focus.label}.`);
+    }
+
     function drawHbonds() {
       const c = colors();
       state.hbonds.forEach(hbond => {
@@ -6781,10 +6928,11 @@ END
       applyMode();
     });
 
-    document.getElementById('resetView').addEventListener('click', () => {
-      state.viewer.zoomTo();
-      state.viewer.render();
-    });
+    document.getElementById('fitWholeStructure').addEventListener('click', fitWholeStructure);
+    document.getElementById('focusSelectedResidue').addEventListener('click', focusSelectedResidue);
+    document.getElementById('focusFunctionalSite').addEventListener('click', focusFunctionalSite);
+    document.getElementById('resetViewerView').addEventListener('click', resetViewerView);
+    document.getElementById('resetView').addEventListener('click', resetViewerView);
 
     document.getElementById('residueSelect').addEventListener('change', event => {
       selectTorsionIndex(Number(event.target.value));

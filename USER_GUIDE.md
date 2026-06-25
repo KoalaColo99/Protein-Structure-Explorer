@@ -36,6 +36,15 @@ Use the mouse or trackpad to rotate, zoom, and pan the molecule. Use the Display
 
 The default palette is color-blind safe. The atom zoom option shows more atom detail when the view is focused on specific contacts.
 
+Use **Structure View Controls** when you need to move between whole-protein context and molecular detail:
+
+- **Fit Whole Structure:** centers and zooms out to show the full loaded structure.
+- **Focus Selected Residue:** zooms to the currently selected residue, contact, hydrogen bond, or conservation-table residue when available.
+- **Focus Functional Site:** zooms to a mapped functional feature, ligand, cofactor, or metal site when available.
+- **Reset View:** returns to a broad whole-protein view.
+
+If the molecule feels too zoomed in after using an analysis tab, start with **Fit Whole Structure** or **Reset View**, then focus on a specific residue again when you need atom-level detail.
+
 ## Loading Proteins
 
 Use Structure Gallery to choose a class of protein and suggested examples, or enter a 4-character PDB ID manually.
