@@ -97,6 +97,27 @@
       line-height: 1.45;
     }
 
+    .current-structure {
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      background: #fbfdff;
+      margin: 0 0 16px;
+      padding: 10px 11px;
+    }
+
+    .current-structure span {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .current-structure strong {
+      display: block;
+      font-size: 15px;
+    }
+
     .tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -591,7 +612,8 @@
       <div id="viewer"></div>
       <div class="hud">
         <div class="badge">
-          <strong id="structureTitle">Myoglobin 1MBN</strong>
+          <strong>Current Structure</strong>
+          <span id="structureTitle">Myoglobin (1MBN)</span>
           <span id="structureSubtitle">Sperm whale oxygen-storage protein, with heme cofactor</span>
         </div>
         <div class="readout" id="status">Loading structure...</div>
@@ -600,7 +622,11 @@
 
     <aside class="sidebar">
       <h1>Biochemistry Visual Atlas</h1>
-      <p class="subhead">Explore proteins, chemical properties, function, and future prediction tools while keeping the 3D structure in view.</p>
+      <p class="subhead">Interactive exploration of protein structure, chemistry, evolution, and function.</p>
+      <div class="current-structure">
+        <span>Current Structure</span>
+        <strong id="currentStructureLabel">Myoglobin (1MBN)</strong>
+      </div>
 
       <div class="atlas-nav" id="modeTabs" aria-label="Biochemistry Visual Atlas navigation">
         <div class="atlas-group">
@@ -616,6 +642,7 @@
             <button data-mode="betaTopology">Beta / Topology</button>
             <button data-mode="solvent">Solvent Access</button>
             <button data-mode="hydrophobic">Hydrophobic Core</button>
+            <button data-mode="gallery">Structure Gallery</button>
           </div>
         </div>
         <div class="atlas-group">
@@ -633,7 +660,7 @@
           <div class="atlas-tools">
             <button disabled>Ligands<span class="coming-soon">Coming soon</span></button>
             <button disabled>Active Sites<span class="coming-soon">Coming soon</span></button>
-            <button data-mode="mutation">Mutation Explorer</button>
+            <button data-mode="mutation">Mutation Sandbox</button>
             <button data-mode="lesson">Guided Lesson</button>
           </div>
         </div>
@@ -641,7 +668,7 @@
           <h2>Prediction</h2>
           <div class="atlas-tools">
             <button disabled>AlphaFold<span class="coming-soon">Coming soon</span></button>
-            <button data-mode="gallery">Comparative Structures</button>
+            <button disabled>Comparative Structures<span class="coming-soon">Coming soon</span></button>
           </div>
         </div>
       </div>
@@ -1167,7 +1194,7 @@
       </section>
 
       <section class="section mode-panel hidden" id="galleryPanel">
-        <h2>Protein Gallery Builder</h2>
+        <h2>Structure Gallery</h2>
         <p>A planning scaffold for expanding from myoglobin to assigned student proteins and class-wide comparison categories.</p>
         <div class="row">
           <label for="galleryClass">Class</label>
@@ -6669,9 +6696,10 @@ END
       state.conservation = [];
       state.conservationSources = [];
       resetStructureState();
-      document.getElementById('structureTitle').textContent = `${state.structureId} ${state.structureLabel}`;
+      document.getElementById('structureTitle').textContent = `${state.structureLabel} (${state.structureId})`;
       document.getElementById('structureSubtitle').textContent = `${state.residues.length} amino-acid residues detected; features recomputed from loaded coordinates`;
-      document.title = `${state.structureId} Protein Structure & Chemistry Explorer`;
+      document.getElementById('currentStructureLabel').textContent = `${state.structureLabel} (${state.structureId})`;
+      document.title = 'Biochemistry Visual Atlas';
     }
 
     function renderCurrentModel() {

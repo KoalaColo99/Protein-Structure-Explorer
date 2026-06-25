@@ -1,6 +1,6 @@
 # Biochemistry Visual Atlas
 
-An interactive browser-based teaching atlas for connecting protein structure, noncovalent interactions, pH, solvent exposure, topology, conservation, mutation effects, and atom-level chemistry.
+An interactive browser-based educational platform for exploring protein structure, sequence context, evolutionary conservation, protein chemistry, pH and charge, and structure-function relationships.
 
 Open `index.html` in a browser, or publish this folder with GitHub Pages.
 
@@ -8,14 +8,16 @@ Open `index.html` in a browser, or publish this folder with GitHub Pages.
 
 The app is organized into four navigation groups:
 
-- **Protein Explorer:** structure, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, and hydrophobic regions.
+- **Protein Explorer:** structure, sequence placeholders, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, hydrophobic regions, and structure loading.
 - **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface tools.
-- **Function:** mutation exploration and guided lessons, with Ligands and Active Sites marked as coming soon.
-- **Prediction:** Comparative Structures is available through the existing structure-loading workflow; AlphaFold is shown as coming soon and is not implemented yet.
+- **Function:** mutation sandbox and guided lessons, with Ligand Binding and Active Sites marked as coming soon.
+- **Prediction:** AlphaFold prediction and comparative structural analysis are future modules. They will complement experimental Protein Data Bank structures rather than replace them.
+
+Future modules will include Ligand Binding, an expanded Mutation Explorer, AlphaFold prediction, and comparative structural analysis.
 
 ## Entering PDB Codes
 
-Use **Gallery Builder** in the app to load a reference structure. Type one 4-character RCSB PDB ID in the **PDB ID** box, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`, then click **Load structure**.
+Use **Structure Gallery** in the app to load a reference structure. Type one 4-character RCSB PDB ID in the **PDB ID** box, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`, then click **Load structure**.
 
 For the in-app Conservation panel, choose a **Learning Classification** and **Course Protein**. The course protein is the assigned reference structure students are investigating. When available, use the **Suggested Comparison Structures** checklist to select related structures for estimating conservation. Optional custom PDB IDs should be entered one at a time as exactly 4 letters/numbers, such as:
 

@@ -19,10 +19,10 @@ Open `index.html` in a browser. The structure viewer is on the left, and the fea
 
 The atlas navigation is organized into four modules:
 
-- **Protein Explorer:** structure, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, and hydrophobic regions.
+- **Protein Explorer:** structure, sequence placeholders, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, hydrophobic regions, and structure loading.
 - **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface.
-- **Function:** mutation exploration and guided lessons. Ligands and Active Sites are visible as coming-soon entries.
-- **Prediction:** Comparative Structures uses the current structure-loading tools. AlphaFold is visible as coming soon and is not implemented yet.
+- **Function:** mutation sandbox and guided lessons. Ligand Binding and Active Sites are visible as coming-soon entries.
+- **Prediction:** AlphaFold prediction and comparative structural analysis are future modules. They will complement experimental Protein Data Bank structures rather than replace them.
 
 Coming-soon entries are visible so students can see where the atlas is headed, but they are not active tools yet.
 
@@ -38,11 +38,11 @@ The default palette is color-blind safe. The atom zoom option shows more atom de
 
 ## Loading Proteins
 
-Use Gallery Builder to choose a class of protein and suggested examples, or enter a 4-character PDB ID manually.
+Use Structure Gallery to choose a class of protein and suggested examples, or enter a 4-character PDB ID manually.
 
 To enter your own structure:
 
-1. Click **Gallery Builder**.
+1. Click **Structure Gallery**.
 2. Find the **PDB ID** text box.
 3. Type one valid 4-character RCSB PDB code, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`.
 4. Use letters and numbers only. Spaces, punctuation, protein names, and full URLs should not be entered in this box.
@@ -74,7 +74,7 @@ Some features require curated comparison data. If that data is not available, th
 
 Protein Explorer is the main workflow for connecting a PDB structure to structure-function reasoning.
 
-1. **Load a PDB structure.** Use Comparative Structures/Gallery Builder or enter a 4-character RCSB PDB ID. The loaded structure becomes the reference model for most tools.
+1. **Load a PDB structure.** Use Structure Gallery or enter a 4-character RCSB PDB ID. The loaded structure becomes the reference model for most tools.
 2. **Inspect the overall fold.** Start with Structure/Overview in cartoon or ribbon view. Look for helices, sheets, loops, domains, cofactors, pockets, and subunit organization.
 3. **Inspect secondary structure.** Use Backbone H-bonds, Helix Patterns, Beta / Topology, and Solvent Access to ask how local geometry and noncovalent interactions stabilize the fold.
 4. **Use Conservation.** Choose a course protein and comparison structures when available. Conserved residues can suggest regions important for folding, binding, catalysis, or interaction, but conservation is evidence rather than proof.
@@ -95,9 +95,9 @@ The atlas works best with a wide screen, but it can still be used on a phone or 
 
 ## Prediction Module Note
 
-The Prediction module is a future-facing part of the atlas. AlphaFold and comparative prediction tools are not implemented yet.
+The Prediction module is a future-facing part of the atlas. AlphaFold prediction and comparative structural analysis tools are not implemented yet.
 
-When added, these tools should help students compare predicted models with experimental structures. They should not replace experimental evidence from crystallography, NMR, cryo-EM, biochemical assays, or curated structural interpretation. Predicted models are useful evidence, but students should still ask what is known experimentally, what is uncertain, and whether the model supports the biochemical claim.
+When added, these tools should help students compare predicted models with experimental structures. They should not replace experimental evidence from crystallography, NMR, cryo-EM, biochemical assays, the Protein Data Bank, or curated structural interpretation. Predicted models are useful evidence, but students should still ask what is known experimentally, what is uncertain, and whether the model supports the biochemical claim.
 
 ## Feature Guide
 
@@ -394,7 +394,7 @@ Students can glean:
 - How different views support different kinds of claims.
 - How to revise an answer by adding structure-based evidence.
 
-### Gallery Builder
+### Structure Gallery
 
 Provides starting PDB examples by protein class, including oxygen transporters, enzymes, proteases, DNA-binding proteins, membrane proteins, signaling proteins, structural proteins, and disease/drug targets.
 
