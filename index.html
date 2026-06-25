@@ -118,6 +118,30 @@
       font-size: 15px;
     }
 
+    .about-atlas {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin: 0 0 16px;
+      padding: 11px;
+    }
+
+    .about-atlas h2 {
+      margin: 0 0 5px;
+      font-size: 15px;
+    }
+
+    .about-atlas p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0 0 8px;
+    }
+
+    .about-atlas p:last-child {
+      margin-bottom: 0;
+    }
+
     .tabs {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -627,6 +651,13 @@
         <span>Current Structure</span>
         <strong id="currentStructureLabel">Myoglobin (1MBN)</strong>
       </div>
+      <section class="about-atlas" aria-label="About the Biochemistry Visual Atlas">
+        <h2>Biochemistry Visual Atlas</h2>
+        <p>An interactive learning environment for exploring protein structure, chemistry, evolution, and function.</p>
+        <p><strong>Protein Explorer</strong> — Visualize and analyze experimentally determined protein structures.</p>
+        <p><strong>Chemical Properties</strong> — Explore how pH, protonation, and charge influence biomolecular behavior.</p>
+        <p><strong>Function &amp; Prediction</strong> — Connect structure to biological function and compare experimental structures with predictive models (coming soon).</p>
+      </section>
 
       <div class="atlas-nav" id="modeTabs" aria-label="Biochemistry Visual Atlas navigation">
         <div class="atlas-group">
