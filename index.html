@@ -38,7 +38,7 @@
 
     .app {
       display: grid;
-      grid-template-columns: minmax(420px, 1fr) 390px;
+      grid-template-columns: minmax(420px, 1fr) minmax(430px, 560px);
       min-height: 100vh;
     }
 
@@ -466,6 +466,32 @@
       margin-bottom: 4px;
     }
 
+    .rama-layout {
+      display: grid;
+      grid-template-columns: minmax(180px, .8fr) minmax(260px, 1.2fr);
+      gap: 12px;
+      align-items: start;
+      margin-top: 10px;
+    }
+
+    .rama-scan,
+    .rama-plot {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+    }
+
+    .rama-scan h3,
+    .rama-plot h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
+    }
+
+    .rama-plot canvas {
+      margin-top: 4px;
+    }
+
     .ph-scale {
       position: relative;
       height: 66px;
@@ -535,6 +561,10 @@
       .app { grid-template-columns: 1fr; }
       .stage { min-height: 58vh; border-right: 0; border-bottom: 1px solid var(--line); }
       .sidebar { max-height: none; }
+    }
+
+    @media (max-width: 760px) {
+      .rama-layout { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 520px) {
@@ -660,20 +690,29 @@
 
       <section class="section mode-panel hidden" id="torsionsPanel">
         <h2>Backbone Rotation</h2>
-        <p>Phi and psi are dihedral angles around the protein backbone. Choose a residue to highlight its local backbone and locate it on the Ramachandran-style plot.</p>
-        <div class="row">
-          <label for="residueSelect">Residue</label>
-          <select id="residueSelect"></select>
+        <p>Phi and psi are dihedral angles around the protein backbone.</p>
+        <div class="chem-note"><strong>Connect scan to plot</strong>Select a residue to connect its φ/ψ backbone angles to its position on the Ramachandran plot.</div>
+        <div class="rama-layout">
+          <div class="rama-scan">
+            <h3>Residue Scan</h3>
+            <div class="row">
+              <label for="residueSelect">Residue</label>
+              <select id="residueSelect"></select>
+            </div>
+            <div class="row">
+              <label for="residueSlider">Scan</label>
+              <input id="residueSlider" type="range" min="0" value="0">
+            </div>
+            <div class="stats">
+              <div class="stat"><strong id="phiValue">-</strong><span>phi angle</span></div>
+              <div class="stat"><strong id="psiValue">-</strong><span>psi angle</span></div>
+            </div>
+          </div>
+          <div class="rama-plot">
+            <h3>Ramachandran Plot</h3>
+            <canvas id="ramaCanvas" width="720" height="640" aria-label="Phi psi angle plot"></canvas>
+          </div>
         </div>
-        <div class="row">
-          <label for="residueSlider">Scan</label>
-          <input id="residueSlider" type="range" min="0" value="0">
-        </div>
-        <div class="stats">
-          <div class="stat"><strong id="phiValue">-</strong><span>phi angle</span></div>
-          <div class="stat"><strong id="psiValue">-</strong><span>psi angle</span></div>
-        </div>
-        <canvas id="ramaCanvas" width="640" height="570" aria-label="Phi psi angle plot"></canvas>
       </section>
 
       <section class="section mode-panel hidden" id="helixPatternsPanel">
