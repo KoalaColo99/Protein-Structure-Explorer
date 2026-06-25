@@ -2,9 +2,16 @@
 
 ## What This Tool Is
 
-The Biochemistry Visual Atlas is an interactive teaching tool for connecting protein structure to chemical reasoning. It opens with myoglobin 1MBN, but students can load other RCSB PDB IDs and inspect the same kinds of structural features when the needed coordinates are available.
+The Biochemistry Visual Atlas is an interactive teaching tool for connecting molecular structure to biochemical reasoning. It opens with myoglobin 1MBN, but students can load other RCSB PDB IDs and inspect the same kinds of structural features when the needed coordinates are available.
 
 The tool is designed for guided exploration rather than one-click answers. Many overlays are heuristic teaching aids, so students should use them to generate evidence-based claims and then compare those claims with the 3D structure.
+
+The atlas helps students move between levels of explanation:
+
+- **Molecular structure:** What does the protein look like in 3D?
+- **Chemical properties:** Which atoms, charges, pH effects, and interactions matter?
+- **Function:** How might the structure support binding, catalysis, stability, or regulation?
+- **Prediction and comparison:** How can related structures or future predicted models be compared with experimental evidence?
 
 ## Getting Started
 
@@ -16,6 +23,8 @@ The atlas navigation is organized into four modules:
 - **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface.
 - **Function:** mutation exploration and guided lessons. Ligands and Active Sites are visible as coming-soon entries.
 - **Prediction:** Comparative Structures uses the current structure-loading tools. AlphaFold is visible as coming soon and is not implemented yet.
+
+Coming-soon entries are visible so students can see where the atlas is headed, but they are not active tools yet.
 
 Use the mouse or trackpad to rotate, zoom, and pan the molecule. Use the Display controls to change the protein representation:
 
@@ -61,6 +70,35 @@ The manual PDB ID box loads **one reference structure at a time**. When a new st
 
 Some features require curated comparison data. If that data is not available, the tool says unavailable instead of showing unrelated results.
 
+## How To Use Protein Explorer
+
+Protein Explorer is the main workflow for connecting a PDB structure to structure-function reasoning.
+
+1. **Load a PDB structure.** Use Comparative Structures/Gallery Builder or enter a 4-character RCSB PDB ID. The loaded structure becomes the reference model for most tools.
+2. **Inspect the overall fold.** Start with Structure/Overview in cartoon or ribbon view. Look for helices, sheets, loops, domains, cofactors, pockets, and subunit organization.
+3. **Inspect secondary structure.** Use Backbone H-bonds, Helix Patterns, Beta / Topology, and Solvent Access to ask how local geometry and noncovalent interactions stabilize the fold.
+4. **Use Conservation.** Choose a course protein and comparison structures when available. Conserved residues can suggest regions important for folding, binding, catalysis, or interaction, but conservation is evidence rather than proof.
+5. **Inspect the Ramachandran plot.** Use the residue scan to connect each residue's phi/psi backbone angles to its position on the plot and to the highlighted residue in the 3D structure.
+6. **Connect structure to function.** Combine observations from fold, contacts, solvent exposure, conservation, chemistry, pH, and mutation tools to build a claim supported by structural evidence.
+
+For assignments, a strong workflow is to include one overall structure observation, one atom-level or interaction observation, one conservation or Ramachandran observation, and one limitation of the analysis.
+
+## Mobile Use Tips
+
+The atlas works best with a wide screen, but it can still be used on a phone or tablet.
+
+- Rotate a phone or tablet horizontally if the 3D viewer, navigation, or Ramachandran plot feels cramped.
+- Use the selected residue details in the Ramachandran panel instead of relying only on tiny plotted points.
+- Pinch or browser-zoom into plots when reading axis labels or region labels.
+- Use screenshots for assignments, especially after selecting a residue, contact, conservation row, or mutation scenario.
+- If a panel feels long on mobile, scroll slowly through one module at a time and return to the 3D viewer to verify the structural location.
+
+## Prediction Module Note
+
+The Prediction module is a future-facing part of the atlas. AlphaFold and comparative prediction tools are not implemented yet.
+
+When added, these tools should help students compare predicted models with experimental structures. They should not replace experimental evidence from crystallography, NMR, cryo-EM, biochemical assays, or curated structural interpretation. Predicted models are useful evidence, but students should still ask what is known experimentally, what is uncertain, and whether the model supports the biochemical claim.
+
 ## Feature Guide
 
 ### Overview
@@ -94,11 +132,22 @@ These are candidate calls, not a full DSSP secondary-structure assignment.
 
 Shows backbone torsion angles for individual residues and plots them on a Ramachandran diagram. The plot labels broad regions associated with beta/extended conformations, alpha helix, 3-10 helix, pi helix, and left-handed helix.
 
+Phi (φ) and psi (ψ) are backbone torsion angles. They describe rotation around the protein backbone near each alpha carbon. Because peptide bonds have partial double-bond character, proteins do not rotate freely around every backbone bond; phi and psi are major degrees of freedom that shape secondary structure.
+
+Different secondary structures tend to occupy different regions of the Ramachandran plot:
+
+- **Alpha-helical residues** usually cluster in a negative phi, negative psi region.
+- **Beta-sheet or extended residues** usually cluster in a negative phi, positive psi region.
+- **Left-handed helix or outlier-like regions** may reflect unusual local geometry, special residues, turns, flexibility, or model limitations.
+
+Outliers should not be treated automatically as errors. They may indicate a real strained conformation, a flexible loop, a glycine-rich region, a binding-site distortion, unusual local chemistry, or a limitation of the deposited model. Interpret outliers with structural context by checking the 3D location, nearby contacts, secondary structure, ligand/cofactor environment, and model quality when available.
+
 Students can glean:
 
 - How backbone rotation contributes to protein conformation.
 - Why different secondary structures occupy different phi/psi regions.
 - Which residues fall outside common regions and may represent turns, strain, or special local geometry.
+- How one selected residue connects the residue scan, the highlighted point on the plot, and the highlighted residue in the 3D structure.
 
 ### Side-chain Contacts
 
