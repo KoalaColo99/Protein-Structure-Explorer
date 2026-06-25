@@ -38,12 +38,14 @@ The default palette is color-blind safe. The atom zoom option shows more atom de
 
 Use **Structure View Controls** when you need to move between whole-protein context and molecular detail:
 
+- **Keep Whole Structure View:** keeps the full protein centered while you scan residue-to-residue. Selected residues still highlight, but the camera does not jump inward.
+- **Auto-Zoom to Selected Residue:** zooms in automatically when you choose a residue. Use this when you want close molecular detail.
 - **Fit Whole Structure:** centers and zooms out to show the full loaded structure.
 - **Focus Selected Residue:** zooms to the currently selected residue, contact, hydrogen bond, or conservation-table residue when available.
 - **Focus Functional Site:** zooms to a mapped functional feature, ligand, cofactor, or metal site when available.
 - **Reset View:** returns to a broad whole-protein view.
 
-If the molecule feels too zoomed in after using an analysis tab, start with **Fit Whole Structure** or **Reset View**, then focus on a specific residue again when you need atom-level detail.
+The atlas starts in **Keep Whole Structure View** so residue scanning preserves context. If the molecule feels too zoomed in after using an analysis tab, start with **Fit Whole Structure** or **Reset View**, then use **Focus Selected Residue** when you need atom-level detail.
 
 ## Loading Proteins
 

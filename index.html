@@ -289,6 +289,35 @@
       margin-top: 6px;
     }
 
+    .view-mode-options {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 7px;
+      margin: 8px 0;
+      padding: 9px;
+    }
+
+    .view-mode-options span {
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .view-mode-options label {
+      align-items: flex-start;
+      color: var(--muted);
+      display: flex;
+      font-size: 13px;
+      gap: 7px;
+      line-height: 1.3;
+    }
+
+    .view-mode-options input {
+      accent-color: var(--blue);
+      margin-top: 2px;
+    }
+
     .viewer-note {
       color: var(--muted);
       font-size: 12px;
@@ -750,6 +779,11 @@
         </label>
         <div class="mini-card viewer-controls">
           <h3>Structure View Controls</h3>
+          <div class="view-mode-options" role="radiogroup" aria-label="Structure view mode">
+            <span>View Mode</span>
+            <label><input id="viewModeContext" name="viewMode" type="radio" value="context" checked> Keep Whole Structure View</label>
+            <label><input id="viewModeFocus" name="viewMode" type="radio" value="focus"> Auto-Zoom to Selected Residue</label>
+          </div>
           <div class="button-row">
             <button id="fitWholeStructure">Fit Whole Structure</button>
             <button id="focusSelectedResidue">Focus Selected Residue</button>
@@ -3189,6 +3223,7 @@ END
       selectedIonIndex: 0,
       paletteMode: 'safe',
       proteinView: 'cartoon',
+      viewMode: 'context',
       showAtoms: true,
       solventType: 'exposed',
       selectedContact: null,
@@ -4612,6 +4647,22 @@ END
       if (element) element.textContent = message || '';
     }
 
+    function updateViewModeControls() {
+      document.querySelectorAll('input[name="viewMode"]').forEach(input => {
+        input.checked = input.value === state.viewMode;
+      });
+    }
+
+    function setViewMode(mode, message) {
+      state.viewMode = mode === 'focus' ? 'focus' : 'context';
+      updateViewModeControls();
+      if (message) setViewerControlMessage(message);
+    }
+
+    function shouldAutoZoomSelectedResidue() {
+      return state.viewMode === 'focus';
+    }
+
     function zoomViewerTo(selection, message) {
       if (!state.viewer || !selection) {
         setViewerControlMessage('Load a structure before using the view controls.');
@@ -4623,6 +4674,7 @@ END
     }
 
     function fitWholeStructure() {
+      setViewMode('context');
       zoomViewerTo({}, 'Showing the full loaded structure for whole-protein context.');
     }
 
@@ -4631,6 +4683,7 @@ END
         setViewerControlMessage('Load a structure before resetting the view.');
         return;
       }
+      setViewMode('context');
       state.viewer.zoomTo({ hetflag: false });
       state.viewer.render();
       setViewerControlMessage('View reset to a broad whole-protein orientation.');
@@ -4832,7 +4885,7 @@ END
       const selection = { or: neighbors.map(residueSpec) };
       state.viewer.setStyle(selection, { stick: { colorscheme: 'Jmol', radius: 0.2 }, cartoon: { color: '#f59e0b' } });
       neighbors.forEach(res => addResidueLabel(res, res === residue ? colors().selected : '#475569'));
-      state.viewer.zoomTo(selection);
+      if (shouldAutoZoomSelectedResidue()) state.viewer.zoomTo(selection);
       document.getElementById('phiValue').textContent = formatAngle(entry.phi);
       document.getElementById('psiValue').textContent = formatAngle(entry.psi);
       renderRamaResidueDetails(entry);
@@ -6223,8 +6276,12 @@ END
         tr.addEventListener('click', () => {
           state.selectedConservationResidueKey = residue.key;
           applyMode();
-          state.viewer.zoomTo(residueSpec(residue));
-          state.viewer.render();
+          if (shouldAutoZoomSelectedResidue()) {
+            state.viewer.zoomTo(residueSpec(residue));
+            state.viewer.render();
+          } else {
+            setViewerControlMessage(`${residue.label} is highlighted. Use Focus Selected Residue when you want molecular detail.`);
+          }
         });
         tbody.appendChild(tr);
       });
@@ -6933,6 +6990,17 @@ END
     document.getElementById('focusFunctionalSite').addEventListener('click', focusFunctionalSite);
     document.getElementById('resetViewerView').addEventListener('click', resetViewerView);
     document.getElementById('resetView').addEventListener('click', resetViewerView);
+    document.querySelectorAll('input[name="viewMode"]').forEach(input => {
+      input.addEventListener('change', event => {
+        setViewMode(
+          event.target.value,
+          event.target.value === 'focus'
+            ? 'Auto-Zoom to Selected Residue is on. Residue selections will move the camera to molecular detail.'
+            : 'Keep Whole Structure View is on. Residue selections will highlight without moving the camera.'
+        );
+        if (state.viewMode === 'context') fitWholeStructure();
+      });
+    });
 
     document.getElementById('residueSelect').addEventListener('change', event => {
       selectTorsionIndex(Number(event.target.value));
