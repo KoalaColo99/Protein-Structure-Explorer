@@ -492,6 +492,19 @@
       margin-top: 4px;
     }
 
+    .rama-residue-list {
+      max-height: 230px;
+      overflow: auto;
+      display: grid;
+      gap: 6px;
+      margin-top: 10px;
+      padding-right: 3px;
+    }
+
+    .rama-residue-list .item {
+      cursor: pointer;
+    }
+
     .ph-scale {
       position: relative;
       height: 66px;
@@ -707,6 +720,8 @@
               <div class="stat"><strong id="phiValue">-</strong><span>phi angle</span></div>
               <div class="stat"><strong id="psiValue">-</strong><span>psi angle</span></div>
             </div>
+            <div class="chem-note" id="ramaResidueDetails"></div>
+            <div class="rama-residue-list" id="ramaResidueList"></div>
           </div>
           <div class="rama-plot">
             <h3>Ramachandran Plot</h3>
@@ -4615,7 +4630,63 @@ END
       state.viewer.zoomTo(selection);
       document.getElementById('phiValue').textContent = formatAngle(entry.phi);
       document.getElementById('psiValue').textContent = formatAngle(entry.psi);
+      renderRamaResidueDetails(entry);
+      renderRamaResidueList();
       drawRamaPlot();
+    }
+
+    function residueHelixAssignment(residue) {
+      const matches = Object.entries(helixTypes)
+        .filter(([type]) => helixPatternBonds(type).some(hbond => hbond.from === residue || hbond.to === residue))
+        .map(([, info]) => info.label);
+      return matches.length ? `${matches.join(', ')} candidate` : '';
+    }
+
+    function residueSecondaryAssignment(residue) {
+      if (residueSheetMembership(residue)) return 'Beta-sheet record';
+      const helixAssignment = residueHelixAssignment(residue);
+      if (helixAssignment) return helixAssignment;
+      return 'No assigned helix/sheet feature in this teaching scan';
+    }
+
+    function ramaRegionLabel(entry) {
+      const { phi, psi } = entry;
+      if (phi === null || psi === null) return 'Unavailable because phi or psi is missing at this position';
+      if (phi >= -180 && phi <= -60 && psi >= 70 && psi <= 180) return 'Beta-sheet / extended region';
+      if (phi >= -70 && phi <= -35 && psi >= -45 && psi <= -5) return '3-10 helix-like region';
+      if (phi >= -85 && phi <= -35 && psi >= -95 && psi <= -55) return 'Pi-helix-like region';
+      if (phi >= -95 && phi <= -35 && psi >= -85 && psi <= -20) return 'Common alpha-helix region';
+      if (phi >= 30 && phi <= 100 && psi >= 0 && psi <= 90) return 'Left-handed helix / outlier-like region';
+      return 'Outside the common teaching regions shown here; inspect structural context before calling it an outlier';
+    }
+
+    function renderRamaResidueDetails(entry) {
+      const residue = entry.residue;
+      document.getElementById('ramaResidueDetails').innerHTML = `
+        <strong>Selected residue details</strong>
+        Residue: ${residueNames[residue.resn] || residue.resn} (${residue.resn})<br>
+        Number: ${residue.resi}<br>
+        Chain: ${residue.chain || '(blank)'}<br>
+        φ angle: ${formatAngle(entry.phi)}<br>
+        ψ angle: ${formatAngle(entry.psi)}<br>
+        Secondary structure: ${residueSecondaryAssignment(residue)}<br>
+        Ramachandran region: ${ramaRegionLabel(entry)}
+      `;
+    }
+
+    function renderRamaResidueList() {
+      const list = document.getElementById('ramaResidueList');
+      if (!list) return;
+      list.innerHTML = '';
+      state.torsions.forEach((entry, index) => {
+        const item = document.createElement('div');
+        item.className = `item${index === state.selectedResidueIndex ? ' selected' : ''}`;
+        item.dataset.torsionIndex = index;
+        item.innerHTML = `<strong>${entry.residue.label}</strong><span>${formatAngle(entry.phi)} / ${formatAngle(entry.psi)}; ${ramaRegionLabel(entry)}</span>`;
+        list.appendChild(item);
+      });
+      const selected = list.querySelector('.selected');
+      if (selected) selected.scrollIntoView({ block: 'nearest' });
     }
 
     function shownContacts() {
@@ -6438,18 +6509,26 @@ END
       document.getElementById('contactResidues').textContent = new Set(contacts.flatMap(c => [c.resA.label, c.resB.label])).size;
     }
 
+    function ramaPlotGeometry(canvas) {
+      const w = canvas.width;
+      const h = canvas.height;
+      const pad = 48;
+      return {
+        w,
+        h,
+        pad,
+        mapX: angle => pad + (angle + 180) / 360 * (w - pad * 1.35),
+        mapY: angle => h - pad - (angle + 180) / 360 * (h - pad * 1.35)
+      };
+    }
+
     function drawRamaPlot() {
       const canvas = document.getElementById('ramaCanvas');
       const ctx = canvas.getContext('2d');
-      const w = canvas.width;
-      const h = canvas.height;
+      const { w, h, pad, mapX, mapY } = ramaPlotGeometry(canvas);
       ctx.clearRect(0, 0, w, h);
       ctx.fillStyle = '#fbfdff';
       ctx.fillRect(0, 0, w, h);
-
-      const pad = 48;
-      const mapX = angle => pad + (angle + 180) / 360 * (w - pad * 1.35);
-      const mapY = angle => h - pad - (angle + 180) / 360 * (h - pad * 1.35);
 
       ctx.strokeStyle = '#dce3eb';
       ctx.lineWidth = 1;
@@ -6490,11 +6569,11 @@ END
       fillRegion(-85, -35, -95, -55, 'rgba(204,121,167,.12)');
       fillRegion(30, 100, 0, 90, 'rgba(213,94,0,.10)');
 
-      labelRegion('beta / extended', -170, 145, '#0072b2');
-      labelRegion('alpha helix', -92, -42, '#009e73');
+      labelRegion('Beta-sheet region', -170, 145, '#0072b2');
+      labelRegion('Alpha-helix region', -92, -42, '#009e73');
       labelRegion('3-10 helix', -68, -12, '#0072b2');
       labelRegion('pi helix', -78, -72, '#cc79a7');
-      labelRegion('left-handed helix', 36, 42, '#d55e00');
+      labelRegion('Left-handed helix / outlier region', 36, 42, '#d55e00');
 
       ctx.strokeStyle = '#64748b';
       ctx.lineWidth = 1.5;
@@ -6527,6 +6606,34 @@ END
         ctx.stroke();
         ctx.fill();
       }
+    }
+
+    function selectTorsionIndex(index) {
+      if (!Number.isFinite(index) || index < 0 || index >= state.torsions.length) return;
+      state.selectedResidueIndex = index;
+      document.getElementById('residueSelect').value = index;
+      document.getElementById('residueSlider').value = index;
+      applyMode();
+    }
+
+    function nearestRamaPointIndex(canvas, clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      const y = (clientY - rect.top) * (canvas.height / rect.height);
+      const { mapX, mapY } = ramaPlotGeometry(canvas);
+      let nearest = null;
+      let nearestDistance = Infinity;
+      state.torsions.forEach((entry, index) => {
+        if (entry.phi === null || entry.psi === null) return;
+        const dx = mapX(entry.phi) - x;
+        const dy = mapY(entry.psi) - y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearest = index;
+        }
+      });
+      return nearestDistance <= 18 ? nearest : null;
     }
 
     function selectedPresetLabel(id) {
@@ -6621,9 +6728,18 @@ END
     });
 
     document.getElementById('residueSelect').addEventListener('change', event => {
-      state.selectedResidueIndex = Number(event.target.value);
-      document.getElementById('residueSlider').value = state.selectedResidueIndex;
-      applyMode();
+      selectTorsionIndex(Number(event.target.value));
+    });
+
+    document.getElementById('ramaResidueList').addEventListener('click', event => {
+      const item = event.target.closest('[data-torsion-index]');
+      if (!item) return;
+      selectTorsionIndex(Number(item.dataset.torsionIndex));
+    });
+
+    document.getElementById('ramaCanvas').addEventListener('click', event => {
+      const index = nearestRamaPointIndex(event.currentTarget, event.clientX, event.clientY);
+      if (index !== null) selectTorsionIndex(index);
     });
 
     document.getElementById('helixType').addEventListener('change', event => {
@@ -6641,9 +6757,7 @@ END
     });
 
     document.getElementById('residueSlider').addEventListener('input', event => {
-      state.selectedResidueIndex = Number(event.target.value);
-      document.getElementById('residueSelect').value = state.selectedResidueIndex;
-      applyMode();
+      selectTorsionIndex(Number(event.target.value));
     });
 
     document.getElementById('contactType').addEventListener('change', event => {
