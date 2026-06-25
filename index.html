@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Protein Structure & Chemistry Explorer</title>
+  <title>Biochemistry Visual Atlas</title>
   <script src="./3Dmol-min.js"></script>
   <style>
     :root {
@@ -102,6 +102,48 @@
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       margin-bottom: 16px;
+    }
+
+    .atlas-nav {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .atlas-group {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 9px;
+    }
+
+    .atlas-group h2 {
+      margin: 0 0 7px;
+      font-size: 14px;
+    }
+
+    .atlas-tools {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .atlas-tools button {
+      min-height: 42px;
+      padding: 8px 9px;
+    }
+
+    .atlas-tools button[disabled] {
+      cursor: not-allowed;
+      opacity: .62;
+      background: #f8fafc;
+    }
+
+    .coming-soon {
+      color: var(--muted);
+      display: block;
+      font-size: 11px;
+      margin-top: 2px;
     }
 
     button, select, input[type="range"], input[type="text"], textarea {
@@ -494,6 +536,10 @@
       .stage { min-height: 58vh; border-right: 0; border-bottom: 1px solid var(--line); }
       .sidebar { max-height: none; }
     }
+
+    @media (max-width: 520px) {
+      .atlas-tools { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -510,26 +556,57 @@
     </section>
 
     <aside class="sidebar">
-      <h1>Protein Structure & Chemistry Explorer</h1>
-      <p class="subhead">Rotate, zoom, and switch overlays to connect protein shape, noncovalent interactions, pH, solvent exposure, topology, and atom-level chemistry.</p>
+      <h1>Biochemistry Visual Atlas</h1>
+      <p class="subhead">Explore proteins, chemical properties, function, and future prediction tools while keeping the 3D structure in view.</p>
 
-      <div class="tabs" id="modeTabs">
-        <button class="active" data-mode="overview">Overview</button>
-        <button data-mode="hbonds">Backbone H-bonds</button>
-        <button data-mode="helixPatterns">Helix Patterns</button>
-        <button data-mode="torsions">Phi / Psi Angles</button>
-        <button data-mode="tertiary">Side-chain Contacts</button>
-        <button data-mode="chemistry">Chemistry Lens</button>
-        <button data-mode="ph">pH & Charge</button>
-        <button data-mode="solvent">Solvent Access</button>
-        <button data-mode="hydrophobic">Hydrophobic Core</button>
-        <button data-mode="chargeSurface">Charge Surface</button>
-        <button data-mode="conservation">Conservation</button>
-        <button data-mode="mutation">Mutation Sandbox</button>
-        <button data-mode="lesson">Guided Lesson</button>
-        <button data-mode="gallery">Gallery Builder</button>
-        <button data-mode="betaTopology">Beta / Topology</button>
+      <div class="atlas-nav" id="modeTabs" aria-label="Biochemistry Visual Atlas navigation">
+        <div class="atlas-group">
+          <h2>Protein Explorer</h2>
+          <div class="atlas-tools">
+            <button class="active" data-mode="overview">Structure</button>
+            <button disabled>Sequence<span class="coming-soon">Coming soon</span></button>
+            <button data-mode="conservation">Conservation</button>
+            <button data-mode="torsions">Ramachandran</button>
+            <button data-mode="hbonds">Backbone H-bonds</button>
+            <button data-mode="tertiary">Side-chain Interactions</button>
+            <button data-mode="helixPatterns">Helix Patterns</button>
+            <button data-mode="betaTopology">Beta / Topology</button>
+            <button data-mode="solvent">Solvent Access</button>
+            <button data-mode="hydrophobic">Hydrophobic Core</button>
+          </div>
+        </div>
+        <div class="atlas-group">
+          <h2>Chemical Properties</h2>
+          <div class="atlas-tools">
+            <button data-mode="ph">pH & Charge</button>
+            <button data-mode="ph">Buffers</button>
+            <button data-mode="ph">Amino Acids</button>
+            <button data-mode="chemistry">Chemistry Lens</button>
+            <button data-mode="chargeSurface">Charge Surface</button>
+          </div>
+        </div>
+        <div class="atlas-group">
+          <h2>Function</h2>
+          <div class="atlas-tools">
+            <button disabled>Ligands<span class="coming-soon">Coming soon</span></button>
+            <button disabled>Active Sites<span class="coming-soon">Coming soon</span></button>
+            <button data-mode="mutation">Mutation Explorer</button>
+            <button data-mode="lesson">Guided Lesson</button>
+          </div>
+        </div>
+        <div class="atlas-group">
+          <h2>Prediction</h2>
+          <div class="atlas-tools">
+            <button disabled>AlphaFold<span class="coming-soon">Coming soon</span></button>
+            <button data-mode="gallery">Comparative Structures</button>
+          </div>
+        </div>
       </div>
+
+      <section class="section">
+        <h2>Atlas Overview</h2>
+        <p>The atlas is organized into four modules: Protein Explorer for structure and conservation, Chemical Properties for pH and charge, Function for biochemical interpretation, and Prediction for future model-comparison tools.</p>
+      </section>
 
       <section class="section">
         <h2>Display</h2>

@@ -1,8 +1,17 @@
-# Protein Structure & Chemistry Explorer
+# Biochemistry Visual Atlas
 
-An interactive browser-based teaching tool for connecting protein structure, noncovalent interactions, pH, solvent exposure, topology, conservation, mutation effects, and atom-level chemistry.
+An interactive browser-based teaching atlas for connecting protein structure, noncovalent interactions, pH, solvent exposure, topology, conservation, mutation effects, and atom-level chemistry.
 
 Open `index.html` in a browser, or publish this folder with GitHub Pages.
+
+## Atlas Modules
+
+The app is organized into four navigation groups:
+
+- **Protein Explorer:** structure, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, and hydrophobic regions.
+- **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface tools.
+- **Function:** mutation exploration and guided lessons, with Ligands and Active Sites marked as coming soon.
+- **Prediction:** Comparative Structures is available through the existing structure-loading workflow; AlphaFold is shown as coming soon and is not implemented yet.
 
 ## Entering PDB Codes
 

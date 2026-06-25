@@ -1,14 +1,21 @@
-# Protein Structure & Chemistry Explorer User Guide
+# Biochemistry Visual Atlas User Guide
 
 ## What This Tool Is
 
-The Protein Structure & Chemistry Explorer is an interactive teaching tool for connecting protein structure to chemical reasoning. It opens with myoglobin 1MBN, but students can load other RCSB PDB IDs and inspect the same kinds of structural features when the needed coordinates are available.
+The Biochemistry Visual Atlas is an interactive teaching tool for connecting protein structure to chemical reasoning. It opens with myoglobin 1MBN, but students can load other RCSB PDB IDs and inspect the same kinds of structural features when the needed coordinates are available.
 
 The tool is designed for guided exploration rather than one-click answers. Many overlays are heuristic teaching aids, so students should use them to generate evidence-based claims and then compare those claims with the 3D structure.
 
 ## Getting Started
 
 Open `index.html` in a browser. The structure viewer is on the left, and the feature controls are on the right.
+
+The atlas navigation is organized into four modules:
+
+- **Protein Explorer:** structure, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, and hydrophobic regions.
+- **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface.
+- **Function:** mutation exploration and guided lessons. Ligands and Active Sites are visible as coming-soon entries.
+- **Prediction:** Comparative Structures uses the current structure-loading tools. AlphaFold is visible as coming soon and is not implemented yet.
 
 Use the mouse or trackpad to rotate, zoom, and pan the molecule. Use the Display controls to change the protein representation:
 
