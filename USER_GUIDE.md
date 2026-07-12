@@ -120,13 +120,24 @@ Shows the full protein fold. Cartoon view makes helices, sheets, loops, domains,
 
 Displays the loaded structure as a one-letter amino-acid sequence derived from parsed PDB atom records. Chain labels and residue numbers are shown under each one-letter code. Click a residue in the sequence to select the same residue used by the Ramachandran and 3D structure views.
 
+The Sequence Explorer now separates three ideas:
+
+- **Structure Sequence:** residues represented in the currently loaded molecular structure.
+- **Reference Sequence:** a complete, instructor-curated protein sequence record.
+- **Comparative Sequence Set:** a local collection of reference sequences selected for later comparison.
+
+Reference Sequences may include residues that are not visible in the loaded structure because the PDB model can be incomplete, engineered, mutated, truncated, or missing flexible regions. Do not assume that a reference-sequence position, an alignment position, and a PDB residue number are the same unless the tool explicitly provides a validated mapping.
+
 Students can glean:
 
 - The order of parsed amino-acid residues in the loaded model.
 - Where chain breaks or residue-numbering gaps occur.
 - How a sequence position connects to its residue label and 3D location.
+- Which curated reference sequence datasets are available for later comparison, including organism, protein/gene name, broad taxonomic group, photosynthetic category when applicable, source accession, and sequence length.
 
 Important limitation: this sequence is not downloaded separately from UniProt or RCSB FASTA. It reflects residues that are present and parsed in the loaded PDB coordinates, so unresolved residues, missing loops, engineered tags, alternate numbering, or nonstandard residues may affect what appears.
+
+The current Rubisco comparative sequence set is a placeholder for instructor-verified records. It should not be used for biological interpretation until accessions, organisms, classifications, citations, and amino-acid sequences have been verified and added.
 
 ### Backbone H-bonds
 

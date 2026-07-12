@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Biochemistry Visual Atlas</title>
   <script src="./3Dmol-min.js"></script>
+  <script src="./curated_sequence_validation.js"></script>
+  <script src="./data/curated_sequence_sets.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -503,6 +505,41 @@
       padding: 0 10px 8px;
     }
 
+    .reference-sequence-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      margin-top: 10px;
+      padding: 10px;
+    }
+
+    .reference-sequence-card h4 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+
+    .reference-sequence-meta {
+      color: var(--muted);
+      display: grid;
+      gap: 3px;
+      font-size: 12px;
+      margin: 6px 0 8px;
+    }
+
+    .sequence-label {
+      color: var(--blue);
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    #curatedSequencePanel {
+      margin-top: 12px;
+    }
+
     .swatch {
       border: 1px solid rgba(15, 23, 42, .25);
       border-radius: 4px;
@@ -875,6 +912,14 @@
         <div class="chem-note"><strong>Structure sequence:</strong> Residues represented in the currently loaded molecular structure. Some residues from the complete protein sequence may be absent.</div>
         <div class="chem-note" id="sequenceNote"></div>
         <div id="sequenceViewer"></div>
+        <div class="mini-card" id="curatedSequencePanel">
+          <h3>Comparative Sequence Set</h3>
+          <p>Choose an instructor-curated dataset of complete reference sequences for later comparison. These records are not assumed to match structure residue numbers.</p>
+          <label for="curatedSequenceDataset">Curated dataset</label>
+          <select id="curatedSequenceDataset"></select>
+          <div class="chem-note" id="curatedSequenceDatasetNote"></div>
+          <div id="curatedReferenceSequences"></div>
+        </div>
       </section>
 
       <section class="section mode-panel hidden" id="hbondsPanel">
@@ -3283,6 +3328,8 @@ END
       conservationSources: [],
       sheets: [],
       mode: 'overview',
+      curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
+      curatedSequenceValidation: null,
       selectedHbond: null,
       selectedResidueIndex: 0,
       contactType: 'all',
@@ -4715,6 +4762,128 @@ END
       setStatus();
     }
 
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function displayValue(value, fallback = 'not provided') {
+      const text = String(value || '').trim();
+      return text || fallback;
+    }
+
+    function curatedSequenceValidation() {
+      if (state.curatedSequenceValidation) return state.curatedSequenceValidation;
+      const source = window.BVA_CURATED_SEQUENCE_SETS || {
+        formatVersion: 1,
+        acceptedResidueSymbols: 'ACDEFGHIKLMNPQRSTVWYBXZ',
+        datasets: []
+      };
+      if (!window.BVASequenceValidation?.validateCuratedSequenceSets) {
+        state.curatedSequenceValidation = {
+          ok: false,
+          errors: ['Curated sequence validation tools are unavailable.'],
+          warnings: [],
+          datasets: []
+        };
+        return state.curatedSequenceValidation;
+      }
+      state.curatedSequenceValidation = window.BVASequenceValidation.validateCuratedSequenceSets(source);
+      return state.curatedSequenceValidation;
+    }
+
+    function currentCuratedSequenceDataset() {
+      const validation = curatedSequenceValidation();
+      return validation.datasets.find(dataset => dataset.datasetId === state.curatedSequenceDatasetId) || validation.datasets[0];
+    }
+
+    function renderCuratedSequenceDatasetSelector() {
+      const select = document.getElementById('curatedSequenceDataset');
+      if (!select) return;
+      const validation = curatedSequenceValidation();
+      select.innerHTML = '';
+      if (!validation.datasets.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No curated datasets available';
+        select.appendChild(option);
+        select.disabled = true;
+        return;
+      }
+      select.disabled = false;
+      validation.datasets.forEach(dataset => {
+        const option = document.createElement('option');
+        option.value = dataset.datasetId;
+        option.textContent = dataset.title;
+        select.appendChild(option);
+      });
+      const selected = currentCuratedSequenceDataset();
+      state.curatedSequenceDatasetId = selected?.datasetId || validation.datasets[0].datasetId;
+      select.value = state.curatedSequenceDatasetId;
+    }
+
+    function renderReferenceSequenceCard(record) {
+      const sequence = record.aminoAcidSequence || '';
+      const metadata = [
+        `Organism: ${displayValue(record.organism)}`,
+        `Protein/Gene: ${displayValue(record.proteinName)} / ${displayValue(record.geneName)}`,
+        `Broad taxonomic group: ${displayValue(record.broadTaxonomicGroup)}`,
+        `Photosynthetic category: ${displayValue(record.photosyntheticCategory, 'not applicable or not provided')}`,
+        `Source: ${displayValue(record.sourceDatabase)} ${displayValue(record.sourceAccession)}`,
+        `Length: ${sequence.length} amino acids`,
+        `Optional structure ID: ${displayValue(record.structureIdentifier)}`
+      ];
+      if (record.sourceCitation) metadata.push(`Citation: ${record.sourceCitation}`);
+      if (record.notes) metadata.push(`Notes: ${record.notes}`);
+      return `
+        <article class="reference-sequence-card">
+          <span class="sequence-label">Reference Sequence</span>
+          <h4>${escapeHtml(record.stableSequenceId)}</h4>
+          <div class="reference-sequence-meta">${metadata.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</div>
+          <div class="diagram-box" aria-label="Amino-acid sequence for ${escapeHtml(record.stableSequenceId)}">${escapeHtml(sequence || 'No sequence provided')}</div>
+        </article>
+      `;
+    }
+
+    function renderCuratedSequencePanel() {
+      renderCuratedSequenceDatasetSelector();
+      const note = document.getElementById('curatedSequenceDatasetNote');
+      const container = document.getElementById('curatedReferenceSequences');
+      if (!note || !container) return;
+      const validation = curatedSequenceValidation();
+      const dataset = currentCuratedSequenceDataset();
+      if (!dataset) {
+        note.innerHTML = '<strong>Reference sequences unavailable</strong>No local curated sequence datasets were found.';
+        container.innerHTML = '';
+        return;
+      }
+
+      const messages = [];
+      if (dataset.description) messages.push(dataset.description);
+      messages.push('Reference Sequences are complete curated protein sequences. They may contain residues that are absent from the currently loaded molecular structure.');
+      messages.push('No sequence-to-structure mapping is performed here, so reference-sequence positions should not be treated as PDB residue numbers.');
+      if (dataset.status) messages.push(`Dataset status: ${dataset.status}.`);
+      if (dataset.notes) messages.push(dataset.notes);
+      validation.warnings.forEach(warning => messages.push(warning));
+      validation.errors.forEach(error => messages.push(`Validation issue: ${error}`));
+      note.innerHTML = `<strong>${escapeHtml(dataset.title)}</strong>${messages.map(message => escapeHtml(message)).join(' ')}`;
+
+      if (!validation.ok) {
+        container.innerHTML = '<div class="warning-text">This curated sequence dataset has validation issues and should be corrected before classroom use.</div>';
+        return;
+      }
+      if (!dataset.records.length) {
+        container.innerHTML = '<div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified Rubisco large subunit sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>';
+        return;
+      }
+      container.innerHTML = dataset.records.map(renderReferenceSequenceCard).join('');
+    }
+
     function sequenceSegments() {
       const segments = [];
       let current = null;
@@ -4739,6 +4908,7 @@ END
     function drawSequence() {
       const container = document.getElementById('sequenceViewer');
       if (!container) return;
+      renderCuratedSequencePanel();
       const sequence = sequenceFromResidues(state.residues);
       const selectedEntry = state.torsions[state.selectedResidueIndex];
       const selectedResidue = selectedEntry?.residue || state.residues[state.selectedResidueIndex];
@@ -7157,6 +7327,11 @@ END
       const item = event.target.closest('[data-sequence-index]');
       if (!item) return;
       selectTorsionIndex(Number(item.dataset.sequenceIndex));
+    });
+
+    document.getElementById('curatedSequenceDataset').addEventListener('change', event => {
+      state.curatedSequenceDatasetId = event.target.value;
+      renderCuratedSequencePanel();
     });
 
     document.getElementById('ramaCanvas').addEventListener('click', event => {
