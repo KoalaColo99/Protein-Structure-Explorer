@@ -702,6 +702,8 @@
     }
 
     .alignment-block {
+      --alignment-column-width: 18px;
+      --alignment-label-width: 190px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fff;
@@ -712,40 +714,65 @@
 
     .alignment-row {
       display: grid;
-      grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: var(--alignment-label-width) max-content;
+      gap: 0;
       margin: 8px 0;
+      min-width: max-content;
     }
 
     .alignment-row-label {
+      box-sizing: border-box;
       color: var(--muted);
       font-size: 12px;
       line-height: 1.35;
+      padding-right: 10px;
+      width: var(--alignment-label-width);
     }
 
     .alignment-sequence {
+      box-sizing: border-box;
+      display: grid;
+      gap: 0;
+      grid-template-columns: repeat(var(--alignment-block-column-count), var(--alignment-column-width));
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px;
+      letter-spacing: 0;
       line-height: 1.45;
-      white-space: pre;
+      white-space: normal;
+      width: max-content;
     }
 
     .alignment-marker {
       color: var(--muted);
     }
 
+    .alignment-marker-cell {
+      align-items: center;
+      box-sizing: border-box;
+      display: flex;
+      justify-content: center;
+      min-width: 0;
+      width: var(--alignment-column-width);
+    }
+
     .alignment-cell {
+      align-items: center;
       appearance: none;
       background: transparent;
       border: 1px solid transparent;
       border-radius: 4px;
+      box-sizing: border-box;
       color: inherit;
       cursor: pointer;
+      display: flex;
       font: inherit;
+      justify-content: center;
       line-height: 1.45;
-      min-width: 1.35ch;
-      padding: 0 1px;
+      margin: 0;
+      min-width: 0;
+      padding: 0;
       text-align: center;
+      width: var(--alignment-column-width);
     }
 
     .alignment-cell:hover,
@@ -837,10 +864,12 @@
 
     .alignment-track {
       align-items: end;
-      display: inline-flex;
-      gap: 1px;
+      box-sizing: border-box;
+      display: grid;
+      gap: 0;
+      grid-template-columns: repeat(var(--alignment-block-column-count), var(--alignment-column-width));
       min-height: 34px;
-      white-space: nowrap;
+      width: max-content;
     }
 
     .alignment-track-cell {
@@ -848,13 +877,16 @@
       background: #dbeafe;
       border: 1px solid #94a3b8;
       border-radius: 3px 3px 0 0;
+      box-sizing: border-box;
       color: #111827;
       cursor: pointer;
       font-size: 8px;
       font-weight: 800;
-      min-width: 1.45ch;
+      margin: 0;
+      min-width: 0;
       padding: 0;
       position: relative;
+      width: var(--alignment-column-width);
     }
 
     .alignment-track-cell[data-gap="true"] {
@@ -1140,7 +1172,7 @@
 
     @media (max-width: 760px) {
       .rama-layout { grid-template-columns: 1fr; }
-      .alignment-row { grid-template-columns: 1fr; }
+      .alignment-block { --alignment-label-width: 150px; }
     }
 
     @media (max-width: 520px) {
@@ -5763,6 +5795,12 @@ END
       }).join('');
     }
 
+    function renderAlignmentMarkerCells(block) {
+      return [...alignmentMarkerLine(block.start, block.sequence)]
+        .map(marker => `<span class="alignment-marker-cell">${escapeHtml(marker)}</span>`)
+        .join('');
+    }
+
     function trackBandLabel(summary) {
       if (summary.finalScore === null || summary.finalScore === undefined) return 'NA';
       if (summary.finalScore >= 0.9) return 'VH';
@@ -5808,11 +5846,11 @@ END
           `;
         }).join('');
         return `
-          <div class="alignment-block">
+          <div class="alignment-block" style="--alignment-block-column-count:${block.sequence.length}">
             <h4>Alignment columns ${block.start}-${block.end}</h4>
             <div class="alignment-row">
               <div class="alignment-row-label">Column marker</div>
-              <code class="alignment-sequence alignment-marker" aria-label="Alignment position markers">${escapeHtml(alignmentMarkerLine(block.start, block.sequence))}</code>
+              <div class="alignment-sequence alignment-marker" aria-label="Alignment position markers">${renderAlignmentMarkerCells(block)}</div>
             </div>
             <div class="alignment-row">
               <div class="alignment-row-label">Atlas score track<br><span>G = gap present</span></div>

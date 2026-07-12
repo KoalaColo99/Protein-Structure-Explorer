@@ -1081,6 +1081,43 @@ run('Alignment View includes an accessible selectable conservation track', () =>
   ].forEach(text => assert(indexHtml.includes(text), `Missing conservation track text: ${text}`));
 });
 
+run('Alignment View uses one shared grid coordinate model for marker, score track, and sequence rows', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    '--alignment-column-width: 18px',
+    '--alignment-label-width: 190px',
+    'grid-template-columns: repeat(var(--alignment-block-column-count), var(--alignment-column-width))',
+    'style="--alignment-block-column-count:${block.sequence.length}"',
+    'renderAlignmentMarkerCells(block)',
+    'class="alignment-marker-cell"',
+    'letter-spacing: 0',
+    'box-sizing: border-box',
+    '.alignment-block { --alignment-label-width: 150px; }'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing shared alignment-grid text: ${text}`));
+  assert(!indexHtml.includes('display: inline-flex'));
+  assert(!indexHtml.includes('gap: 1px;'));
+  assert(!indexHtml.includes('.alignment-row { grid-template-columns: 1fr; }'));
+});
+
+run('Alignment View block slicing supports first middle final and gap-containing blocks without independent wrapping', () => {
+  const alignment = productionAlignmentValidation().alignments[0];
+  const blocks = alignmentColumnRows(alignment.records[0].alignedSequence, 60);
+  assert(blocks.length > 2);
+  assert.strictEqual(blocks[0].start, 1);
+  assert.strictEqual(blocks[0].sequence.length, 60);
+  const middle = blocks[Math.floor(blocks.length / 2)];
+  assert.strictEqual(middle.sequence.length, 60);
+  const final = blocks[blocks.length - 1];
+  assert(final.sequence.length > 0 && final.sequence.length <= 60);
+  blocks.forEach(block => {
+    alignment.records.forEach(record => {
+      const chunk = record.alignedSequence.slice(block.start - 1, block.end);
+      assert.strictEqual(chunk.length, block.sequence.length);
+    });
+  });
+  assert(blocks.some(block => alignment.records.some(record => record.alignedSequence.slice(block.start - 1, block.end).includes('-'))));
+});
+
 run('Alignment View clears selected column when dataset changes', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('state.selectedAlignmentColumnIndex = null;'));
