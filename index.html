@@ -129,6 +129,41 @@
       padding-left: 18px;
     }
 
+    .capability-availability-list {
+      display: grid;
+      gap: 8px;
+      list-style: none;
+      margin: 10px 0 14px;
+      padding: 0;
+    }
+
+    .capability-availability-item {
+      border: 1px solid var(--line);
+      border-left: 4px solid #94a3b8;
+      border-radius: 8px;
+      display: grid;
+      gap: 3px;
+      padding: 8px;
+    }
+
+    .capability-availability-item[data-renderable="true"] {
+      border-left-color: #0072b2;
+      background: #f8fbff;
+    }
+
+    .capability-availability-item strong,
+    .capability-availability-item span,
+    .capability-availability-item small {
+      display: block;
+    }
+
+    .capability-availability-item span,
+    .capability-availability-item small {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
     .hud {
       position: absolute;
       left: 16px;
@@ -730,6 +765,12 @@
       font-weight: 800;
     }
 
+    .alignment-cell.disabled {
+      color: var(--muted);
+      cursor: default;
+      opacity: .75;
+    }
+
     .alignment-column-tools {
       align-items: end;
       display: flex;
@@ -1259,8 +1300,8 @@
         <p>Explore instructor-curated reference sequences and alignments. This mode is separate from the structure-derived sequence of the currently loaded molecular model.</p>
         <div class="mini-card" id="curatedSequencePanel">
           <h3>Comparative Sequence Set</h3>
-          <p>Choose an instructor-curated dataset of complete reference sequences for later comparison. These records are not assumed to match structure residue numbers.</p>
-          <label for="curatedSequenceDataset">Curated dataset</label>
+          <p>Inspect the active registry-resolved dataset of complete reference sequences. These records are not assumed to match structure residue numbers.</p>
+          <label for="curatedSequenceDataset">Registry-resolved curated dataset</label>
           <select id="curatedSequenceDataset"></select>
           <div class="chem-note" id="curatedSequenceDatasetNote"></div>
           <div class="view-mode-options" role="radiogroup" aria-label="Sequence explorer view">
@@ -1273,7 +1314,7 @@
           <div class="reference-details-card" id="referenceSequenceDetailsPanel" aria-live="polite">
             <h3>Reference Sequence Details</h3>
             <div class="chem-note"><strong>Reference sequences:</strong> Reference sequences represent complete curated protein sequences and may include residues not present in the currently loaded molecular structure.</div>
-            <div class="chem-note"><strong>Photosynthetic categories:</strong> Photosynthetic categories such as C3 and C4 describe organism-level physiology and are not determined by the RbcL sequence alone.</div>
+            <div class="chem-note"><strong>Organism-level categories:</strong> Categories such as C3 and C4 describe organism-level physiology and are not determined by a single protein sequence alone.</div>
             <div id="referenceSequenceDetails"></div>
           </div>
         </div>
@@ -3685,6 +3726,7 @@ END
       conservationSources: [],
       sheets: [],
       mode: 'overview',
+      activeEvolutionDatasetId: 'rubisco',
       curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
       curatedSequenceValidation: null,
       curatedAlignmentValidation: null,
@@ -5347,13 +5389,104 @@ END
     }
 
     function currentCuratedSequenceDataset() {
+      const registryDataset = activeEvolutionRegistryDataset();
+      const sequenceDatasetId = registryDataset?.resources?.curatedSequenceDatasetId;
       const validation = curatedSequenceValidation();
-      return validation.datasets.find(dataset => dataset.datasetId === state.curatedSequenceDatasetId) || validation.datasets[0];
+      if (!sequenceDatasetId) return null;
+      const dataset = validation.datasets.find(item => item.datasetId === sequenceDatasetId) || null;
+      if (dataset) state.curatedSequenceDatasetId = dataset.datasetId;
+      return dataset;
     }
 
     function currentCuratedAlignment() {
+      const registryDataset = activeEvolutionRegistryDataset();
+      const alignmentId = registryDataset?.resources?.curatedAlignmentId;
       const validation = curatedAlignmentValidation();
-      return validation.alignments.find(alignment => alignment.datasetId === state.curatedSequenceDatasetId) || null;
+      if (!alignmentId) return null;
+      return validation.alignments.find(alignment => alignment.alignmentId === alignmentId) || null;
+    }
+
+    const CAPABILITY_LABELS = {
+      system: 'System',
+      structure: 'Structure',
+      evolution: 'Evolution',
+      function: 'Function',
+      referenceSequences: 'Reference sequences',
+      comparativeSequenceOverview: 'Comparative sequence overview',
+      alignment: 'Alignment',
+      alignmentColumnExploration: 'Alignment-column exploration',
+      descriptiveColumnStatistics: 'Descriptive column statistics',
+      atlasConservationScore: 'Atlas conservation score',
+      phylogeny: 'Phylogeny',
+      sequenceToStructureMapping: 'Sequence-to-structure mapping'
+    };
+
+    const CONCEPT_LABELS = {
+      photosynthesis: 'Photosynthesis',
+      enzymes: 'Enzymes',
+      carbon_fixation: 'Carbon fixation',
+      globins: 'Globins',
+      oxygen_binding: 'Oxygen binding',
+      protein_structure: 'Protein structure'
+    };
+
+    const MODULE_LABELS = {
+      system: 'System',
+      structure: 'Structure',
+      evolution: 'Evolution',
+      function: 'Function'
+    };
+
+    function readableIdLabel(value, labels = {}) {
+      const key = String(value || '').trim();
+      if (!key) return '';
+      return labels[key] || key.replace(/[_-]+/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+    }
+
+    function activeEvolutionRegistryDataset() {
+      const validation = atlasRegistryValidation();
+      return validation.datasets.find(dataset => dataset.stableDatasetId === state.activeEvolutionDatasetId) || null;
+    }
+
+    function activeEvolutionCapability(capabilityId) {
+      const dataset = activeEvolutionRegistryDataset();
+      if (!dataset || !window.BVAAtlasRegistryValidation?.getCapabilityAvailability) {
+        return {
+          capabilityId,
+          declaredStatus: 'missing',
+          renderable: false,
+          reasonCode: 'CAPABILITY_STATUS_MISSING',
+          studentMessage: 'This capability is not available for the selected dataset yet.',
+          developerMessage: 'Atlas registry dataset or capability resolver is unavailable.'
+        };
+      }
+      return window.BVAAtlasRegistryValidation.getCapabilityAvailability(dataset, capabilityId, atlasCapabilityResourceContext());
+    }
+
+    function activeEvolutionCapabilityRenderable(capabilityId) {
+      const dataset = activeEvolutionRegistryDataset();
+      if (!dataset || !window.BVAAtlasRegistryValidation?.isCapabilityRenderable) return false;
+      return window.BVAAtlasRegistryValidation.isCapabilityRenderable(dataset, capabilityId, atlasCapabilityResourceContext());
+    }
+
+    function capabilityStudentLabel(result) {
+      if (result.renderable) return 'Available now';
+      if (result.declaredStatus === 'partial') return 'Partially available';
+      if (result.declaredStatus === 'planned') return 'Planned';
+      if (result.declaredStatus === 'unavailable' || result.declaredStatus === 'archived') return 'Not yet available';
+      return 'Temporarily unavailable because required data could not be validated';
+    }
+
+    function capabilityStudentMessage(result) {
+      if (result.renderable) return 'Required data are present, validated, and consistent with this dataset.';
+      if (result.reasonCode === 'CAPABILITY_STATUS_PLANNED') return 'This feature is planned for a future Atlas version.';
+      if (result.reasonCode === 'CAPABILITY_STATUS_UNAVAILABLE') return 'No verified resource is registered for this feature yet.';
+      if (result.reasonCode === 'CAPABILITY_DEPENDENCY_UNAVAILABLE') return 'A required supporting feature is not available yet.';
+      if (result.reasonCode === 'RESOURCE_DATASET_MISMATCH') return 'A registered resource does not match the active dataset.';
+      if (result.reasonCode === 'RESOURCE_REFERENCE_UNKNOWN') return 'A registered resource reference could not be resolved.';
+      if (result.reasonCode === 'REQUIRED_RESOURCE_MISSING') return 'A required resource reference is missing.';
+      if (result.reasonCode === 'RESOURCE_VALIDATION_FAILED') return 'The required data could not be validated for classroom use.';
+      return result.studentMessage || 'This feature is not available for the selected dataset yet.';
     }
 
     function curatedDatasetSummary(dataset) {
@@ -5372,6 +5505,83 @@ END
       };
     }
 
+    function listItems(values, labels = {}) {
+      const items = (values || [])
+        .filter(value => String(value || '').trim() !== '')
+        .map(value => `<li>${escapeHtml(readableIdLabel(value, labels))}</li>`)
+        .join('');
+      return items || '<li>Not provided</li>';
+    }
+
+    function renderCapabilityItem(capabilityId) {
+      const result = activeEvolutionCapability(capabilityId);
+      const statusLabel = capabilityStudentLabel(result);
+      const message = capabilityStudentMessage(result);
+      return `
+        <li class="capability-availability-item" data-renderable="${result.renderable ? 'true' : 'false'}">
+          <strong>${escapeHtml(CAPABILITY_LABELS[capabilityId] || readableIdLabel(capabilityId))}</strong>
+          <span>Declared: ${escapeHtml(result.declaredStatus || 'missing')}</span>
+          <span>${escapeHtml(statusLabel)}</span>
+          <small>${escapeHtml(message)}</small>
+        </li>
+      `;
+    }
+
+    function renderAvailableAtlasLenses() {
+      const majorLenses = ['system', 'structure', 'evolution', 'function'];
+      const evolutionCapabilities = [
+        'referenceSequences',
+        'comparativeSequenceOverview',
+        'alignment',
+        'alignmentColumnExploration',
+        'descriptiveColumnStatistics',
+        'atlasConservationScore',
+        'phylogeny',
+        'sequenceToStructureMapping'
+      ];
+      return `
+        <section class="mini-card">
+          <h3>Available Atlas Lenses</h3>
+          <p class="caption">Feature availability is checked with the registry, required resources, validators, and dependency rules. Status alone is not enough.</p>
+          <h4>Major Lenses</h4>
+          <ul class="capability-availability-list">${majorLenses.map(renderCapabilityItem).join('')}</ul>
+          <h4>Evolution Sub-Capabilities</h4>
+          <ul class="capability-availability-list">${evolutionCapabilities.map(renderCapabilityItem).join('')}</ul>
+        </section>
+      `;
+    }
+
+    function renderRegistryDatasetIdentity(registryDataset) {
+      const educational = registryDataset?.educational || {};
+      return `
+        <section class="mini-card">
+          <span class="sequence-label">Active Atlas Dataset</span>
+          <h3>${escapeHtml(registryDataset.title)}</h3>
+          <p><strong>${escapeHtml(registryDataset.canonicalBiologicalName)}</strong></p>
+          <p>${escapeHtml(registryDataset.shortDescription)}</p>
+          <div class="evolution-summary-grid" aria-label="Active Atlas dataset identity">
+            <div class="evolution-summary-card"><strong>Dataset type</strong><span>${escapeHtml(readableIdLabel(registryDataset.datasetType))}</span></div>
+            <div class="evolution-summary-card"><strong>Dataset status</strong><span>${escapeHtml(readableIdLabel(registryDataset.status))}</span></div>
+            <div class="evolution-summary-card"><strong>Protein class</strong><span>${escapeHtml(displayValue(registryDataset.proteinClass))}</span></div>
+            <div class="evolution-summary-card"><strong>Protein family</strong><span>${escapeHtml(displayValue(registryDataset.proteinFamily))}</span></div>
+            <div class="evolution-summary-card"><strong>Course level</strong><span>${escapeHtml(displayValue(educational.suggestedCourseLevel))}</span></div>
+            <div class="evolution-summary-card"><strong>Exploration time</strong><span>${escapeHtml(displayValue(educational.estimatedExplorationTime))}</span></div>
+          </div>
+          ${educational.guidingQuestion ? `<div class="chem-note"><strong>Guiding question</strong>${escapeHtml(educational.guidingQuestion)}</div>` : ''}
+          <div class="evolution-summary-grid">
+            <div class="evolution-summary-card"><strong>Concept labels</strong><ul class="evolution-list">${listItems(registryDataset.conceptIds, CONCEPT_LABELS)}</ul></div>
+            <div class="evolution-summary-card"><strong>Module labels</strong><ul class="evolution-list">${listItems(registryDataset.moduleIds, MODULE_LABELS)}</ul></div>
+          </div>
+          <h4>Prerequisite Concepts</h4>
+          <ul class="evolution-list">${listItems(educational.prerequisiteConcepts)}</ul>
+          <h4>Learning Objectives</h4>
+          <ul class="evolution-list">${listItems(educational.learningObjectives)}</ul>
+          <h4>Cautions and Limitations</h4>
+          <ul class="evolution-list">${listItems(educational.cautionNotes)}</ul>
+        </section>
+      `;
+    }
+
     function updateSequenceStageOverview() {
       const stage = document.querySelector('.stage');
       const panel = document.getElementById('sequenceStageOverview');
@@ -5381,12 +5591,14 @@ END
       panel.classList.toggle('hidden', !isSequenceMode);
       if (!isSequenceMode) return;
 
-      const dataset = currentCuratedSequenceDataset();
-      if (!dataset) {
+      const registryDataset = activeEvolutionRegistryDataset();
+      const referenceCapability = activeEvolutionCapability('referenceSequences');
+      const dataset = referenceCapability.renderable ? currentCuratedSequenceDataset() : null;
+      if (!registryDataset) {
         panel.innerHTML = `
           <div class="evolution-overview-card">
             <h2>Visual Evolution Explorer</h2>
-            <div class="chem-note"><strong>No curated dataset selected</strong>Select a curated sequence dataset in the Sequence Explorer to summarize its reference sequences.</div>
+            <div class="chem-note"><strong>No active Atlas dataset</strong>The active Evolution dataset could not be found in the Atlas Dataset Registry.</div>
           </div>
         `;
         return;
@@ -5395,12 +5607,14 @@ END
       const summary = curatedDatasetSummary(dataset);
       const emptyState = summary.sequenceCount
         ? ''
-        : '<div class="chem-note"><strong>No reference sequences yet</strong>This dataset is available, but it does not contain curated reference sequence records.</div>';
+        : `<div class="chem-note"><strong>Reference sequences unavailable</strong>${escapeHtml(capabilityStudentMessage(referenceCapability))}</div>`;
       panel.innerHTML = `
         <div class="evolution-overview-card">
           <span class="sequence-label">Sequence Mode</span>
           <h2>Visual Evolution Explorer</h2>
-          <p class="subhead">${escapeHtml(dataset.title)}</p>
+          <p class="subhead">${escapeHtml(registryDataset.title)}</p>
+          ${renderRegistryDatasetIdentity(registryDataset)}
+          ${renderAvailableAtlasLenses()}
           ${emptyState}
           <div class="evolution-summary-grid" aria-label="Curated sequence dataset summary">
             <div class="evolution-summary-card"><strong>Protein name</strong><span>${escapeHtml(summary.proteinNames)}</span></div>
@@ -5418,7 +5632,7 @@ END
             <div class="evolution-summary-card"><strong>Organism-level photosynthetic categories</strong><ul class="evolution-list">${summary.categoryListHtml}</ul></div>
           </div>
           <div class="chem-note"><strong>Not mapped to the structure</strong>This sequence dataset is not currently mapped to the molecular structure shown in Structure mode. Sequence-to-structure relationships will be added only through explicit residue mapping.</div>
-          <div class="chem-note"><strong>Explore</strong>What features of RbcL remain similar across these organisms, and which differences might be worth investigating further?</div>
+          <div class="chem-note"><strong>Explore</strong>What features of ${escapeHtml(registryDataset.canonicalBiologicalName || 'this protein')} remain similar across these organisms, and which differences might be worth investigating further?</div>
         </div>
       `;
     }
@@ -5432,25 +5646,23 @@ END
     function renderCuratedSequenceDatasetSelector() {
       const select = document.getElementById('curatedSequenceDataset');
       if (!select) return;
-      const validation = curatedSequenceValidation();
+      const registryDataset = activeEvolutionRegistryDataset();
+      const sequenceDataset = currentCuratedSequenceDataset();
       select.innerHTML = '';
-      if (!validation.datasets.length) {
+      if (!registryDataset || !sequenceDataset) {
         const option = document.createElement('option');
         option.value = '';
-        option.textContent = 'No curated datasets available';
+        option.textContent = 'No registry-resolved sequence dataset available';
         select.appendChild(option);
         select.disabled = true;
         return;
       }
-      select.disabled = false;
-      validation.datasets.forEach(dataset => {
-        const option = document.createElement('option');
-        option.value = dataset.datasetId;
-        option.textContent = dataset.title;
-        select.appendChild(option);
-      });
-      const selected = currentCuratedSequenceDataset();
-      state.curatedSequenceDatasetId = selected?.datasetId || validation.datasets[0].datasetId;
+      const option = document.createElement('option');
+      option.value = sequenceDataset.datasetId;
+      option.textContent = `${registryDataset.title} - ${sequenceDataset.title}`;
+      select.appendChild(option);
+      select.disabled = true;
+      state.curatedSequenceDatasetId = sequenceDataset.datasetId;
       select.value = state.curatedSequenceDatasetId;
     }
 
@@ -5520,6 +5732,7 @@ END
     }
 
     function selectAlignmentColumn(zeroBasedColumnIndex, toggleSelected = true) {
+      if (!activeEvolutionCapabilityRenderable('alignmentColumnExploration')) return;
       const alignment = currentCuratedAlignment();
       const index = Number(zeroBasedColumnIndex);
       if (!alignment || !Number.isInteger(index) || index < 0 || index >= alignment.alignmentLength) return;
@@ -5529,6 +5742,7 @@ END
     }
 
     function applyAlignmentColumnHover(zeroBasedColumnIndex, active) {
+      if (!activeEvolutionCapabilityRenderable('alignmentColumnExploration')) return;
       const index = Number(zeroBasedColumnIndex);
       if (!Number.isInteger(index)) return;
       document.querySelectorAll(`[data-alignment-column="${index}"]`).forEach(cell => {
@@ -5537,10 +5751,14 @@ END
     }
 
     function renderAlignmentCells(sequenceChunk, blockStart, alignedRecord) {
+      const columnExploration = activeEvolutionCapability('alignmentColumnExploration');
       return [...sequenceChunk].map((char, offset) => {
         const columnIndex = blockStart - 1 + offset;
         const selected = state.selectedAlignmentColumnIndex === columnIndex;
         const characterLabel = char === '-' ? 'gap' : `amino acid ${char}`;
+        if (!columnExploration.renderable) {
+          return `<span class="alignment-cell disabled" aria-label="Alignment column ${columnIndex + 1} for ${escapeHtml(alignedRecord.sourceAccession)}, ${characterLabel}. ${escapeHtml(capabilityStudentMessage(columnExploration))}">${escapeHtml(char)}</span>`;
+        }
         return `<button type="button" class="alignment-cell${selected ? ' selected' : ''}" data-alignment-column="${columnIndex}" aria-pressed="${selected ? 'true' : 'false'}" aria-label="Select alignment column ${columnIndex + 1} for ${escapeHtml(alignedRecord.sourceAccession)}, ${characterLabel}">${escapeHtml(char)}</button>`;
       }).join('');
     }
@@ -5554,6 +5772,10 @@ END
     }
 
     function renderAlignmentConservationTrack(block, scores) {
+      const scoreCapability = activeEvolutionCapability('atlasConservationScore');
+      if (!scoreCapability.renderable) {
+        return `<div class="chem-note"><strong>Atlas score track unavailable</strong>${escapeHtml(capabilityStudentMessage(scoreCapability))}</div>`;
+      }
       const cells = scores.slice(block.start - 1, block.end).map(summary => {
         const selected = state.selectedAlignmentColumnIndex === summary.columnIndex;
         const hasGap = summary.stats.gapCount > 0;
@@ -5569,7 +5791,8 @@ END
     function renderAlignmentRecordBlocks(alignment, dataset) {
       const curatedByAccession = curatedRecordByAccession(dataset);
       const blocks = alignmentColumnRows(alignment.records[0]?.alignedSequence || '', 60);
-      const conservationScores = fullAlignmentConservationScores(alignment.records);
+      const scoreCapability = activeEvolutionCapability('atlasConservationScore');
+      const conservationScores = scoreCapability.renderable ? fullAlignmentConservationScores(alignment.records) : [];
       return blocks.map(block => {
         const blockRows = alignment.records.map(alignedRecord => {
           const curatedRecord = curatedByAccession.get(alignedRecord.sourceAccession);
@@ -5602,6 +5825,10 @@ END
     }
 
     function renderAlignmentColumnControls(alignment) {
+      const columnCapability = activeEvolutionCapability('alignmentColumnExploration');
+      if (!columnCapability.renderable) {
+        return `<div class="chem-note"><strong>Alignment-column exploration unavailable</strong>${escapeHtml(capabilityStudentMessage(columnCapability))}</div>`;
+      }
       const selected = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
       const hasSelection = selected !== null;
       return `
@@ -5741,6 +5968,15 @@ END
     }
 
     function renderAlignmentColumnDetails(alignment, dataset) {
+      const statsCapability = activeEvolutionCapability('descriptiveColumnStatistics');
+      if (!statsCapability.renderable) {
+        return `
+          <div class="alignment-column-details" id="alignmentColumnDetailsPanel">
+            <h4>Alignment Column Details</h4>
+            <div class="chem-note"><strong>Descriptive column statistics unavailable</strong>${escapeHtml(capabilityStudentMessage(statsCapability))}</div>
+          </div>
+        `;
+      }
       const selected = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
       if (selected === null) {
         return `
@@ -5777,7 +6013,7 @@ END
           ${renderResidueFrequencyTable(stats)}
           ${renderPropertySummary(stats)}
           ${renderConservationSummary(conservationSummary)}
-          <div class="chem-note"><strong>Dataset boundary</strong>These values summarize only the sequences included in this curated dataset; they are not estimates of all RbcL proteins.</div>
+          <div class="chem-note"><strong>Dataset boundary</strong>These values summarize only the sequences included in this curated dataset; they are not estimates of all possible ${escapeHtml(activeEvolutionRegistryDataset()?.canonicalBiologicalName || 'related protein')} sequences.</div>
           <div class="chem-note"><strong>Interpretation caution</strong>An invariant column in a small dataset is not by itself evidence that the position is functionally essential.</div>
           <div class="chem-note"><strong>Conservation caution</strong>This score summarizes only the curated sequences currently included in the dataset. High similarity can suggest evolutionary constraint, but it does not by itself establish catalytic, structural, or regulatory importance. Low similarity does not necessarily mean that a position is unimportant. With only ${stats.totalSequences} sequences, the result should be treated as an exploratory comparison.</div>
           <table class="alignment-column-table">
@@ -5801,23 +6037,23 @@ END
       const container = document.getElementById('curatedAlignmentView');
       if (!container) return;
       const dataset = currentCuratedSequenceDataset();
-      const validation = curatedAlignmentValidation();
+      const alignmentCapability = activeEvolutionCapability('alignment');
       const alignment = currentCuratedAlignment();
       if (state.sequenceExplorerView !== 'alignment') {
         container.classList.add('hidden');
         return;
       }
       container.classList.remove('hidden');
+      if (!alignmentCapability.renderable) {
+        container.innerHTML = `<div class="chem-note"><strong>Alignment unavailable</strong>${escapeHtml(capabilityStudentMessage(alignmentCapability))}</div>`;
+        return;
+      }
       if (!dataset) {
-        container.innerHTML = '<div class="chem-note"><strong>No curated dataset selected</strong>Select a curated sequence dataset before viewing an alignment.</div>';
+        container.innerHTML = '<div class="chem-note"><strong>No registry-resolved reference sequence dataset</strong>The active Atlas dataset does not currently resolve to a validated curated sequence dataset.</div>';
         return;
       }
       if (!alignment) {
-        container.innerHTML = '<div class="chem-note"><strong>No alignment available</strong>No instructor-supplied alignment is registered for this curated dataset.</div>';
-        return;
-      }
-      if (!validation.ok) {
-        container.innerHTML = `<div class="warning-text"><strong>Alignment validation issue</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`;
+        container.innerHTML = '<div class="chem-note"><strong>No alignment available</strong>No instructor-supplied alignment resolved through the active Atlas dataset registry entry.</div>';
         return;
       }
       clampSelectedAlignmentColumn(alignment);
@@ -5861,6 +6097,11 @@ END
     function renderReferenceSequenceDetails() {
       const container = document.getElementById('referenceSequenceDetails');
       if (!container) return;
+      const referenceCapability = activeEvolutionCapability('referenceSequences');
+      if (!referenceCapability.renderable) {
+        container.innerHTML = `<div class="chem-note"><strong>Reference Sequence Details unavailable</strong>${escapeHtml(capabilityStudentMessage(referenceCapability))}</div>`;
+        return;
+      }
       const record = selectedCuratedSequenceRecord();
       if (!record) {
         container.innerHTML = '<div class="chem-note"><strong>No reference sequence selected</strong>Select a Reference Sequence card above to view biological identity, provenance, and classroom interpretation notes. This does not select a structure residue or map sequence positions to the loaded 3D model.</div>';
@@ -5895,10 +6136,28 @@ END
       document.querySelectorAll('input[name="sequenceView"]').forEach(input => {
         input.checked = input.value === state.sequenceExplorerView;
       });
-      const validation = curatedSequenceValidation();
+      const registryDataset = activeEvolutionRegistryDataset();
+      const referenceCapability = activeEvolutionCapability('referenceSequences');
+      const overviewCapability = activeEvolutionCapability('comparativeSequenceOverview');
       const dataset = currentCuratedSequenceDataset();
+      if (!registryDataset) {
+        note.innerHTML = '<strong>Atlas registry issue</strong>The active Evolution dataset could not be found in the Atlas Dataset Registry.';
+        container.innerHTML = '';
+        container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
+        renderAlignmentView();
+        renderReferenceSequenceDetails();
+        return;
+      }
+      if (!referenceCapability.renderable) {
+        note.innerHTML = `<strong>${escapeHtml(registryDataset.title)}</strong> ${escapeHtml(capabilityStudentMessage(referenceCapability))}`;
+        container.innerHTML = `<div class="chem-note"><strong>Reference sequences unavailable</strong>${escapeHtml(capabilityStudentMessage(referenceCapability))}</div>`;
+        container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
+        renderAlignmentView();
+        renderReferenceSequenceDetails();
+        return;
+      }
       if (!dataset) {
-        note.innerHTML = '<strong>Reference sequences unavailable</strong>No local curated sequence datasets were found.';
+        note.innerHTML = `<strong>${escapeHtml(registryDataset.title)}</strong> The registered curated sequence dataset could not be resolved.`;
         container.innerHTML = '';
         container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
         renderAlignmentView();
@@ -5912,13 +6171,11 @@ END
       messages.push('No sequence-to-structure mapping is performed here, so reference-sequence positions should not be treated as PDB residue numbers.');
       if (dataset.status) messages.push(`Dataset status: ${dataset.status}.`);
       if (dataset.notes) messages.push(dataset.notes);
-      validation.warnings.forEach(warning => messages.push(warning));
-      validation.errors.forEach(error => messages.push(`Validation issue: ${error}`));
-      note.innerHTML = `<strong>${escapeHtml(dataset.title)}</strong>${messages.map(message => escapeHtml(message)).join(' ')}`;
+      note.innerHTML = `<strong>${escapeHtml(registryDataset.title)}</strong> ${messages.map(message => escapeHtml(message)).join(' ')}`;
       container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
 
-      if (!validation.ok) {
-        container.innerHTML = '<div class="warning-text">This curated sequence dataset has validation issues and should be corrected before classroom use.</div>';
+      if (!overviewCapability.renderable) {
+        container.innerHTML = `<div class="chem-note"><strong>Comparative sequence overview unavailable</strong>${escapeHtml(capabilityStudentMessage(overviewCapability))}</div>`;
         renderAlignmentView();
         renderReferenceSequenceDetails();
         return;
@@ -5926,7 +6183,7 @@ END
       if (!dataset.records.length) {
         container.innerHTML = `
           <div class="chem-note"><strong>Comparative Sequence Overview</strong>No reference sequence records are available for this curated dataset yet.</div>
-          <div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified Rubisco large subunit sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>
+          <div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified reference sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>
         `;
         renderAlignmentView();
         renderReferenceSequenceDetails();

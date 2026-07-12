@@ -574,8 +574,45 @@ run('App loads and summarizes the Atlas dataset registry without replacing curre
   assert(indexHtml.includes('function atlasRegistryValidation()'));
   assert(indexHtml.includes('function renderAtlasDatasetRegistrySummary()'));
   assert(indexHtml.includes('Capabilities marked unavailable are not inferred or simulated.'));
+  assert(indexHtml.includes("activeEvolutionDatasetId: 'rubisco'"));
+  assert(indexHtml.includes('function activeEvolutionRegistryDataset()'));
+  assert(indexHtml.includes('function activeEvolutionCapability(capabilityId)'));
   assert(indexHtml.includes("curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs'"));
   assert(indexHtml.includes("structureId: '1MBN'"));
+});
+
+run('Visual Evolution Explorer uses registry resources instead of silent curated-data fallbacks', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const currentDatasetFunction = indexHtml.slice(
+    indexHtml.indexOf('function currentCuratedSequenceDataset()'),
+    indexHtml.indexOf('function currentCuratedAlignment()')
+  );
+  const currentAlignmentFunction = indexHtml.slice(
+    indexHtml.indexOf('function currentCuratedAlignment()'),
+    indexHtml.indexOf('const CAPABILITY_LABELS')
+  );
+  assert(currentDatasetFunction.includes('activeEvolutionRegistryDataset()'));
+  assert(currentDatasetFunction.includes('registryDataset?.resources?.curatedSequenceDatasetId'));
+  assert(!currentDatasetFunction.includes('validation.datasets[0]'));
+  assert(currentAlignmentFunction.includes('registryDataset?.resources?.curatedAlignmentId'));
+  assert(!currentAlignmentFunction.includes('validation.alignments[0]'));
+});
+
+run('Visual Evolution Explorer renders availability through the validated capability resolver', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Available Atlas Lenses',
+    'getCapabilityAvailability',
+    'isCapabilityRenderable',
+    'Feature availability is checked with the registry',
+    'Reference Sequence Details unavailable',
+    'Comparative sequence overview unavailable',
+    'Alignment unavailable',
+    'Alignment-column exploration unavailable',
+    'Descriptive column statistics unavailable',
+    'Atlas score track unavailable',
+    'Sequence-to-structure mapping'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing registry availability text: ${text}`));
 });
 
 run('Visual Evolution Explorer summarizes dataset title and sequence count', () => {
@@ -601,8 +638,9 @@ run('Visual Evolution Explorer includes organism, group, category, and length su
 
 run('Visual Evolution Explorer has empty dataset states', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
-  assert(indexHtml.includes('No curated dataset selected'));
-  assert(indexHtml.includes('No reference sequences yet'));
+  assert(indexHtml.includes('No active Atlas dataset'));
+  assert(indexHtml.includes('Reference sequences unavailable'));
+  assert(indexHtml.includes('No registry-resolved sequence dataset available'));
 });
 
 run('Visual Evolution Explorer avoids implying myoglobin is related to RbcL', () => {
@@ -1071,7 +1109,7 @@ run('Alignment Column Details displays descriptive statistics and educational ca
     'Frequency among all aligned sequences',
     'Frequency among non-gap residues only',
     'The current dataset contains only',
-    'These values summarize only the sequences included in this curated dataset; they are not estimates of all RbcL proteins.',
+    'These values summarize only the sequences included in this curated dataset; they are not estimates of all possible',
     'An invariant column in a small dataset is not by itself evidence that the position is functionally essential.',
     'Residues with similar biochemical properties can still differ in structure, reactivity, and biological role.',
     'Ambiguous or unsupported symbols'
