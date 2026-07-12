@@ -116,6 +116,18 @@ When added, these tools should help students compare predicted models with exper
 
 Shows the full protein fold. Cartoon view makes helices, sheets, loops, domains, and overall packing easier to see. It hides atom identity, partial charges, lone pairs, resonance, and many side-chain contacts, so students should switch to atom-level views when making chemical arguments.
 
+### Sequence Explorer
+
+Displays the loaded structure as a one-letter amino-acid sequence derived from parsed PDB atom records. Chain labels and residue numbers are shown under each one-letter code. Click a residue in the sequence to select the same residue used by the Ramachandran and 3D structure views.
+
+Students can glean:
+
+- The order of parsed amino-acid residues in the loaded model.
+- Where chain breaks or residue-numbering gaps occur.
+- How a sequence position connects to its residue label and 3D location.
+
+Important limitation: this sequence is not downloaded separately from UniProt or RCSB FASTA. It reflects residues that are present and parsed in the loaded PDB coordinates, so unresolved residues, missing loops, engineered tags, alternate numbering, or nonstandard residues may affect what appears.
+
 ### Backbone H-bonds
 
 Highlights candidate backbone hydrogen bonds that stabilize secondary structure. Dashed lines connect carbonyl oxygens and backbone nitrogens. Thicker lines indicate shorter contacts. When a contact is selected, atom labels help students identify donor and acceptor atoms.

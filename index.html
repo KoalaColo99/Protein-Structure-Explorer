@@ -443,6 +443,66 @@
       font-size: 13px;
     }
 
+    .sequence-chain {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .sequence-chain h3 {
+      background: #eef6ff;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      margin: 0;
+      padding: 8px 10px;
+    }
+
+    .sequence-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+      gap: 5px;
+      padding: 10px;
+    }
+
+    .sequence-residue {
+      border: 1px solid #d8e2ec;
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      min-height: 44px;
+      padding: 4px 5px;
+      text-align: center;
+    }
+
+    .sequence-residue strong {
+      display: block;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 17px;
+      line-height: 1.1;
+    }
+
+    .sequence-residue span {
+      color: var(--muted);
+      display: block;
+      font-size: 10px;
+      line-height: 1.2;
+      margin-top: 3px;
+    }
+
+    .sequence-residue.selected {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(0,114,178,.18);
+      background: #eff6ff;
+    }
+
+    .sequence-break-note {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 10px 8px;
+    }
+
     .swatch {
       border: 1px solid rgba(15, 23, 42, .25);
       border-radius: 4px;
@@ -709,7 +769,7 @@
           <h2>Protein Explorer</h2>
           <div class="atlas-tools">
             <button class="active" data-mode="overview">Structure</button>
-            <button disabled>Sequence<span class="coming-soon">Coming soon</span></button>
+            <button data-mode="sequence">Sequence</button>
             <button data-mode="conservation">Conservation</button>
             <button data-mode="torsions">Ramachandran</button>
             <button data-mode="hbonds">Backbone H-bonds</button>
@@ -803,6 +863,17 @@
           <div class="stat"><strong>8</strong><span>major alpha helices</span></div>
         </div>
         <button id="resetView">Reset view</button>
+      </section>
+
+      <section class="section mode-panel hidden" id="sequencePanel">
+        <h2>Sequence Explorer</h2>
+        <p>Read the loaded structure as a one-letter amino-acid sequence. Click a residue to select it using the same residue selection used by the Ramachandran and structure views.</p>
+        <div class="stats">
+          <div class="stat"><strong id="sequenceResidueCount">-</strong><span>parsed residues</span></div>
+          <div class="stat"><strong id="sequenceChainCount">-</strong><span>chain segment(s)</span></div>
+        </div>
+        <div class="chem-note" id="sequenceNote"></div>
+        <div id="sequenceViewer"></div>
       </section>
 
       <section class="section mode-panel hidden" id="hbondsPanel">
@@ -4623,6 +4694,7 @@ END
       });
 
       if (state.mode === 'hbonds') drawHbonds();
+      if (state.mode === 'sequence') drawSequence();
       if (state.mode === 'helixPatterns') drawHelixPatterns();
       if (state.mode === 'torsions') drawTorsion();
       if (state.mode === 'tertiary') drawContacts();
@@ -4640,6 +4712,74 @@ END
 
       state.viewer.render();
       setStatus();
+    }
+
+    function sequenceSegments() {
+      const segments = [];
+      let current = null;
+      state.residues.forEach((residue, index) => {
+        const previousEntry = current && current.residues[current.residues.length - 1];
+        const previous = previousEntry?.residue;
+        const hasChainBreak = previous && residue.chain !== previous.chain;
+        const hasNumberGap = previous && residue.chain === previous.chain && Number.isFinite(residue.resi) && Number.isFinite(previous.resi) && residue.resi !== previous.resi + 1;
+        if (!current || hasChainBreak || hasNumberGap) {
+          current = {
+            chain: residue.chain || '(blank)',
+            reason: hasChainBreak ? 'chain break' : hasNumberGap ? `numbering gap after ${previous.resi}` : 'start',
+            residues: []
+          };
+          segments.push(current);
+        }
+        current.residues.push({ residue, index });
+      });
+      return segments;
+    }
+
+    function drawSequence() {
+      const container = document.getElementById('sequenceViewer');
+      if (!container) return;
+      const sequence = sequenceFromResidues(state.residues);
+      const selectedEntry = state.torsions[state.selectedResidueIndex];
+      const selectedResidue = selectedEntry?.residue || state.residues[state.selectedResidueIndex];
+      container.innerHTML = '';
+      document.getElementById('sequenceResidueCount').textContent = state.residues.length || 'none';
+      if (!state.residues.length || !sequence.length) {
+        document.getElementById('sequenceChainCount').textContent = 'none';
+        document.getElementById('sequenceNote').innerHTML = '<strong>No sequence available</strong>No standard amino-acid residues were parsed from the loaded structure.';
+        state.viewer.zoomTo({ hetflag: false });
+        return;
+      }
+
+      const segments = sequenceSegments();
+      const unknownCount = [...sequence].filter(letter => letter === 'X').length;
+      document.getElementById('sequenceChainCount').textContent = segments.length;
+      document.getElementById('sequenceNote').innerHTML = `<strong>${state.structureId} sequence</strong>Sequence is derived from parsed ATOM records in the loaded PDB structure. ${unknownCount ? `${unknownCount} residue(s) are shown as X because their one-letter code is unknown.` : 'Only parsed standard amino-acid residues are shown.'}`;
+
+      segments.forEach((segment, segmentIndex) => {
+        const first = segment.residues[0]?.residue;
+        const last = segment.residues[segment.residues.length - 1]?.residue;
+        const section = document.createElement('div');
+        section.className = 'sequence-chain';
+        const breakText = segmentIndex === 0 ? '' : `<div class="sequence-break-note">${segment.reason === 'chain break' ? 'New chain begins here.' : `Residue numbering gap detected: ${segment.reason}.`}</div>`;
+        section.innerHTML = `<h3>Chain ${segment.chain}: residues ${first?.resi ?? '?'}-${last?.resi ?? '?'}</h3>${breakText}<div class="sequence-grid"></div>`;
+        const grid = section.querySelector('.sequence-grid');
+        segment.residues.forEach(({ residue, index }) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = `sequence-residue${index === state.selectedResidueIndex ? ' selected' : ''}`;
+          button.dataset.sequenceIndex = index;
+          button.setAttribute('aria-label', `Select ${residue.label}, chain ${residue.chain || 'blank'}`);
+          button.innerHTML = `<strong>${sequence[index] || 'X'}</strong><span>${residue.chain || '-'}:${residue.resi}</span>`;
+          grid.appendChild(button);
+        });
+        container.appendChild(section);
+      });
+
+      if (selectedResidue) {
+        state.viewer.setStyle(residueSpec(selectedResidue), { stick: { colorscheme: 'Jmol', radius: 0.22 }, cartoon: { color: colors().selected }, sphere: { scale: 0.22 } });
+        addResidueLabel(selectedResidue, colors().selected);
+        if (shouldAutoZoomSelectedResidue()) state.viewer.zoomTo(residueSpec(selectedResidue));
+      }
     }
 
     function setViewerControlMessage(message) {
@@ -7010,6 +7150,12 @@ END
       const item = event.target.closest('[data-torsion-index]');
       if (!item) return;
       selectTorsionIndex(Number(item.dataset.torsionIndex));
+    });
+
+    document.getElementById('sequenceViewer').addEventListener('click', event => {
+      const item = event.target.closest('[data-sequence-index]');
+      if (!item) return;
+      selectTorsionIndex(Number(item.dataset.sequenceIndex));
     });
 
     document.getElementById('ramaCanvas').addEventListener('click', event => {
