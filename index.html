@@ -904,6 +904,89 @@
       outline-offset: 1px;
     }
 
+    .conservation-strip,
+    .conservation-profile {
+      align-items: end;
+      box-sizing: border-box;
+      display: grid;
+      gap: 0;
+      grid-template-columns: repeat(var(--alignment-block-column-count), var(--alignment-column-width));
+      min-height: 36px;
+      width: max-content;
+    }
+
+    .conservation-cell,
+    .conservation-profile-cell {
+      align-items: center;
+      appearance: none;
+      border: 1px solid transparent;
+      box-sizing: border-box;
+      cursor: pointer;
+      display: flex;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      justify-content: center;
+      letter-spacing: 0;
+      margin: 0;
+      min-width: 0;
+      padding: 0;
+      position: relative;
+      width: var(--alignment-column-width);
+    }
+
+    .conservation-cell {
+      background: #e0f2fe;
+      color: #0f172a;
+      font-size: 9px;
+      font-weight: 800;
+      min-height: 28px;
+    }
+
+    .conservation-profile-cell {
+      align-items: end;
+      background: transparent;
+      min-height: 42px;
+    }
+
+    .conservation-profile-bar {
+      background: #2563eb;
+      border: 1px solid #1d4ed8;
+      border-radius: 3px 3px 0 0;
+      box-sizing: border-box;
+      color: #fff;
+      display: block;
+      font-size: 7px;
+      line-height: 1;
+      min-height: 7px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .conservation-cell[data-gap="true"],
+    .conservation-profile-cell[data-gap="true"] .conservation-profile-bar {
+      background-image: repeating-linear-gradient(135deg, rgba(15,23,42,.32) 0 1px, transparent 1px 4px);
+    }
+
+    .conservation-cell.filtered,
+    .conservation-profile-cell.filtered {
+      opacity: .24;
+    }
+
+    .conservation-cell.selected,
+    .conservation-profile-cell.selected .conservation-profile-bar {
+      outline: 2px solid #c2410c;
+      outline-offset: 1px;
+    }
+
+    .conservation-cell:hover,
+    .conservation-cell:focus-visible,
+    .conservation-cell.hovered,
+    .conservation-profile-cell:hover .conservation-profile-bar,
+    .conservation-profile-cell:focus-visible .conservation-profile-bar,
+    .conservation-profile-cell.hovered .conservation-profile-bar {
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+    }
+
     .detail-grid {
       display: grid;
       gap: 7px;
@@ -1340,9 +1423,11 @@
             <span>Sequence Explorer View</span>
             <label><input id="sequenceViewOverview" name="sequenceView" type="radio" value="overview" checked> Sequence Overview</label>
             <label><input id="sequenceViewAlignment" name="sequenceView" type="radio" value="alignment"> Alignment View</label>
+            <label><input id="sequenceViewConservation" name="sequenceView" type="radio" value="conservation"> Conservation View</label>
           </div>
           <div id="curatedReferenceSequences"></div>
           <div id="curatedAlignmentView" class="hidden"></div>
+          <div id="curatedConservationView" class="hidden"></div>
           <div class="reference-details-card" id="referenceSequenceDetailsPanel" aria-live="polite">
             <h3>Reference Sequence Details</h3>
             <div class="chem-note"><strong>Reference sequences:</strong> Reference sequences represent complete curated protein sequences and may include residues not present in the currently loaded molecular structure.</div>
@@ -3764,6 +3849,8 @@ END
       curatedAlignmentValidation: null,
       atlasRegistryValidation: null,
       sequenceExplorerView: 'overview',
+      conservationViewMode: 'final',
+      conservationViewFilter: 'all',
       selectedCuratedSequenceId: null,
       sequenceComparisonSort: 'dataset',
       expandedReferenceSequenceIds: new Set(),
@@ -6120,6 +6207,166 @@ END
       `;
     }
 
+    function conservationMetricValue(summary, mode) {
+      if (mode === 'identity') return summary.identityScore;
+      if (mode === 'property') return summary.propertySimilarityScore;
+      if (mode === 'gap') return summary.gapCoverage;
+      if (mode === 'state') return summary.finalScore;
+      return summary.finalScore;
+    }
+
+    function conservationMetricLabel(mode) {
+      if (mode === 'identity') return 'Exact identity';
+      if (mode === 'property') return 'Biochemical-property similarity';
+      if (mode === 'gap') return 'Gap coverage';
+      if (mode === 'state') return 'Column state';
+      return 'Final Atlas score';
+    }
+
+    function conservationCellSymbol(summary, mode) {
+      if (mode === 'state') {
+        if (summary.stats.gapCount === summary.stats.totalSequences) return 'G';
+        if (summary.stats.state.includes('invariant')) return 'I';
+        if (summary.stats.state.includes('variable')) return 'V';
+        return 'S';
+      }
+      const value = conservationMetricValue(summary, mode);
+      if (value === null || value === undefined) return 'NA';
+      if (value >= 0.9) return 'VH';
+      if (value >= 0.7) return 'H';
+      if (value >= 0.4) return 'M';
+      return 'L';
+    }
+
+    function conservationFilterMatches(summary, filter) {
+      if (filter === 'very-high') return summary.finalScore !== null && summary.finalScore >= 0.9;
+      if (filter === 'high') return summary.finalScore !== null && summary.finalScore >= 0.7 && summary.finalScore < 0.9;
+      if (filter === 'moderate') return summary.finalScore !== null && summary.finalScore >= 0.4 && summary.finalScore < 0.7;
+      if (filter === 'low') return summary.finalScore !== null && summary.finalScore < 0.4;
+      if (filter === 'gaps') return summary.stats.gapCount > 0;
+      if (filter === 'invariant') return summary.stats.gapCount === 0 && summary.stats.state === 'invariant among non-gap residues';
+      if (filter === 'variable') return summary.stats.state.includes('variable');
+      return true;
+    }
+
+    function renderConservationCell(summary, mode, filter, profile = false) {
+      const selected = state.selectedAlignmentColumnIndex === summary.columnIndex;
+      const hasGap = summary.stats.gapCount > 0;
+      const value = conservationMetricValue(summary, mode);
+      const filtered = !conservationFilterMatches(summary, filter);
+      const formatted = formatScore(value);
+      const label = `Select alignment column ${summary.columnIndex + 1}. ${conservationMetricLabel(mode)} ${formatted}. Final Atlas score ${formatScore(summary.finalScore)}. ${summary.scoreBand}. Column state: ${summary.stats.state}. ${hasGap ? 'Contains one or more gaps.' : 'No gaps in this column.'}`;
+      const classes = `${profile ? 'conservation-profile-cell' : 'conservation-cell'}${selected ? ' selected' : ''}${filtered ? ' filtered' : ''}`;
+      const height = value === null || value === undefined ? 8 : Math.max(8, Math.round(8 + value * 34));
+      if (profile) {
+        return `<button type="button" class="${classes}" data-alignment-column="${summary.columnIndex}" data-gap="${hasGap ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"><span class="conservation-profile-bar" style="height:${height}px">${hasGap ? 'G' : ''}</span></button>`;
+      }
+      return `<button type="button" class="${classes}" data-alignment-column="${summary.columnIndex}" data-gap="${hasGap ? 'true' : 'false'}" aria-pressed="${selected ? 'true' : 'false'}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${escapeHtml(conservationCellSymbol(summary, mode))}</button>`;
+    }
+
+    function renderConservationBlocks(alignment, scores) {
+      const blocks = alignmentColumnRows(alignment.records[0]?.alignedSequence || '', 60);
+      return blocks.map(block => {
+        const blockScores = scores.slice(block.start - 1, block.end);
+        return `
+          <div class="alignment-block" style="--alignment-block-column-count:${block.sequence.length}">
+            <h4>Alignment columns ${block.start}-${block.end}</h4>
+            <div class="alignment-row">
+              <div class="alignment-row-label">Column marker</div>
+              <div class="alignment-sequence alignment-marker" aria-label="Alignment position markers">${renderAlignmentMarkerCells(block)}</div>
+            </div>
+            <div class="alignment-row">
+              <div class="alignment-row-label">Conservation strip<br><span>VH/H/M/L = score band; G = gap signal</span></div>
+              <div class="conservation-strip" role="group" aria-label="Conservation strip for alignment columns ${block.start} to ${block.end}">
+                ${blockScores.map(summary => renderConservationCell(summary, state.conservationViewMode, state.conservationViewFilter, false)).join('')}
+              </div>
+            </div>
+            <div class="alignment-row">
+              <div class="alignment-row-label">Conservation profile<br><span>Bar height reflects selected display mode</span></div>
+              <div class="conservation-profile" role="group" aria-label="Conservation profile for alignment columns ${block.start} to ${block.end}">
+                ${blockScores.map(summary => renderConservationCell(summary, state.conservationViewMode, state.conservationViewFilter, true)).join('')}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderConservationViewControls() {
+      const modeOptions = [
+        ['final', 'Final Atlas score'],
+        ['identity', 'Exact identity'],
+        ['property', 'Biochemical-property similarity'],
+        ['gap', 'Gap coverage'],
+        ['state', 'Column state']
+      ];
+      const filterOptions = [
+        ['all', 'All columns'],
+        ['very-high', 'Very high similarity'],
+        ['high', 'High similarity'],
+        ['moderate', 'Moderate similarity'],
+        ['low', 'Low similarity'],
+        ['gaps', 'Columns containing gaps'],
+        ['invariant', 'Invariant non-gap columns'],
+        ['variable', 'Variable columns']
+      ];
+      return `
+        <div class="alignment-column-tools" aria-label="Conservation view controls">
+          <label for="conservationDisplayMode">Display mode
+            <select id="conservationDisplayMode">
+              ${modeOptions.map(([value, label]) => `<option value="${value}"${state.conservationViewMode === value ? ' selected' : ''}>${label}</option>`).join('')}
+            </select>
+          </label>
+          <label for="conservationColumnFilter">Emphasize columns
+            <select id="conservationColumnFilter">
+              ${filterOptions.map(([value, label]) => `<option value="${value}"${state.conservationViewFilter === value ? ' selected' : ''}>${label}</option>`).join('')}
+            </select>
+          </label>
+        </div>
+      `;
+    }
+
+    function renderConservationView() {
+      const container = document.getElementById('curatedConservationView');
+      if (!container) return;
+      const dataset = currentCuratedSequenceDataset();
+      const registryDataset = activeEvolutionRegistryDataset();
+      const scoreCapability = activeEvolutionCapability('atlasConservationScore');
+      const alignment = currentCuratedAlignment();
+      if (state.sequenceExplorerView !== 'conservation') {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      if (!scoreCapability.renderable) {
+        container.innerHTML = `<div class="chem-note"><strong>Conservation View unavailable</strong>${escapeHtml(capabilityStudentMessage(scoreCapability))}</div>`;
+        return;
+      }
+      if (!dataset || !alignment) {
+        container.innerHTML = '<div class="chem-note"><strong>Conservation View unavailable</strong>The active registry dataset does not resolve to a validated curated sequence dataset and alignment.</div>';
+        return;
+      }
+      clampSelectedAlignmentColumn(alignment);
+      const scores = fullAlignmentConservationScores(alignment.records);
+      const weights = conservationScoreConfig();
+      container.innerHTML = `
+        <div class="chem-note"><strong>Conservation View</strong>Scan the profile for regions of high and low similarity. Select a column to inspect the underlying residues. Check identity, biochemical similarity, and gap coverage separately. Treat the score as evidence from this curated dataset, not proof of function.</div>
+        <div class="chem-note"><strong>Linked views</strong>Selected columns remain synchronized between Alignment View and Conservation View.</div>
+        <div class="chem-note"><strong>Dataset boundary</strong>This profile summarizes only the curated sequences in the active dataset, ${escapeHtml(registryDataset?.title || dataset.title)}. It is not a population-wide estimate and does not include phylogenetic correction.</div>
+        <div class="evolution-summary-grid" aria-label="Conservation view dataset context">
+          <div class="evolution-summary-card"><strong>Active dataset</strong><span>${escapeHtml(registryDataset?.title || dataset.title)}</span></div>
+          <div class="evolution-summary-card"><strong>Alignment name</strong><span>${escapeHtml(alignment.name)}</span></div>
+          <div class="evolution-summary-card"><strong>Sequences</strong><span>${alignment.records.length}</span></div>
+          <div class="evolution-summary-card"><strong>Alignment length</strong><span>${alignment.alignmentLength} columns</span></div>
+          <div class="evolution-summary-card"><strong>Atlas score formula</strong><span>gap coverage x [${weights.identityWeight} x identity + ${weights.propertySimilarityWeight} x property similarity]</span></div>
+        </div>
+        ${renderConservationViewControls()}
+        ${renderAlignmentColumnControls(alignment)}
+        ${renderAlignmentColumnDetails(alignment, dataset)}
+        ${renderConservationBlocks(alignment, scores)}
+      `;
+    }
+
     function detailRows(rows) {
       return rows
         .filter(row => row.value !== null && row.value !== undefined && String(row.value).trim() !== '')
@@ -6183,6 +6430,7 @@ END
         container.innerHTML = '';
         container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
         renderAlignmentView();
+        renderConservationView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -6191,6 +6439,7 @@ END
         container.innerHTML = `<div class="chem-note"><strong>Reference sequences unavailable</strong>${escapeHtml(capabilityStudentMessage(referenceCapability))}</div>`;
         container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
         renderAlignmentView();
+        renderConservationView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -6199,6 +6448,7 @@ END
         container.innerHTML = '';
         container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
         renderAlignmentView();
+        renderConservationView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -6215,6 +6465,7 @@ END
       if (!overviewCapability.renderable) {
         container.innerHTML = `<div class="chem-note"><strong>Comparative sequence overview unavailable</strong>${escapeHtml(capabilityStudentMessage(overviewCapability))}</div>`;
         renderAlignmentView();
+        renderConservationView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -6224,6 +6475,7 @@ END
           <div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified reference sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>
         `;
         renderAlignmentView();
+        renderConservationView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -6246,6 +6498,7 @@ END
         ${records.map(renderReferenceSequenceCard).join('')}
       `;
       renderAlignmentView();
+      renderConservationView();
       renderReferenceSequenceDetails();
     }
 
@@ -8778,6 +9031,66 @@ END
     });
 
     document.getElementById('curatedAlignmentView').addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || event.target.id !== 'alignmentColumnJump') return;
+      event.preventDefault();
+      const alignment = currentCuratedAlignment();
+      const displayColumn = Number(event.target.value);
+      if (!alignment || !Number.isInteger(displayColumn) || displayColumn < 1 || displayColumn > alignment.alignmentLength) return;
+      selectAlignmentColumn(displayColumn - 1, false);
+    });
+
+    document.getElementById('curatedConservationView').addEventListener('mouseover', event => {
+      const cell = event.target.closest('[data-alignment-column]');
+      if (!cell) return;
+      applyAlignmentColumnHover(cell.dataset.alignmentColumn, true);
+    });
+
+    document.getElementById('curatedConservationView').addEventListener('mouseout', event => {
+      const cell = event.target.closest('[data-alignment-column]');
+      if (!cell) return;
+      applyAlignmentColumnHover(cell.dataset.alignmentColumn, false);
+    });
+
+    document.getElementById('curatedConservationView').addEventListener('click', event => {
+      const cell = event.target.closest('[data-alignment-column]');
+      if (cell) {
+        selectAlignmentColumn(Number(cell.dataset.alignmentColumn));
+        return;
+      }
+      const nav = event.target.closest('[data-alignment-column-nav]');
+      if (nav) {
+        const alignment = currentCuratedAlignment();
+        const current = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
+        if (nav.dataset.alignmentColumnNav === 'clear') {
+          state.selectedAlignmentColumnIndex = null;
+          renderCuratedSequencePanel();
+        } else if (alignment && current !== null && nav.dataset.alignmentColumnNav === 'previous') {
+          selectAlignmentColumn(Math.max(0, current - 1), false);
+        } else if (alignment && current !== null && nav.dataset.alignmentColumnNav === 'next') {
+          selectAlignmentColumn(Math.min(alignment.alignmentLength - 1, current + 1), false);
+        }
+        return;
+      }
+      const jump = event.target.closest('[data-alignment-column-jump]');
+      if (!jump) return;
+      const input = document.getElementById('alignmentColumnJump');
+      const alignment = currentCuratedAlignment();
+      const displayColumn = Number(input?.value);
+      if (!alignment || !Number.isInteger(displayColumn) || displayColumn < 1 || displayColumn > alignment.alignmentLength) return;
+      selectAlignmentColumn(displayColumn - 1, false);
+    });
+
+    document.getElementById('curatedConservationView').addEventListener('change', event => {
+      if (event.target.id === 'conservationDisplayMode') {
+        state.conservationViewMode = event.target.value;
+        renderCuratedSequencePanel();
+      } else if (event.target.id === 'conservationColumnFilter') {
+        state.conservationViewFilter = event.target.value;
+        renderCuratedSequencePanel();
+      }
+    });
+
+    document.getElementById('curatedConservationView').addEventListener('keydown', event => {
       if (event.key !== 'Enter' || event.target.id !== 'alignmentColumnJump') return;
       event.preventDefault();
       const alignment = currentCuratedAlignment();

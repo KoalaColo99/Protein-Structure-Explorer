@@ -472,6 +472,7 @@ run('Sequence mode is limited to curated Visual Evolution Explorer content', () 
   assert(sequencePanel.includes('curatedSequenceDataset'));
   assert(sequencePanel.includes('curatedReferenceSequences'));
   assert(sequencePanel.includes('curatedAlignmentView'));
+  assert(sequencePanel.includes('curatedConservationView'));
   assert(!sequencePanel.includes('id="sequenceViewer"'));
   assert(!sequencePanel.includes('Structure Sequence:'));
   assert(!sequencePanel.includes('1MBN sequence'));
@@ -1045,6 +1046,7 @@ run('Alignment View controls are accessible radio controls', () => {
   assert(indexHtml.includes('name="sequenceView"'));
   assert(indexHtml.includes('Sequence Overview'));
   assert(indexHtml.includes('Alignment View'));
+  assert(indexHtml.includes('Conservation View'));
 });
 
 run('Alignment View supports hover and persistent alignment column selection', () => {
@@ -1122,6 +1124,81 @@ run('Alignment View clears selected column when dataset changes', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('state.selectedAlignmentColumnIndex = null;'));
   assert(indexHtml.includes("document.getElementById('curatedSequenceDataset').addEventListener('change'"));
+});
+
+run('Conservation View renders only through Atlas conservation score capability', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const start = indexHtml.indexOf('function renderConservationView()');
+  const end = indexHtml.indexOf('function detailRows');
+  const renderer = indexHtml.slice(start, end);
+  assert(renderer.includes("activeEvolutionCapability('atlasConservationScore')"));
+  assert(renderer.includes('if (!scoreCapability.renderable)'));
+  assert(renderer.includes('Conservation View unavailable'));
+  assert(renderer.includes('fullAlignmentConservationScores(alignment.records)'));
+  assert(!renderer.includes('.capabilities.atlasConservationScore.status'));
+});
+
+run('Conservation View uses existing selected alignment-column state and details panel', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'curatedConservationView',
+    'state.selectedAlignmentColumnIndex === summary.columnIndex',
+    'selectAlignmentColumn(Number(cell.dataset.alignmentColumn))',
+    'renderAlignmentColumnDetails(alignment, dataset)',
+    'renderAlignmentColumnControls(alignment)',
+    'Selected columns remain synchronized'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing conservation selection text: ${text}`));
+});
+
+run('Conservation View display modes and filters preserve alignment coordinates', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'conservationDisplayMode',
+    'conservationColumnFilter',
+    "['final', 'Final Atlas score']",
+    "['identity', 'Exact identity']",
+    "['property', 'Biochemical-property similarity']",
+    "['gap', 'Gap coverage']",
+    "['state', 'Column state']",
+    "['very-high', 'Very high similarity']",
+    "['gaps', 'Columns containing gaps']",
+    "['invariant', 'Invariant non-gap columns']",
+    "['variable', 'Variable columns']",
+    'filtered',
+    'style="--alignment-block-column-count:${block.sequence.length}"'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing conservation mode/filter text: ${text}`));
+});
+
+run('Conservation View score arrays and cells preserve first middle final columns and gaps', () => {
+  const alignment = productionAlignmentValidation().alignments[0];
+  const scores = fullAlignmentConservationScores(alignment.records);
+  assert.strictEqual(scores.length, alignment.alignmentLength);
+  assert.strictEqual(scores[0].columnIndex, 0);
+  const middle = scores[Math.floor(scores.length / 2)];
+  assert.strictEqual(middle.columnIndex, Math.floor(scores.length / 2));
+  assert.strictEqual(scores[scores.length - 1].columnIndex, alignment.alignmentLength - 1);
+  assert(scores.some(summary => summary.stats.gapCount > 0));
+  const blocks = alignmentColumnRows(alignment.records[0].alignedSequence, 60);
+  blocks.forEach(block => {
+    const blockScores = scores.slice(block.start - 1, block.end);
+    assert.strictEqual(blockScores.length, block.sequence.length);
+  });
+});
+
+run('Conservation View preserves Sequence Overview Alignment View registry gating and avoids mapping', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'renderConservationView();',
+    "state.sequenceExplorerView !== 'conservation'",
+    'This profile summarizes only the curated sequences in the active dataset',
+    'does not include phylogenetic correction',
+    'Treat the score as evidence from this curated dataset, not proof of function'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing conservation preservation text: ${text}`));
+  const start = indexHtml.indexOf('function renderConservationView()');
+  const end = indexHtml.indexOf('function detailRows');
+  const renderer = indexHtml.slice(start, end);
+  assert(!renderer.includes('structure residue'));
+  assert(!renderer.includes('selectTorsionIndex'));
 });
 
 run('Alignment Column Details displays accession, aligned character, gaps, and reference positions', () => {
