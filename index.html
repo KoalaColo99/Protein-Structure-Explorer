@@ -56,6 +56,74 @@
       inset: 0;
     }
 
+    .stage.sequence-stage-active #viewer,
+    .stage.sequence-stage-active .hud {
+      visibility: hidden;
+    }
+
+    .sequence-stage-overview {
+      position: absolute;
+      inset: 0;
+      overflow: auto;
+      background: #eef3f8;
+      padding: 20px;
+      z-index: 3;
+    }
+
+    .evolution-overview-card {
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(210,218,228,.95);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(23,32,42,.08);
+      margin: 0 auto;
+      max-width: 760px;
+      padding: 16px;
+    }
+
+    .evolution-overview-card h2 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    .evolution-overview-card h3 {
+      margin: 14px 0 6px;
+      font-size: 15px;
+    }
+
+    .evolution-summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .evolution-summary-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      padding: 9px;
+    }
+
+    .evolution-summary-card strong {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .evolution-summary-card span,
+    .evolution-list {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .evolution-list {
+      display: grid;
+      gap: 4px;
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
     .hud {
       position: absolute;
       left: 16px;
@@ -804,6 +872,7 @@
       .app { grid-template-columns: 1fr; }
       .stage { min-height: 58vh; border-right: 0; border-bottom: 1px solid var(--line); }
       .sidebar { max-height: none; }
+      .sequence-stage-overview { padding: 14px; }
     }
 
     @media (max-width: 760px) {
@@ -828,6 +897,7 @@
         </div>
         <div class="readout" id="status">Loading structure...</div>
       </div>
+      <div class="sequence-stage-overview hidden" id="sequenceStageOverview" aria-live="polite"></div>
     </section>
 
     <aside class="sidebar">
@@ -4788,6 +4858,7 @@ END
       baseStyle();
       document.querySelectorAll('.mode-panel').forEach(el => el.classList.add('hidden'));
       document.getElementById(`${state.mode}Panel`).classList.remove('hidden');
+      updateSequenceStageOverview();
       document.querySelectorAll('#modeTabs button').forEach(button => {
         button.classList.toggle('active', button.dataset.mode === state.mode);
       });
@@ -4828,6 +4899,35 @@ END
       return text || fallback;
     }
 
+    function uniqueValues(values) {
+      return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+    }
+
+    function joinList(values, fallback = 'not provided') {
+      const unique = uniqueValues(values);
+      return unique.length ? unique.join('; ') : fallback;
+    }
+
+    function sequenceLengthRange(records) {
+      const lengths = records.map(record => (record.aminoAcidSequence || '').length).filter(length => length > 0);
+      if (!lengths.length) return 'not available';
+      const min = Math.min(...lengths);
+      const max = Math.max(...lengths);
+      return min === max ? `${min} amino acids` : `${min}-${max} amino acids`;
+    }
+
+    function scientificNameList(records) {
+      const organisms = uniqueValues(records.map(record => record.organism));
+      if (!organisms.length) return '<li>No organisms listed.</li>';
+      return organisms.map(organism => `<li><em>${escapeHtml(organism)}</em></li>`).join('');
+    }
+
+    function compactList(values) {
+      const unique = uniqueValues(values);
+      if (!unique.length) return '<li>Not provided.</li>';
+      return unique.map(value => `<li>${escapeHtml(value)}</li>`).join('');
+    }
+
     function curatedSequenceValidation() {
       if (state.curatedSequenceValidation) return state.curatedSequenceValidation;
       const source = window.BVA_CURATED_SEQUENCE_SETS || {
@@ -4851,6 +4951,72 @@ END
     function currentCuratedSequenceDataset() {
       const validation = curatedSequenceValidation();
       return validation.datasets.find(dataset => dataset.datasetId === state.curatedSequenceDatasetId) || validation.datasets[0];
+    }
+
+    function curatedDatasetSummary(dataset) {
+      const records = dataset?.records || [];
+      return {
+        proteinNames: joinList(records.map(record => record.proteinName)),
+        geneNames: joinList(records.map(record => record.geneName)),
+        sequenceCount: records.length,
+        organismListHtml: scientificNameList(records),
+        groupListHtml: compactList(records.map(record => record.broadTaxonomicGroup)),
+        categoryListHtml: compactList(records.map(record => record.photosyntheticCategory)),
+        groups: joinList(records.map(record => record.broadTaxonomicGroup)),
+        categories: joinList(records.map(record => record.photosyntheticCategory)),
+        lengthRange: sequenceLengthRange(records)
+      };
+    }
+
+    function updateSequenceStageOverview() {
+      const stage = document.querySelector('.stage');
+      const panel = document.getElementById('sequenceStageOverview');
+      if (!stage || !panel) return;
+      const isSequenceMode = state.mode === 'sequence';
+      stage.classList.toggle('sequence-stage-active', isSequenceMode);
+      panel.classList.toggle('hidden', !isSequenceMode);
+      if (!isSequenceMode) return;
+
+      const dataset = currentCuratedSequenceDataset();
+      if (!dataset) {
+        panel.innerHTML = `
+          <div class="evolution-overview-card">
+            <h2>Visual Evolution Explorer</h2>
+            <div class="chem-note"><strong>No curated dataset selected</strong>Select a curated sequence dataset in the Sequence Explorer to summarize its reference sequences.</div>
+          </div>
+        `;
+        return;
+      }
+
+      const summary = curatedDatasetSummary(dataset);
+      const emptyState = summary.sequenceCount
+        ? ''
+        : '<div class="chem-note"><strong>No reference sequences yet</strong>This dataset is available, but it does not contain curated reference sequence records.</div>';
+      panel.innerHTML = `
+        <div class="evolution-overview-card">
+          <span class="sequence-label">Sequence Mode</span>
+          <h2>Visual Evolution Explorer</h2>
+          <p class="subhead">${escapeHtml(dataset.title)}</p>
+          ${emptyState}
+          <div class="evolution-summary-grid" aria-label="Curated sequence dataset summary">
+            <div class="evolution-summary-card"><strong>Protein name</strong><span>${escapeHtml(summary.proteinNames)}</span></div>
+            <div class="evolution-summary-card"><strong>Gene name</strong><span>${escapeHtml(summary.geneNames)}</span></div>
+            <div class="evolution-summary-card"><strong>Reference sequences</strong><span>${summary.sequenceCount}</span></div>
+            <div class="evolution-summary-card"><strong>Sequence length range</strong><span>${escapeHtml(summary.lengthRange)}</span></div>
+            <div class="evolution-summary-card"><strong>Broad groups</strong><span>${escapeHtml(summary.groups)}</span></div>
+            <div class="evolution-summary-card"><strong>Photosynthetic categories</strong><span>${escapeHtml(summary.categories)}</span></div>
+          </div>
+          <h3>Represented Organisms</h3>
+          <ul class="evolution-list">${summary.organismListHtml}</ul>
+          <h3>Lineage-Oriented Summary</h3>
+          <div class="evolution-summary-grid">
+            <div class="evolution-summary-card"><strong>Broad taxonomic groups</strong><ul class="evolution-list">${summary.groupListHtml}</ul></div>
+            <div class="evolution-summary-card"><strong>Organism-level photosynthetic categories</strong><ul class="evolution-list">${summary.categoryListHtml}</ul></div>
+          </div>
+          <div class="chem-note"><strong>Not mapped to the structure</strong>This sequence dataset is not currently mapped to the molecular structure shown in Structure mode. Sequence-to-structure relationships will be added only through explicit residue mapping.</div>
+          <div class="chem-note"><strong>Explore</strong>What features of RbcL remain similar across these organisms, and which differences might be worth investigating further?</div>
+        </div>
+      `;
     }
 
     function selectedCuratedSequenceRecord() {
@@ -7440,6 +7606,7 @@ END
       state.curatedSequenceDatasetId = event.target.value;
       state.selectedCuratedSequenceId = null;
       renderCuratedSequencePanel();
+      updateSequenceStageOverview();
     });
 
     document.getElementById('curatedReferenceSequences').addEventListener('click', event => {

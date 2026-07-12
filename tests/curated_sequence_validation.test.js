@@ -175,3 +175,60 @@ run('Reference sequence controls include accessible button state for keyboard us
   assert(indexHtml.includes('aria-pressed='));
   assert(indexHtml.includes("document.getElementById('curatedReferenceSequences').addEventListener('click'"));
 });
+
+run('Sequence mode uses a left-stage Visual Evolution Explorer overlay', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('id="sequenceStageOverview"'));
+  assert(indexHtml.includes('Visual Evolution Explorer'));
+  assert(indexHtml.includes("const isSequenceMode = state.mode === 'sequence';"));
+  assert(indexHtml.includes("stage.classList.toggle('sequence-stage-active', isSequenceMode);"));
+  assert(indexHtml.includes("panel.classList.toggle('hidden', !isSequenceMode);"));
+  assert(indexHtml.includes('.stage.sequence-stage-active #viewer'));
+  assert(indexHtml.includes('visibility: hidden;'));
+});
+
+run('Visual Evolution Explorer summarizes dataset title and sequence count', () => {
+  globalThis.BVA_CURATED_SEQUENCE_SETS = undefined;
+  require('../data/curated_sequence_sets.js');
+  const result = validateCuratedSequenceSets(globalThis.BVA_CURATED_SEQUENCE_SETS);
+  const dataset = result.datasets.find(item => item.datasetId === 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs');
+  assert.strictEqual(dataset.title, 'Photosynthesis: Rubisco large subunit across oxygenic phototrophs');
+  assert.strictEqual(dataset.records.length, 3);
+  assert.strictEqual(Math.min(...dataset.records.map(record => record.aminoAcidSequence.length)), 475);
+  assert.strictEqual(Math.max(...dataset.records.map(record => record.aminoAcidSequence.length)), 479);
+});
+
+run('Visual Evolution Explorer includes organism, group, category, and length summaries', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Represented Organisms',
+    'Broad taxonomic groups',
+    'Organism-level photosynthetic categories',
+    'Sequence length range',
+    'curatedDatasetSummary',
+    'sequenceLengthRange',
+    'scientificNameList'
+  ].forEach(label => assert(indexHtml.includes(label), `Missing sequence overview text: ${label}`));
+});
+
+run('Visual Evolution Explorer has empty dataset states', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('No curated dataset selected'));
+  assert(indexHtml.includes('No reference sequences yet'));
+});
+
+run('Visual Evolution Explorer avoids implying myoglobin is related to RbcL', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const start = indexHtml.indexOf('function updateSequenceStageOverview');
+  const end = indexHtml.indexOf('function selectedCuratedSequenceRecord');
+  const overviewFunction = indexHtml.slice(start, end);
+  assert(!/myoglobin|1MBN/i.test(overviewFunction));
+  assert(overviewFunction.includes('This sequence dataset is not currently mapped to the molecular structure shown in Structure mode.'));
+});
+
+run('mode controls remain keyboard-accessible buttons', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('id="modeTabs" aria-label="Biochemistry Visual Atlas navigation"'));
+  assert(indexHtml.includes('<button class="active" data-mode="overview">Structure</button>'));
+  assert(indexHtml.includes('<button data-mode="sequence">Sequence</button>'));
+});
