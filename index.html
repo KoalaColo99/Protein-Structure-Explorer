@@ -6,6 +6,7 @@
   <title>Biochemistry Visual Atlas</title>
   <script src="./3Dmol-min.js"></script>
   <script src="./curated_sequence_validation.js"></script>
+  <script src="./sequence_display_helpers.js"></script>
   <script src="./data/curated_sequence_sets.js"></script>
   <style>
     :root {
@@ -607,6 +608,58 @@
       letter-spacing: .02em;
       margin-bottom: 5px;
       text-transform: uppercase;
+    }
+
+    .sequence-preview,
+    .reference-sequence-full {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .sequence-preview {
+      background: #fff;
+      border: 1px dashed #aebdcc;
+      border-radius: 8px;
+      font-size: 13px;
+      margin: 8px 0;
+      padding: 8px;
+    }
+
+    .sequence-preview span {
+      color: var(--muted);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 12px;
+      margin-left: 4px;
+    }
+
+    .reference-sequence-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .reference-sequence-full {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin-top: 8px;
+      padding: 8px;
+    }
+
+    .sequence-position-row {
+      align-items: baseline;
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      gap: 8px;
+      line-height: 1.6;
+    }
+
+    .sequence-position-marker {
+      color: var(--muted);
+      font-size: 11px;
+      text-align: right;
     }
 
     .detail-grid {
@@ -3451,6 +3504,8 @@ END
       curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
       curatedSequenceValidation: null,
       selectedCuratedSequenceId: null,
+      sequenceComparisonSort: 'dataset',
+      expandedReferenceSequenceIds: new Set(),
       selectedHbond: null,
       selectedResidueIndex: 0,
       contactType: 'all',
@@ -4900,20 +4955,31 @@ END
     }
 
     function uniqueValues(values) {
-      return [...new Set(values.map(value => String(value || '').trim()).filter(Boolean))];
+      return window.BVASequenceDisplay.uniqueValues(values);
     }
 
     function joinList(values, fallback = 'not provided') {
-      const unique = uniqueValues(values);
-      return unique.length ? unique.join('; ') : fallback;
+      return window.BVASequenceDisplay.joinList(values, fallback);
     }
 
     function sequenceLengthRange(records) {
-      const lengths = records.map(record => (record.aminoAcidSequence || '').length).filter(length => length > 0);
-      if (!lengths.length) return 'not available';
-      const min = Math.min(...lengths);
-      const max = Math.max(...lengths);
-      return min === max ? `${min} amino acids` : `${min}-${max} amino acids`;
+      return window.BVASequenceDisplay.sequenceLengthRange(records);
+    }
+
+    function sequenceLengthStats(records) {
+      return window.BVASequenceDisplay.sequenceLengthStats(records);
+    }
+
+    function sequencePreview(sequence, previewLength = 30) {
+      return window.BVASequenceDisplay.sequencePreview(sequence, previewLength);
+    }
+
+    function sequencePositionRows(sequence, interval = 10) {
+      return window.BVASequenceDisplay.sequencePositionRows(sequence, interval);
+    }
+
+    function sortedCuratedRecords(records, sortMode) {
+      return window.BVASequenceDisplay.sortedCuratedRecords(records, sortMode);
     }
 
     function scientificNameList(records) {
@@ -4959,6 +5025,7 @@ END
         proteinNames: joinList(records.map(record => record.proteinName)),
         geneNames: joinList(records.map(record => record.geneName)),
         sequenceCount: records.length,
+        lengthStats: sequenceLengthStats(records),
         organismListHtml: scientificNameList(records),
         groupListHtml: compactList(records.map(record => record.broadTaxonomicGroup)),
         categoryListHtml: compactList(records.map(record => record.photosyntheticCategory)),
@@ -5053,6 +5120,8 @@ END
     function renderReferenceSequenceCard(record) {
       const sequence = record.aminoAcidSequence || '';
       const selected = record.stableSequenceId === state.selectedCuratedSequenceId;
+      const expanded = state.expandedReferenceSequenceIds.has(record.stableSequenceId);
+      const preview = sequencePreview(sequence);
       const metadata = [
         `Organism: ${displayValue(record.organism)}`,
         `Protein/Gene: ${displayValue(record.proteinName)} / ${displayValue(record.geneName)}`,
@@ -5064,14 +5133,41 @@ END
       ];
       if (record.sourceCitation) metadata.push(`Citation: ${record.sourceCitation}`);
       if (record.notes) metadata.push(`Notes: ${record.notes}`);
+      const fullSequence = expanded
+        ? `<div class="reference-sequence-full" aria-label="Complete curated reference sequence for ${escapeHtml(record.stableSequenceId)}">
+            <div class="viewer-note">Reference sequence numbering is shown at the start of each 10-residue display row. This is not structure residue numbering and no alignment gaps are inserted.</div>
+            ${sequencePositionRows(sequence).map(row => `<div class="sequence-position-row"><span class="sequence-position-marker">${row.start}</span><code>${escapeHtml(row.sequence)}</code></div>`).join('')}
+          </div>`
+        : '';
       return `
         <article class="reference-sequence-card${selected ? ' selected' : ''}">
           <span class="sequence-label">Reference Sequence</span>
           <h4><em>${escapeHtml(record.organism)}</em></h4>
           <div class="reference-sequence-meta">${metadata.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</div>
-          <button type="button" data-reference-sequence-id="${escapeHtml(record.stableSequenceId)}" aria-pressed="${selected ? 'true' : 'false'}">View details</button>
-          <div class="diagram-box" aria-label="Amino-acid sequence for ${escapeHtml(record.stableSequenceId)}">${escapeHtml(sequence || 'No sequence provided')}</div>
+          <div class="sequence-preview" aria-label="N-terminal sequence preview for ${escapeHtml(record.stableSequenceId)}"><strong>Sequence preview:</strong> <code>${escapeHtml(preview)}</code>${sequence.length > preview.length ? '<span>continues...</span>' : ''}</div>
+          <div class="reference-sequence-actions">
+            <button type="button" data-reference-sequence-id="${escapeHtml(record.stableSequenceId)}" aria-pressed="${selected ? 'true' : 'false'}">View details</button>
+            <button type="button" data-reference-sequence-toggle="${escapeHtml(record.stableSequenceId)}" aria-expanded="${expanded ? 'true' : 'false'}">${expanded ? 'Collapse complete sequence' : 'Expand complete sequence'}</button>
+          </div>
+          ${fullSequence}
         </article>
+      `;
+    }
+
+    function renderComparativeSequenceSummary(dataset) {
+      const records = dataset?.records || [];
+      const summary = curatedDatasetSummary(dataset);
+      return `
+        <div class="chem-note"><strong>Comparative Sequence Overview</strong>These are complete curated reference sequences shown without alignment. Differences in length or visible sequence text do not by themselves establish functional or evolutionary significance.</div>
+        <div class="evolution-summary-grid" aria-label="Comparative reference sequence summary">
+          <div class="evolution-summary-card"><strong>Reference sequences</strong><span>${summary.sequenceCount}</span></div>
+          <div class="evolution-summary-card"><strong>Minimum sequence length</strong><span>${summary.lengthStats.min || 'not available'}${summary.lengthStats.min ? ' amino acids' : ''}</span></div>
+          <div class="evolution-summary-card"><strong>Maximum sequence length</strong><span>${summary.lengthStats.max || 'not available'}${summary.lengthStats.max ? ' amino acids' : ''}</span></div>
+          <div class="evolution-summary-card"><strong>Length difference</strong><span>${summary.lengthStats.difference} amino acids</span></div>
+          <div class="evolution-summary-card"><strong>Represented organisms</strong><span>${escapeHtml(joinList(records.map(record => record.organism)))}</span></div>
+          <div class="evolution-summary-card"><strong>Broad taxonomic groups</strong><span>${escapeHtml(summary.groups)}</span></div>
+          <div class="evolution-summary-card"><strong>Photosynthetic categories</strong><span>${escapeHtml(summary.categories)}</span></div>
+        </div>
       `;
     }
 
@@ -5146,14 +5242,31 @@ END
         return;
       }
       if (!dataset.records.length) {
-        container.innerHTML = '<div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified Rubisco large subunit sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>';
+        container.innerHTML = `
+          <div class="chem-note"><strong>Comparative Sequence Overview</strong>No reference sequence records are available for this curated dataset yet.</div>
+          <div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified Rubisco large subunit sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>
+        `;
         renderReferenceSequenceDetails();
         return;
       }
       if (state.selectedCuratedSequenceId && !dataset.records.some(record => record.stableSequenceId === state.selectedCuratedSequenceId)) {
         state.selectedCuratedSequenceId = null;
       }
-      container.innerHTML = dataset.records.map(renderReferenceSequenceCard).join('');
+      const records = sortedCuratedRecords(dataset.records, state.sequenceComparisonSort);
+      container.innerHTML = `
+        ${renderComparativeSequenceSummary(dataset)}
+        <div class="row">
+          <label for="sequenceComparisonSort">Sort reference sequences</label>
+          <select id="sequenceComparisonSort">
+            <option value="dataset"${state.sequenceComparisonSort === 'dataset' ? ' selected' : ''}>Dataset order</option>
+            <option value="organism"${state.sequenceComparisonSort === 'organism' ? ' selected' : ''}>Organism</option>
+            <option value="group"${state.sequenceComparisonSort === 'group' ? ' selected' : ''}>Broad taxonomic group</option>
+            <option value="category"${state.sequenceComparisonSort === 'category' ? ' selected' : ''}>Photosynthetic category</option>
+            <option value="length"${state.sequenceComparisonSort === 'length' ? ' selected' : ''}>Sequence length</option>
+          </select>
+        </div>
+        ${records.map(renderReferenceSequenceCard).join('')}
+      `;
       renderReferenceSequenceDetails();
     }
 
@@ -7605,14 +7718,30 @@ END
     document.getElementById('curatedSequenceDataset').addEventListener('change', event => {
       state.curatedSequenceDatasetId = event.target.value;
       state.selectedCuratedSequenceId = null;
+      state.expandedReferenceSequenceIds.clear();
+      state.sequenceComparisonSort = 'dataset';
       renderCuratedSequencePanel();
       updateSequenceStageOverview();
     });
 
     document.getElementById('curatedReferenceSequences').addEventListener('click', event => {
+      const toggle = event.target.closest('[data-reference-sequence-toggle]');
+      if (toggle) {
+        const id = toggle.dataset.referenceSequenceToggle;
+        if (state.expandedReferenceSequenceIds.has(id)) state.expandedReferenceSequenceIds.delete(id);
+        else state.expandedReferenceSequenceIds.add(id);
+        renderCuratedSequencePanel();
+        return;
+      }
       const item = event.target.closest('[data-reference-sequence-id]');
       if (!item) return;
       state.selectedCuratedSequenceId = item.dataset.referenceSequenceId;
+      renderCuratedSequencePanel();
+    });
+
+    document.getElementById('curatedReferenceSequences').addEventListener('change', event => {
+      if (event.target.id !== 'sequenceComparisonSort') return;
+      state.sequenceComparisonSort = event.target.value;
       renderCuratedSequencePanel();
     });
 

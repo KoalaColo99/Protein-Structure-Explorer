@@ -5,6 +5,22 @@ const {
   normalizeSequence,
   validateCuratedSequenceSets
 } = require('../curated_sequence_validation.js');
+const {
+  sequenceLengthStats,
+  sequencePreview,
+  sequencePositionRows,
+  sortedCuratedRecords
+} = require('../sequence_display_helpers.js');
+
+function productionDataset() {
+  const dataPath = path.join(__dirname, '..', 'data', 'curated_sequence_sets.js');
+  delete require.cache[require.resolve(dataPath)];
+  globalThis.BVA_CURATED_SEQUENCE_SETS = undefined;
+  require(dataPath);
+  const result = validateCuratedSequenceSets(globalThis.BVA_CURATED_SEQUENCE_SETS);
+  assert.strictEqual(result.ok, true);
+  return result.datasets.find(item => item.datasetId === 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs');
+}
 
 function validPayload(overrides = {}) {
   return {
@@ -188,10 +204,7 @@ run('Sequence mode uses a left-stage Visual Evolution Explorer overlay', () => {
 });
 
 run('Visual Evolution Explorer summarizes dataset title and sequence count', () => {
-  globalThis.BVA_CURATED_SEQUENCE_SETS = undefined;
-  require('../data/curated_sequence_sets.js');
-  const result = validateCuratedSequenceSets(globalThis.BVA_CURATED_SEQUENCE_SETS);
-  const dataset = result.datasets.find(item => item.datasetId === 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs');
+  const dataset = productionDataset();
   assert.strictEqual(dataset.title, 'Photosynthesis: Rubisco large subunit across oxygenic phototrophs');
   assert.strictEqual(dataset.records.length, 3);
   assert.strictEqual(Math.min(...dataset.records.map(record => record.aminoAcidSequence.length)), 475);
@@ -231,4 +244,69 @@ run('mode controls remain keyboard-accessible buttons', () => {
   assert(indexHtml.includes('id="modeTabs" aria-label="Biochemistry Visual Atlas navigation"'));
   assert(indexHtml.includes('<button class="active" data-mode="overview">Structure</button>'));
   assert(indexHtml.includes('<button data-mode="sequence">Sequence</button>'));
+});
+
+run('Comparative Sequence Overview renders all current reference records', () => {
+  const dataset = productionDataset();
+  const accessions = dataset.records.map(record => record.sourceAccession);
+  assert.deepStrictEqual(accessions, ['NP_051067.1', 'NP_043033.1', 'NP_958405.1']);
+  assert.deepStrictEqual(dataset.records.map(record => record.organism), ['Arabidopsis thaliana', 'Zea mays', 'Chlamydomonas reinhardtii']);
+  assert.deepStrictEqual(dataset.records.map(record => record.photosyntheticCategory), ['C3', 'C4', 'oxygenic green alga']);
+  assert.deepStrictEqual(dataset.records.map(record => record.aminoAcidSequence.length), [479, 476, 475]);
+});
+
+run('sequence preview generation uses the exact N-terminal substring without alignment gaps', () => {
+  const dataset = productionDataset();
+  const arabidopsis = dataset.records[0];
+  assert.strictEqual(sequencePreview(arabidopsis.aminoAcidSequence), 'MSPQTETKASVGFKAGVKEYKLTYYTPEYE'.slice(0, 30));
+  dataset.records.forEach(record => {
+    const preview = sequencePreview(record.aminoAcidSequence);
+    assert.strictEqual(preview.length, 30);
+    assert(!preview.includes('-'));
+    assert.strictEqual(preview, record.aminoAcidSequence.slice(0, 30));
+  });
+});
+
+run('expanded full-sequence rendering can produce reference position markers', () => {
+  const dataset = productionDataset();
+  const rows = sequencePositionRows(dataset.records[0].aminoAcidSequence, 10);
+  assert.deepStrictEqual(rows.slice(0, 3), [
+    { start: 1, sequence: 'MSPQTETKAS' },
+    { start: 11, sequence: 'VGFKAGVKEY' },
+    { start: 21, sequence: 'KLTYYTPEYE' }
+  ]);
+  assert.strictEqual(rows[rows.length - 1].start, 471);
+  assert.strictEqual(rows.map(row => row.sequence).join(''), dataset.records[0].aminoAcidSequence);
+});
+
+run('sequence length summary reports min, max, and difference', () => {
+  const dataset = productionDataset();
+  assert.deepStrictEqual(sequenceLengthStats(dataset.records), { min: 475, max: 479, difference: 4 });
+});
+
+run('sorting works by each supported comparative sequence field', () => {
+  const dataset = productionDataset();
+  assert.deepStrictEqual(sortedCuratedRecords(dataset.records, 'dataset').map(record => record.sourceAccession), ['NP_051067.1', 'NP_043033.1', 'NP_958405.1']);
+  assert.deepStrictEqual(sortedCuratedRecords(dataset.records, 'organism').map(record => record.organism), ['Arabidopsis thaliana', 'Chlamydomonas reinhardtii', 'Zea mays']);
+  assert.deepStrictEqual(sortedCuratedRecords(dataset.records, 'group').map(record => record.broadTaxonomicGroup), ['flowering plant (eudicot)', 'flowering plant (monocot)', 'green alga']);
+  assert.deepStrictEqual(sortedCuratedRecords(dataset.records, 'category').map(record => record.photosyntheticCategory), ['C3', 'C4', 'oxygenic green alga']);
+  assert.deepStrictEqual(sortedCuratedRecords(dataset.records, 'length').map(record => record.sourceAccession), ['NP_958405.1', 'NP_043033.1', 'NP_051067.1']);
+});
+
+run('Comparative Sequence Overview selection and expansion controls use existing state without residue mapping', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('state.selectedCuratedSequenceId = item.dataset.referenceSequenceId;'));
+  assert(indexHtml.includes('expandedReferenceSequenceIds'));
+  assert(indexHtml.includes('data-reference-sequence-toggle'));
+  assert(indexHtml.includes('This is not structure residue numbering and no alignment gaps are inserted.'));
+  assert(!indexHtml.includes('data-sequence-index="${escapeHtml(record.stableSequenceId)}"'));
+});
+
+run('Comparative Sequence Overview sort and expand controls are keyboard-accessible form controls', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('<label for="sequenceComparisonSort">Sort reference sequences</label>'));
+  assert(indexHtml.includes('<select id="sequenceComparisonSort">'));
+  assert(indexHtml.includes('aria-expanded='));
+  assert(indexHtml.includes('Expand complete sequence'));
+  assert(indexHtml.includes('Collapse complete sequence'));
 });
