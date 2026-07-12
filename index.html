@@ -6,7 +6,9 @@
   <title>Biochemistry Visual Atlas</title>
   <script src="./3Dmol-min.js"></script>
   <script src="./curated_sequence_validation.js"></script>
+  <script src="./curated_alignment_validation.js"></script>
   <script src="./sequence_display_helpers.js"></script>
+  <script src="./data/curated_sequence_alignments.js"></script>
   <script src="./data/curated_sequence_sets.js"></script>
   <style>
     :root {
@@ -662,6 +664,39 @@
       text-align: right;
     }
 
+    .alignment-block {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin-top: 10px;
+      overflow: auto;
+      padding: 8px;
+    }
+
+    .alignment-row {
+      display: grid;
+      grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+      gap: 10px;
+      margin: 8px 0;
+    }
+
+    .alignment-row-label {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .alignment-sequence {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: pre;
+    }
+
+    .alignment-marker {
+      color: var(--muted);
+    }
+
     .detail-grid {
       display: grid;
       gap: 7px;
@@ -930,6 +965,7 @@
 
     @media (max-width: 760px) {
       .rama-layout { grid-template-columns: 1fr; }
+      .alignment-row { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 520px) {
@@ -1085,7 +1121,13 @@
           <label for="curatedSequenceDataset">Curated dataset</label>
           <select id="curatedSequenceDataset"></select>
           <div class="chem-note" id="curatedSequenceDatasetNote"></div>
+          <div class="view-mode-options" role="radiogroup" aria-label="Sequence explorer view">
+            <span>Sequence Explorer View</span>
+            <label><input id="sequenceViewOverview" name="sequenceView" type="radio" value="overview" checked> Sequence Overview</label>
+            <label><input id="sequenceViewAlignment" name="sequenceView" type="radio" value="alignment"> Alignment View</label>
+          </div>
           <div id="curatedReferenceSequences"></div>
+          <div id="curatedAlignmentView" class="hidden"></div>
           <div class="reference-details-card" id="referenceSequenceDetailsPanel" aria-live="polite">
             <h3>Reference Sequence Details</h3>
             <div class="chem-note"><strong>Reference sequences:</strong> Reference sequences represent complete curated protein sequences and may include residues not present in the currently loaded molecular structure.</div>
@@ -3503,6 +3545,8 @@ END
       mode: 'overview',
       curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
       curatedSequenceValidation: null,
+      curatedAlignmentValidation: null,
+      sequenceExplorerView: 'overview',
       selectedCuratedSequenceId: null,
       sequenceComparisonSort: 'dataset',
       expandedReferenceSequenceIds: new Set(),
@@ -4982,6 +5026,14 @@ END
       return window.BVASequenceDisplay.sortedCuratedRecords(records, sortMode);
     }
 
+    function alignmentColumnRows(sequence, blockSize = 60) {
+      return window.BVASequenceDisplay.alignmentColumnRows(sequence, blockSize);
+    }
+
+    function alignmentMarkerLine(start, sequence, markerInterval = 10) {
+      return window.BVASequenceDisplay.alignmentMarkerLine(start, sequence, markerInterval);
+    }
+
     function scientificNameList(records) {
       const organisms = uniqueValues(records.map(record => record.organism));
       if (!organisms.length) return '<li>No organisms listed.</li>';
@@ -5014,9 +5066,30 @@ END
       return state.curatedSequenceValidation;
     }
 
+    function curatedAlignmentValidation() {
+      if (state.curatedAlignmentValidation) return state.curatedAlignmentValidation;
+      const source = window.BVA_CURATED_SEQUENCE_ALIGNMENTS || { formatVersion: 1, alignments: [] };
+      if (!window.BVAAlignmentValidation?.validateCuratedSequenceAlignments) {
+        state.curatedAlignmentValidation = {
+          ok: false,
+          errors: ['Curated alignment validation tools are unavailable.'],
+          warnings: [],
+          alignments: []
+        };
+        return state.curatedAlignmentValidation;
+      }
+      state.curatedAlignmentValidation = window.BVAAlignmentValidation.validateCuratedSequenceAlignments(source, curatedSequenceValidation());
+      return state.curatedAlignmentValidation;
+    }
+
     function currentCuratedSequenceDataset() {
       const validation = curatedSequenceValidation();
       return validation.datasets.find(dataset => dataset.datasetId === state.curatedSequenceDatasetId) || validation.datasets[0];
+    }
+
+    function currentCuratedAlignment() {
+      const validation = curatedAlignmentValidation();
+      return validation.alignments.find(alignment => alignment.datasetId === state.curatedSequenceDatasetId) || null;
     }
 
     function curatedDatasetSummary(dataset) {
@@ -5171,6 +5244,84 @@ END
       `;
     }
 
+    function curatedRecordByAccession(dataset) {
+      return new Map((dataset?.records || []).map(record => [record.sourceAccession, record]));
+    }
+
+    function renderAlignmentRecordBlocks(alignment, dataset) {
+      const curatedByAccession = curatedRecordByAccession(dataset);
+      const blocks = alignmentColumnRows(alignment.records[0]?.alignedSequence || '', 60);
+      return blocks.map(block => {
+        const blockRows = alignment.records.map(alignedRecord => {
+          const curatedRecord = curatedByAccession.get(alignedRecord.sourceAccession);
+          const sequenceChunk = alignedRecord.alignedSequence.slice(block.start - 1, block.end);
+          return `
+            <div class="alignment-row">
+              <div class="alignment-row-label">
+                <strong><em>${escapeHtml(curatedRecord?.organism || alignedRecord.sourceAccession)}</em></strong><br>
+                ${escapeHtml(alignedRecord.sourceAccession)}
+              </div>
+              <code class="alignment-sequence" aria-label="Aligned sequence columns ${block.start} to ${block.end} for ${escapeHtml(alignedRecord.sourceAccession)}">${escapeHtml(sequenceChunk)}</code>
+            </div>
+          `;
+        }).join('');
+        return `
+          <div class="alignment-block">
+            <h4>Alignment columns ${block.start}-${block.end}</h4>
+            <div class="alignment-row">
+              <div class="alignment-row-label">Column marker</div>
+              <code class="alignment-sequence alignment-marker" aria-label="Alignment position markers">${escapeHtml(alignmentMarkerLine(block.start, block.sequence))}</code>
+            </div>
+            ${blockRows}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderAlignmentView() {
+      const container = document.getElementById('curatedAlignmentView');
+      if (!container) return;
+      const dataset = currentCuratedSequenceDataset();
+      const validation = curatedAlignmentValidation();
+      const alignment = currentCuratedAlignment();
+      if (state.sequenceExplorerView !== 'alignment') {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      if (!dataset) {
+        container.innerHTML = '<div class="chem-note"><strong>No curated dataset selected</strong>Select a curated sequence dataset before viewing an alignment.</div>';
+        return;
+      }
+      if (!alignment) {
+        container.innerHTML = '<div class="chem-note"><strong>No alignment available</strong>No instructor-supplied alignment is registered for this curated dataset.</div>';
+        return;
+      }
+      if (!validation.ok) {
+        container.innerHTML = `<div class="warning-text"><strong>Alignment validation issue</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`;
+        return;
+      }
+      const provenance = [
+        `Method: ${displayValue(alignment.alignmentMethod)}`,
+        `Software or service: ${displayValue(alignment.alignmentSoftwareOrService)}`,
+        `Version: ${displayValue(alignment.softwareVersion)}`,
+        `Date: ${displayValue(alignment.alignmentDate)}`,
+        `Source: ${displayValue(alignment.sourceAlignedFastaPath)}`
+      ].join(' | ');
+      container.innerHTML = `
+        <div class="chem-note"><strong>Alignment View</strong>An alignment inserts gap characters so homologous sequence positions can be compared across proteins. Alignment columns represent inferred correspondence; they do not automatically prove equivalent function.</div>
+        <div class="chem-note"><strong>Numbering systems</strong>Alignment position, reference-sequence position, and structure residue number are different numbering systems.</div>
+        <div class="evolution-summary-grid" aria-label="Multiple sequence alignment summary">
+          <div class="evolution-summary-card"><strong>Alignment name</strong><span>${escapeHtml(alignment.name)}</span></div>
+          <div class="evolution-summary-card"><strong>Sequences</strong><span>${alignment.records.length}</span></div>
+          <div class="evolution-summary-card"><strong>Alignment length</strong><span>${alignment.alignmentLength} columns</span></div>
+          <div class="evolution-summary-card"><strong>Provenance</strong><span>${escapeHtml(provenance)}</span></div>
+        </div>
+        ${alignment.notes ? `<div class="chem-note"><strong>Instructor notes</strong>${escapeHtml(alignment.notes)}</div>` : ''}
+        ${renderAlignmentRecordBlocks(alignment, dataset)}
+      `;
+    }
+
     function detailRows(rows) {
       return rows
         .filter(row => row.value !== null && row.value !== undefined && String(row.value).trim() !== '')
@@ -5217,11 +5368,16 @@ END
       const note = document.getElementById('curatedSequenceDatasetNote');
       const container = document.getElementById('curatedReferenceSequences');
       if (!note || !container) return;
+      document.querySelectorAll('input[name="sequenceView"]').forEach(input => {
+        input.checked = input.value === state.sequenceExplorerView;
+      });
       const validation = curatedSequenceValidation();
       const dataset = currentCuratedSequenceDataset();
       if (!dataset) {
         note.innerHTML = '<strong>Reference sequences unavailable</strong>No local curated sequence datasets were found.';
         container.innerHTML = '';
+        container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
+        renderAlignmentView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -5235,9 +5391,11 @@ END
       validation.warnings.forEach(warning => messages.push(warning));
       validation.errors.forEach(error => messages.push(`Validation issue: ${error}`));
       note.innerHTML = `<strong>${escapeHtml(dataset.title)}</strong>${messages.map(message => escapeHtml(message)).join(' ')}`;
+      container.classList.toggle('hidden', state.sequenceExplorerView !== 'overview');
 
       if (!validation.ok) {
         container.innerHTML = '<div class="warning-text">This curated sequence dataset has validation issues and should be corrected before classroom use.</div>';
+        renderAlignmentView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -5246,6 +5404,7 @@ END
           <div class="chem-note"><strong>Comparative Sequence Overview</strong>No reference sequence records are available for this curated dataset yet.</div>
           <div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified Rubisco large subunit sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>
         `;
+        renderAlignmentView();
         renderReferenceSequenceDetails();
         return;
       }
@@ -5267,6 +5426,7 @@ END
         </div>
         ${records.map(renderReferenceSequenceCard).join('')}
       `;
+      renderAlignmentView();
       renderReferenceSequenceDetails();
     }
 
@@ -7722,6 +7882,13 @@ END
       state.sequenceComparisonSort = 'dataset';
       renderCuratedSequencePanel();
       updateSequenceStageOverview();
+    });
+
+    document.querySelectorAll('input[name="sequenceView"]').forEach(input => {
+      input.addEventListener('change', event => {
+        state.sequenceExplorerView = event.target.value;
+        renderCuratedSequencePanel();
+      });
     });
 
     document.getElementById('curatedReferenceSequences').addEventListener('click', event => {

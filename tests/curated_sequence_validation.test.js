@@ -6,10 +6,16 @@ const {
   validateCuratedSequenceSets
 } = require('../curated_sequence_validation.js');
 const {
+  normalizeAlignedSequence,
+  validateCuratedSequenceAlignments
+} = require('../curated_alignment_validation.js');
+const {
   sequenceLengthStats,
   sequencePreview,
   sequencePositionRows,
-  sortedCuratedRecords
+  sortedCuratedRecords,
+  alignmentColumnRows,
+  alignmentMarkerLine
 } = require('../sequence_display_helpers.js');
 
 function productionDataset() {
@@ -20,6 +26,33 @@ function productionDataset() {
   const result = validateCuratedSequenceSets(globalThis.BVA_CURATED_SEQUENCE_SETS);
   assert.strictEqual(result.ok, true);
   return result.datasets.find(item => item.datasetId === 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs');
+}
+
+function productionCuratedValidation() {
+  const dataPath = path.join(__dirname, '..', 'data', 'curated_sequence_sets.js');
+  delete require.cache[require.resolve(dataPath)];
+  globalThis.BVA_CURATED_SEQUENCE_SETS = undefined;
+  require(dataPath);
+  return validateCuratedSequenceSets(globalThis.BVA_CURATED_SEQUENCE_SETS);
+}
+
+function productionAlignmentValidation() {
+  const alignmentPath = path.join(__dirname, '..', 'data', 'curated_sequence_alignments.js');
+  delete require.cache[require.resolve(alignmentPath)];
+  globalThis.BVA_CURATED_SEQUENCE_ALIGNMENTS = undefined;
+  require(alignmentPath);
+  return validateCuratedSequenceAlignments(globalThis.BVA_CURATED_SEQUENCE_ALIGNMENTS, productionCuratedValidation());
+}
+
+function validAlignmentPayload(overrides = {}) {
+  const alignmentPath = path.join(__dirname, '..', 'data', 'curated_sequence_alignments.js');
+  delete require.cache[require.resolve(alignmentPath)];
+  globalThis.BVA_CURATED_SEQUENCE_ALIGNMENTS = undefined;
+  require(alignmentPath);
+  return {
+    ...JSON.parse(JSON.stringify(globalThis.BVA_CURATED_SEQUENCE_ALIGNMENTS)),
+    ...overrides
+  };
 }
 
 function validPayload(overrides = {}) {
@@ -309,4 +342,100 @@ run('Comparative Sequence Overview sort and expand controls are keyboard-accessi
   assert(indexHtml.includes('aria-expanded='));
   assert(indexHtml.includes('Expand complete sequence'));
   assert(indexHtml.includes('Collapse complete sequence'));
+});
+
+run('valid alignment loading and exact ungapped matching pass', () => {
+  const result = productionAlignmentValidation();
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.errors.length, 0);
+  assert.strictEqual(result.alignments[0].records.length, 3);
+  result.alignments[0].records.forEach(record => {
+    const curated = productionDataset().records.find(item => item.sourceAccession === record.sourceAccession);
+    assert.strictEqual(record.alignedSequence.replace(/-/g, ''), curated.aminoAcidSequence);
+  });
+});
+
+run('alignment length is calculated from validated aligned rows', () => {
+  const result = productionAlignmentValidation();
+  assert.strictEqual(result.alignments[0].alignmentLength, 480);
+  assert.deepStrictEqual(result.alignments[0].records.map(record => record.alignedSequence.length), [480, 480, 480]);
+});
+
+run('duplicate aligned accessions are rejected', () => {
+  const payload = validAlignmentPayload();
+  payload.alignments[0].records[1].sourceAccession = payload.alignments[0].records[0].sourceAccession;
+  const result = validateCuratedSequenceAlignments(payload, productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('Duplicate aligned source accession')));
+});
+
+run('unequal alignment lengths are rejected', () => {
+  const payload = validAlignmentPayload();
+  payload.alignments[0].records[0].alignedSequence += 'A';
+  const result = validateCuratedSequenceAlignments(payload, productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('unequal aligned sequence lengths')));
+});
+
+run('invalid alignment symbols are rejected', () => {
+  const payload = validAlignmentPayload();
+  payload.alignments[0].records[0].alignedSequence = payload.alignments[0].records[0].alignedSequence.replace('M', '*');
+  const result = validateCuratedSequenceAlignments(payload, productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('invalid alignment symbol')));
+});
+
+run('unknown aligned records and missing curated records are reported', () => {
+  const payload = validAlignmentPayload();
+  payload.alignments[0].records.pop();
+  payload.alignments[0].records.push({ sourceAccession: 'UNKNOWN.1', alignedSequence: 'AAAA-' });
+  const result = validateCuratedSequenceAlignments(payload, productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('UNKNOWN.1 is not present')));
+  assert(result.errors.some(error => error.includes('missing curated source accession')));
+});
+
+run('ungapped alignment mismatch is rejected', () => {
+  const payload = validAlignmentPayload();
+  payload.alignments[0].records[0].alignedSequence = payload.alignments[0].records[0].alignedSequence.replace('M', 'A');
+  const result = validateCuratedSequenceAlignments(payload, productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('ungapped aligned sequence does not match')));
+});
+
+run('empty alignment and unsupported alignment format version are rejected', () => {
+  let result = validateCuratedSequenceAlignments({ formatVersion: 1, alignments: [] }, productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('does not contain any alignments')));
+  result = validateCuratedSequenceAlignments(validAlignmentPayload({ formatVersion: 99 }), productionCuratedValidation());
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('format version')));
+});
+
+run('alignment block helpers preserve gap characters and marker positions', () => {
+  const result = productionAlignmentValidation();
+  const aligned = result.alignments[0].records[0].alignedSequence;
+  const rows = alignmentColumnRows(aligned, 60);
+  assert.strictEqual(rows.length, 8);
+  assert.strictEqual(rows[0].start, 1);
+  assert.strictEqual(rows[0].end, 60);
+  assert(rows[7].sequence.includes('-'));
+  assert(alignmentMarkerLine(1, 'ABCDEFGHIJ').endsWith('|'));
+});
+
+run('Alignment View UI preserves structure behavior and avoids clickable mapping', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('Alignment View'));
+  assert(indexHtml.includes('Alignment position, reference-sequence position, and structure residue number are different numbering systems.'));
+  assert(indexHtml.includes('data-mode="overview">Structure</button>'));
+  assert(indexHtml.includes('data-mode="sequence">Sequence</button>'));
+  assert(!indexHtml.includes('data-alignment-residue-index'));
+});
+
+run('Alignment View controls are accessible radio controls', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('role="radiogroup" aria-label="Sequence explorer view"'));
+  assert(indexHtml.includes('name="sequenceView"'));
+  assert(indexHtml.includes('Sequence Overview'));
+  assert(indexHtml.includes('Alignment View'));
 });

@@ -53,6 +53,23 @@
     return indexed.map(item => item.record);
   }
 
+  function alignmentColumnRows(sequence, blockSize = 60) {
+    const text = String(sequence || '');
+    const rows = [];
+    for (let index = 0; index < text.length; index += blockSize) {
+      rows.push({
+        start: index + 1,
+        end: Math.min(index + blockSize, text.length),
+        sequence: text.slice(index, index + blockSize)
+      });
+    }
+    return rows;
+  }
+
+  function alignmentMarkerLine(start, sequence, markerInterval = 10) {
+    return [...sequence].map((_, index) => ((start + index) % markerInterval === 0 ? '|' : '.')).join('');
+  }
+
   return {
     uniqueValues,
     joinList,
@@ -60,6 +77,8 @@
     sequenceLengthRange,
     sequencePreview,
     sequencePositionRows,
-    sortedCuratedRecords
+    sortedCuratedRecords,
+    alignmentColumnRows,
+    alignmentMarkerLine
   };
 });
