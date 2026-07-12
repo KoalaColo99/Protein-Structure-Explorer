@@ -109,6 +109,11 @@
     return lookup;
   }, {});
 
+  const ALIGNMENT_CONSERVATION_SCORE_CONFIG = {
+    identityWeight: 0.7,
+    propertySimilarityWeight: 0.3
+  };
+
   function referencePositionForAlignmentColumn(alignedSequence, zeroBasedColumnIndex) {
     const text = String(alignedSequence || '');
     const index = Number(zeroBasedColumnIndex);
@@ -199,6 +204,94 @@
     return alignmentColumnStatistics(characters);
   }
 
+  function mostCommonCountedItem(items, labelKey = 'label') {
+    if (!items.length) return null;
+    return [...items].sort((a, b) => (b.count - a.count) || String(a[labelKey]).localeCompare(String(b[labelKey])))[0];
+  }
+
+  function identityScore(stats) {
+    if (!stats || !stats.residueCount) return null;
+    const mostCommonResidue = mostCommonCountedItem(stats.frequencies, 'residue');
+    return {
+      score: mostCommonResidue.count / stats.residueCount,
+      mostCommonResidue
+    };
+  }
+
+  function propertySimilarityScore(stats) {
+    if (!stats || !stats.residueCount) return null;
+    const mostCommonProperty = mostCommonCountedItem(stats.propertyGroups, 'label');
+    return {
+      score: mostCommonProperty ? mostCommonProperty.count / stats.residueCount : 0,
+      mostCommonProperty
+    };
+  }
+
+  function gapCoverage(stats) {
+    if (!stats || !stats.totalSequences) return null;
+    return stats.residueCount / stats.totalSequences;
+  }
+
+  function conservationScoreBand(score) {
+    if (score === null || score === undefined || Number.isNaN(score)) return 'unavailable: no amino-acid residues';
+    if (score >= 0.9) return 'very high similarity in this dataset';
+    if (score >= 0.7) return 'high similarity in this dataset';
+    if (score >= 0.4) return 'moderate similarity in this dataset';
+    return 'low similarity in this dataset';
+  }
+
+  function alignmentColumnConservationSummary(characters, config = ALIGNMENT_CONSERVATION_SCORE_CONFIG) {
+    const stats = alignmentColumnStatistics(characters);
+    const identity = identityScore(stats);
+    const property = propertySimilarityScore(stats);
+    const coverage = gapCoverage(stats);
+    if (!identity || !property || coverage === null || stats.residueCount === 0) {
+      return {
+        stats,
+        identityScore: null,
+        propertySimilarityScore: null,
+        gapCoverage: coverage,
+        finalScore: null,
+        scoreBand: conservationScoreBand(null),
+        mostCommonResidue: null,
+        mostCommonProperty: null,
+        weights: config
+      };
+    }
+    const weightedSimilarity = (config.identityWeight * identity.score) + (config.propertySimilarityWeight * property.score);
+    const finalScore = coverage * weightedSimilarity;
+    return {
+      stats,
+      identityScore: identity.score,
+      propertySimilarityScore: property.score,
+      gapCoverage: coverage,
+      weightedSimilarity,
+      finalScore,
+      scoreBand: conservationScoreBand(finalScore),
+      mostCommonResidue: identity.mostCommonResidue,
+      mostCommonProperty: property.mostCommonProperty,
+      weights: config
+    };
+  }
+
+  function alignmentColumnConservationSummaryForRecords(records, zeroBasedColumnIndex, config = ALIGNMENT_CONSERVATION_SCORE_CONFIG) {
+    const index = Number(zeroBasedColumnIndex);
+    const characters = (records || []).map(record => String(record?.alignedSequence || '')[index] || '-');
+    return alignmentColumnConservationSummary(characters, config);
+  }
+
+  function fullAlignmentConservationScores(records, config = ALIGNMENT_CONSERVATION_SCORE_CONFIG) {
+    const alignmentLength = Math.max(0, ...((records || []).map(record => String(record?.alignedSequence || '').length)));
+    const scores = [];
+    for (let index = 0; index < alignmentLength; index += 1) {
+      scores.push({
+        columnIndex: index,
+        ...alignmentColumnConservationSummaryForRecords(records, index, config)
+      });
+    }
+    return scores;
+  }
+
   return {
     uniqueValues,
     joinList,
@@ -215,6 +308,14 @@
     alignmentColumnState,
     alignmentColumnStatistics,
     alignmentColumnStatisticsForRecords,
-    BIOCHEMICAL_PROPERTY_CATEGORIES
+    identityScore,
+    propertySimilarityScore,
+    gapCoverage,
+    conservationScoreBand,
+    alignmentColumnConservationSummary,
+    alignmentColumnConservationSummaryForRecords,
+    fullAlignmentConservationScores,
+    BIOCHEMICAL_PROPERTY_CATEGORIES,
+    ALIGNMENT_CONSERVATION_SCORE_CONFIG
   };
 });

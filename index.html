@@ -7,9 +7,11 @@
   <script src="./3Dmol-min.js"></script>
   <script src="./curated_sequence_validation.js"></script>
   <script src="./curated_alignment_validation.js"></script>
+  <script src="./atlas_dataset_registry_validation.js"></script>
   <script src="./sequence_display_helpers.js"></script>
   <script src="./data/curated_sequence_alignments.js"></script>
   <script src="./data/curated_sequence_sets.js"></script>
+  <script src="./data/atlas_dataset_registry.js"></script>
   <style>
     :root {
       color-scheme: light;
@@ -792,6 +794,43 @@
       text-align: left;
     }
 
+    .alignment-track {
+      align-items: end;
+      display: inline-flex;
+      gap: 1px;
+      min-height: 34px;
+      white-space: nowrap;
+    }
+
+    .alignment-track-cell {
+      appearance: none;
+      background: #dbeafe;
+      border: 1px solid #94a3b8;
+      border-radius: 3px 3px 0 0;
+      color: #111827;
+      cursor: pointer;
+      font-size: 8px;
+      font-weight: 800;
+      min-width: 1.45ch;
+      padding: 0;
+      position: relative;
+    }
+
+    .alignment-track-cell[data-gap="true"] {
+      background-image: repeating-linear-gradient(135deg, rgba(15,23,42,.28) 0 1px, transparent 1px 4px);
+    }
+
+    .alignment-track-cell.selected {
+      outline: 2px solid #c2410c;
+      outline-offset: 1px;
+    }
+
+    .alignment-track-cell:focus-visible,
+    .alignment-track-cell:hover {
+      outline: 2px solid #2563eb;
+      outline-offset: 1px;
+    }
+
     .detail-grid {
       display: grid;
       gap: 7px;
@@ -1147,6 +1186,10 @@
       <section class="section">
         <h2>Atlas Overview</h2>
         <p>The atlas is organized into four modules: Protein Explorer for structure and conservation, Chemical Properties for pH and charge, Function for biochemical interpretation, and Prediction for future model-comparison tools.</p>
+        <div class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
+          <h3>Dataset Registry</h3>
+          <p>Loading dataset registry...</p>
+        </div>
       </section>
 
       <section class="section">
@@ -3645,6 +3688,7 @@ END
       curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
       curatedSequenceValidation: null,
       curatedAlignmentValidation: null,
+      atlasRegistryValidation: null,
       sequenceExplorerView: 'overview',
       selectedCuratedSequenceId: null,
       sequenceComparisonSort: 'dataset',
@@ -5145,8 +5189,24 @@ END
       return window.BVASequenceDisplay.alignmentColumnStatisticsForRecords(records, zeroBasedColumnIndex);
     }
 
+    function alignmentColumnConservationSummaryForRecords(records, zeroBasedColumnIndex) {
+      return window.BVASequenceDisplay.alignmentColumnConservationSummaryForRecords(records, zeroBasedColumnIndex);
+    }
+
+    function fullAlignmentConservationScores(records) {
+      return window.BVASequenceDisplay.fullAlignmentConservationScores(records);
+    }
+
+    function conservationScoreConfig() {
+      return window.BVASequenceDisplay.ALIGNMENT_CONSERVATION_SCORE_CONFIG;
+    }
+
     function formatPercent(value) {
       return `${(Number(value || 0) * 100).toFixed(1)}%`;
+    }
+
+    function formatScore(value) {
+      return value === null || value === undefined || Number.isNaN(value) ? 'unavailable' : Number(value).toFixed(2);
     }
 
     function scientificNameList(records) {
@@ -5195,6 +5255,53 @@ END
       }
       state.curatedAlignmentValidation = window.BVAAlignmentValidation.validateCuratedSequenceAlignments(source, curatedSequenceValidation());
       return state.curatedAlignmentValidation;
+    }
+
+    function atlasRegistryValidation() {
+      if (state.atlasRegistryValidation) return state.atlasRegistryValidation;
+      const source = window.BVA_ATLAS_DATASET_REGISTRY || { schemaVersion: 1, datasets: [] };
+      if (!window.BVAAtlasRegistryValidation?.validateAtlasDatasetRegistry) {
+        state.atlasRegistryValidation = {
+          ok: false,
+          errors: ['Atlas dataset registry validation tools are unavailable.'],
+          warnings: [],
+          datasets: []
+        };
+        return state.atlasRegistryValidation;
+      }
+      state.atlasRegistryValidation = window.BVAAtlasRegistryValidation.validateAtlasDatasetRegistry(source, curatedSequenceValidation(), curatedAlignmentValidation());
+      return state.atlasRegistryValidation;
+    }
+
+    function capabilityBadge(capability) {
+      const status = typeof capability === 'string' ? capability : capability?.status;
+      return status || 'unavailable';
+    }
+
+    function renderAtlasDatasetRegistrySummary() {
+      const container = document.getElementById('atlasDatasetRegistrySummary');
+      if (!container) return;
+      const validation = atlasRegistryValidation();
+      if (!validation.ok) {
+        container.innerHTML = `<h3>Dataset Registry</h3><div class="warning-text"><strong>Registry validation issue</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`;
+        return;
+      }
+      const rows = validation.datasets
+        .sort((a, b) => Number(a.displayOrder || 0) - Number(b.displayOrder || 0))
+        .map(dataset => {
+          const capabilities = [
+            `system: ${capabilityBadge(dataset.capabilities.system)}`,
+            `structure: ${capabilityBadge(dataset.capabilities.structure)}`,
+            `evolution: ${capabilityBadge(dataset.capabilities.evolution)}`,
+            `function: ${capabilityBadge(dataset.capabilities.function)}`
+          ].join('; ');
+          return `<div class="structure-pill"><span><strong>${escapeHtml(dataset.title)}</strong><br>${escapeHtml(dataset.canonicalBiologicalName)}<br>Default lens: ${escapeHtml(dataset.defaultLens)}<br>${escapeHtml(capabilities)}</span></div>`;
+        }).join('');
+      container.innerHTML = `
+        <h3>Dataset Registry</h3>
+        <p>Registry loaded: ${validation.datasets.length} dataset case studies. Capabilities marked unavailable are not inferred or simulated.</p>
+        ${rows}
+      `;
     }
 
     function currentCuratedSequenceDataset() {
@@ -5396,9 +5503,31 @@ END
       }).join('');
     }
 
+    function trackBandLabel(summary) {
+      if (summary.finalScore === null || summary.finalScore === undefined) return 'NA';
+      if (summary.finalScore >= 0.9) return 'VH';
+      if (summary.finalScore >= 0.7) return 'H';
+      if (summary.finalScore >= 0.4) return 'M';
+      return 'L';
+    }
+
+    function renderAlignmentConservationTrack(block, scores) {
+      const cells = scores.slice(block.start - 1, block.end).map(summary => {
+        const selected = state.selectedAlignmentColumnIndex === summary.columnIndex;
+        const hasGap = summary.stats.gapCount > 0;
+        const finalScore = summary.finalScore;
+        const height = finalScore === null ? 8 : Math.max(8, Math.round(8 + finalScore * 24));
+        const opacity = finalScore === null ? 0.45 : Math.max(0.35, finalScore);
+        const label = `Select alignment column ${summary.columnIndex + 1}. Atlas conservation score ${formatScore(finalScore)}. ${summary.scoreBand}. ${hasGap ? 'Contains one or more gaps.' : 'No gaps in this column.'}`;
+        return `<button type="button" class="alignment-track-cell${selected ? ' selected' : ''}" data-alignment-column="${summary.columnIndex}" data-gap="${hasGap ? 'true' : 'false'}" style="height:${height}px; opacity:${opacity}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">${hasGap ? 'G' : trackBandLabel(summary)}</button>`;
+      }).join('');
+      return `<div class="alignment-track" role="group" aria-label="Atlas conservation score track for alignment columns ${block.start} to ${block.end}">${cells}</div>`;
+    }
+
     function renderAlignmentRecordBlocks(alignment, dataset) {
       const curatedByAccession = curatedRecordByAccession(dataset);
       const blocks = alignmentColumnRows(alignment.records[0]?.alignedSequence || '', 60);
+      const conservationScores = fullAlignmentConservationScores(alignment.records);
       return blocks.map(block => {
         const blockRows = alignment.records.map(alignedRecord => {
           const curatedRecord = curatedByAccession.get(alignedRecord.sourceAccession);
@@ -5419,6 +5548,10 @@ END
             <div class="alignment-row">
               <div class="alignment-row-label">Column marker</div>
               <code class="alignment-sequence alignment-marker" aria-label="Alignment position markers">${escapeHtml(alignmentMarkerLine(block.start, block.sequence))}</code>
+            </div>
+            <div class="alignment-row">
+              <div class="alignment-row-label">Atlas score track<br><span>G = gap present</span></div>
+              ${renderAlignmentConservationTrack(block, conservationScores)}
             </div>
             ${blockRows}
           </div>
@@ -5521,6 +5654,50 @@ END
       `;
     }
 
+    function renderConservationSummary(summary) {
+      const weights = conservationScoreConfig();
+      if (summary.finalScore === null || summary.finalScore === undefined) {
+        return `
+          <h5>Conservation Summary</h5>
+          <div class="chem-note"><strong>Score unavailable</strong>This selected alignment column has no amino-acid residues, so identity and property similarity cannot be calculated.</div>
+          <div class="chem-note"><strong>Atlas scoring model</strong>When residues are present, final conservation score = gap coverage x [${weights.identityWeight} x identity score + ${weights.propertySimilarityWeight} x property similarity score]. This is an educational scoring model used by this Atlas, not a universal standard for sequence conservation.</div>
+        `;
+      }
+      const residue = summary.mostCommonResidue;
+      const property = summary.mostCommonProperty;
+      const weightedIdentity = weights.identityWeight * summary.identityScore;
+      const weightedProperty = weights.propertySimilarityWeight * summary.propertySimilarityScore;
+      return `
+        <h5>Conservation Summary</h5>
+        <div class="evolution-summary-grid" aria-label="Selected alignment column Atlas conservation score summary">
+          <div class="evolution-summary-card"><strong>Most common residue</strong><span><code aria-label="${escapeHtml(residue.name)}">${escapeHtml(residue.residue)}</code> ${escapeHtml(residue.name)} (${residue.count} / ${summary.stats.residueCount} non-gap residues)</span></div>
+          <div class="evolution-summary-card"><strong>Identity score</strong><span>${formatScore(summary.identityScore)} (${residue.count} / ${summary.stats.residueCount})</span></div>
+          <div class="evolution-summary-card"><strong>Most common property category</strong><span>${property ? `${escapeHtml(property.label)} (${property.count} / ${summary.stats.residueCount})` : 'none represented'}</span></div>
+          <div class="evolution-summary-card"><strong>Property similarity score</strong><span>${formatScore(summary.propertySimilarityScore)}${property ? ` (${property.count} / ${summary.stats.residueCount})` : ''}</span></div>
+          <div class="evolution-summary-card"><strong>Gap coverage</strong><span>${formatScore(summary.gapCoverage)} (${summary.stats.residueCount} / ${summary.stats.totalSequences})</span></div>
+          <div class="evolution-summary-card"><strong>Final conservation score</strong><span>${formatScore(summary.finalScore)}</span></div>
+          <div class="evolution-summary-card"><strong>Descriptive band</strong><span>${escapeHtml(summary.scoreBand)}</span></div>
+        </div>
+        <div class="chem-note"><strong>Worked calculation</strong>Final score = ${formatScore(summary.gapCoverage)} x [${weights.identityWeight} x ${formatScore(summary.identityScore)} + ${weights.propertySimilarityWeight} x ${formatScore(summary.propertySimilarityScore)}] = ${formatScore(summary.gapCoverage)} x [${formatScore(weightedIdentity)} + ${formatScore(weightedProperty)}] = ${formatScore(summary.finalScore)}.</div>
+        <div class="chem-note"><strong>Atlas scoring model</strong>Final conservation score = gap coverage x [${weights.identityWeight} x identity score + ${weights.propertySimilarityWeight} x property similarity score]. This is an educational scoring model used by this Atlas, not a universal standard for sequence conservation.</div>
+      `;
+    }
+
+    function renderColumnReadingGuide() {
+      return `
+        <div class="chem-note">
+          <strong>How to read this column</strong>
+          <ol>
+            <li>Compare the residue identities.</li>
+            <li>Check whether substitutions share a biochemical property.</li>
+            <li>Check whether gaps reduce coverage.</li>
+            <li>Treat the score as evidence from this dataset, not proof of function.</li>
+            <li>Use structure, known active-site data, and broader sequence sampling before making stronger claims.</li>
+          </ol>
+        </div>
+      `;
+    }
+
     function renderAlignmentColumnDetails(alignment, dataset) {
       const selected = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
       if (selected === null) {
@@ -5532,6 +5709,7 @@ END
         `;
       }
       const stats = alignmentColumnStatisticsForRecords(alignment.records, selected);
+      const conservationSummary = alignmentColumnConservationSummaryForRecords(alignment.records, selected);
       const curatedByAccession = curatedRecordByAccession(dataset);
       const rows = alignment.records.map(alignedRecord => {
         const curatedRecord = curatedByAccession.get(alignedRecord.sourceAccession);
@@ -5552,11 +5730,14 @@ END
         <div class="alignment-column-details" id="alignmentColumnDetailsPanel">
           <h4>Alignment Column Details</h4>
           <p>Selected alignment column: <strong>${selected + 1}</strong></p>
+          ${renderColumnReadingGuide()}
           ${renderAlignmentColumnSummary(stats)}
           ${renderResidueFrequencyTable(stats)}
           ${renderPropertySummary(stats)}
+          ${renderConservationSummary(conservationSummary)}
           <div class="chem-note"><strong>Dataset boundary</strong>These values summarize only the sequences included in this curated dataset; they are not estimates of all RbcL proteins.</div>
           <div class="chem-note"><strong>Interpretation caution</strong>An invariant column in a small dataset is not by itself evidence that the position is functionally essential.</div>
+          <div class="chem-note"><strong>Conservation caution</strong>This score summarizes only the curated sequences currently included in the dataset. High similarity can suggest evolutionary constraint, but it does not by itself establish catalytic, structural, or regulatory importance. Low similarity does not necessarily mean that a position is unimportant. With only ${stats.totalSequences} sequences, the result should be treated as an exploratory comparison.</div>
           <table class="alignment-column-table">
             <caption>Per-sequence alignment column characters and ungapped reference-sequence positions</caption>
             <thead>
@@ -8109,6 +8290,7 @@ END
       populateControls();
       populateLessonList();
       populateProteinPresets();
+      renderAtlasDatasetRegistrySummary();
       applyMode();
     }
 

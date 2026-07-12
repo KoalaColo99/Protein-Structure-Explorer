@@ -10,6 +10,9 @@ const {
   validateCuratedSequenceAlignments
 } = require('../curated_alignment_validation.js');
 const {
+  validateAtlasDatasetRegistry
+} = require('../atlas_dataset_registry_validation.js');
+const {
   sequenceLengthStats,
   sequencePreview,
   sequencePositionRows,
@@ -20,7 +23,12 @@ const {
   residuePropertyCategory,
   alignmentColumnStatistics,
   alignmentColumnStatisticsForRecords,
-  BIOCHEMICAL_PROPERTY_CATEGORIES
+  alignmentColumnConservationSummary,
+  alignmentColumnConservationSummaryForRecords,
+  fullAlignmentConservationScores,
+  conservationScoreBand,
+  BIOCHEMICAL_PROPERTY_CATEGORIES,
+  ALIGNMENT_CONSERVATION_SCORE_CONFIG
 } = require('../sequence_display_helpers.js');
 
 function productionDataset() {
@@ -58,6 +66,21 @@ function validAlignmentPayload(overrides = {}) {
     ...JSON.parse(JSON.stringify(globalThis.BVA_CURATED_SEQUENCE_ALIGNMENTS)),
     ...overrides
   };
+}
+
+function productionRegistryPayload(overrides = {}) {
+  const registryPath = path.join(__dirname, '..', 'data', 'atlas_dataset_registry.js');
+  delete require.cache[require.resolve(registryPath)];
+  globalThis.BVA_ATLAS_DATASET_REGISTRY = undefined;
+  require(registryPath);
+  return {
+    ...JSON.parse(JSON.stringify(globalThis.BVA_ATLAS_DATASET_REGISTRY)),
+    ...overrides
+  };
+}
+
+function productionRegistryValidation(payload = productionRegistryPayload()) {
+  return validateAtlasDatasetRegistry(payload, productionCuratedValidation(), productionAlignmentValidation());
 }
 
 function validPayload(overrides = {}) {
@@ -168,6 +191,109 @@ run('dataset-version handling rejects unsupported versions', () => {
   const result = validateCuratedSequenceSets(validPayload({ formatVersion: 99 }));
   assert.strictEqual(result.ok, false);
   assert(result.errors.some(error => error.includes('format version')));
+});
+
+run('Atlas dataset registry validates Rubisco and Myoglobin entries', () => {
+  const result = productionRegistryValidation();
+  assert.strictEqual(result.ok, true);
+  const rubisco = result.datasets.find(dataset => dataset.stableDatasetId === 'rubisco');
+  const myoglobin = result.datasets.find(dataset => dataset.stableDatasetId === 'myoglobin');
+  assert(rubisco);
+  assert(myoglobin);
+  assert.strictEqual(rubisco.defaultLens, 'evolution');
+  assert.strictEqual(rubisco.capabilities.structure.status, 'unavailable');
+  assert.strictEqual(rubisco.capabilities.atlasConservationScore.status, 'available');
+  assert.strictEqual(rubisco.resources.curatedSequenceDatasetId, 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs');
+  assert.strictEqual(rubisco.resources.curatedAlignmentId, 'rubisco_rbcl_oxygenic_phototrophs_msa');
+  assert.strictEqual(myoglobin.defaultLens, 'structure');
+  assert.strictEqual(myoglobin.capabilities.structure.status, 'available');
+  assert.strictEqual(myoglobin.capabilities.alignment.status, 'unavailable');
+  assert.strictEqual(myoglobin.resources.representativePdbId, '1MBN');
+});
+
+run('Atlas dataset registry rejects duplicate dataset IDs and unsupported schema versions', () => {
+  const duplicate = productionRegistryPayload();
+  duplicate.datasets.push({ ...duplicate.datasets[0] });
+  let result = productionRegistryValidation(duplicate);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('Duplicate Atlas dataset ID')));
+  result = productionRegistryValidation(productionRegistryPayload({ schemaVersion: 99 }));
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('schema version')));
+});
+
+run('Atlas dataset registry rejects invalid capability status and default lens issues', () => {
+  const payload = productionRegistryPayload();
+  payload.datasets[0].capabilities.alignment.status = 'ready-ish';
+  let result = productionRegistryValidation(payload);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('unsupported status')));
+
+  const badDefault = productionRegistryPayload();
+  badDefault.datasets[0].defaultLens = 'mystery';
+  result = productionRegistryValidation(badDefault);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('invalid default lens')));
+
+  const unavailableDefault = productionRegistryPayload();
+  unavailableDefault.datasets[0].defaultLens = 'structure';
+  unavailableDefault.datasets[0].availableLenses.push('structure');
+  result = productionRegistryValidation(unavailableDefault);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('default lens structure is not available')));
+});
+
+run('Atlas dataset registry enforces resource requirements and unavailable-resource boundaries', () => {
+  const unavailableWithResource = productionRegistryPayload();
+  unavailableWithResource.datasets[0].capabilities.structure.status = 'unavailable';
+  unavailableWithResource.datasets[0].resources.representativePdbId = '9ABC';
+  let result = productionRegistryValidation(unavailableWithResource);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('structure is unavailable but claims active resource')));
+
+  const alignmentWithoutResource = productionRegistryPayload();
+  delete alignmentWithoutResource.datasets[0].resources.curatedAlignmentId;
+  result = productionRegistryValidation(alignmentWithoutResource);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('alignment is available but lacks required resource reference')));
+
+  const structureWithoutResource = productionRegistryPayload();
+  delete structureWithoutResource.datasets[1].resources.representativePdbId;
+  delete structureWithoutResource.datasets[1].resources.localStructureFilePath;
+  result = productionRegistryValidation(structureWithoutResource);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('structure is available but lacks required resource reference')));
+});
+
+run('Atlas dataset registry validates referenced datasets, alignments, PDB IDs, concepts, and strict fields', () => {
+  let payload = productionRegistryPayload();
+  payload.datasets[0].resources.curatedSequenceDatasetId = 'missing_sequence_dataset';
+  let result = productionRegistryValidation(payload);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('unknown curated sequence dataset')));
+
+  payload = productionRegistryPayload();
+  payload.datasets[0].resources.curatedAlignmentId = 'missing_alignment';
+  result = productionRegistryValidation(payload);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('unknown curated alignment')));
+
+  payload = productionRegistryPayload();
+  payload.datasets[1].resources.representativePdbId = '1MBNN';
+  result = productionRegistryValidation(payload);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('four alphanumeric')));
+
+  payload = productionRegistryPayload();
+  payload.datasets[0].conceptIds.push('photosynthesis');
+  result = productionRegistryValidation(payload);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('duplicate concept')));
+
+  payload = productionRegistryPayload({ unexpected: true });
+  result = productionRegistryValidation(payload);
+  assert.strictEqual(result.ok, false);
+  assert(result.errors.some(error => error.includes('unknown top-level field')));
 });
 
 run('existing Structure Sequence behavior is still wired to shared residue selection', () => {
@@ -293,6 +419,18 @@ run('Sequence mode uses a left-stage Visual Evolution Explorer overlay', () => {
   assert(indexHtml.includes("panel.classList.toggle('hidden', !isSequenceMode);"));
   assert(indexHtml.includes('.stage.sequence-stage-active #viewer'));
   assert(indexHtml.includes('visibility: hidden;'));
+});
+
+run('App loads and summarizes the Atlas dataset registry without replacing current behavior', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('./atlas_dataset_registry_validation.js'));
+  assert(indexHtml.includes('./data/atlas_dataset_registry.js'));
+  assert(indexHtml.includes('id="atlasDatasetRegistrySummary"'));
+  assert(indexHtml.includes('function atlasRegistryValidation()'));
+  assert(indexHtml.includes('function renderAtlasDatasetRegistrySummary()'));
+  assert(indexHtml.includes('Capabilities marked unavailable are not inferred or simulated.'));
+  assert(indexHtml.includes("curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs'"));
+  assert(indexHtml.includes("structureId: '1MBN'"));
 });
 
 run('Visual Evolution Explorer summarizes dataset title and sequence count', () => {
@@ -600,6 +738,113 @@ run('alignment column statistics can be calculated directly from aligned records
   assert.strictEqual(alignmentColumnStatisticsForRecords(records, 2).state, 'invariant among non-gap residues');
 });
 
+run('Atlas conservation scoring uses documented weights', () => {
+  assert.deepStrictEqual(ALIGNMENT_CONSERVATION_SCORE_CONFIG, {
+    identityWeight: 0.7,
+    propertySimilarityWeight: 0.3
+  });
+});
+
+run('Atlas conservation scoring handles fully identical non-gap columns', () => {
+  const summary = alignmentColumnConservationSummary(['A', 'A', 'A']);
+  assert.strictEqual(summary.identityScore, 1);
+  assert.strictEqual(summary.propertySimilarityScore, 1);
+  assert.strictEqual(summary.gapCoverage, 1);
+  assert.strictEqual(summary.finalScore, 1);
+  assert.strictEqual(summary.scoreBand, 'very high similarity in this dataset');
+  assert.strictEqual(summary.mostCommonResidue.residue, 'A');
+  assert.strictEqual(summary.mostCommonProperty.label, 'nonpolar aliphatic');
+});
+
+run('Atlas conservation scoring handles chemically similar nonidentical residues', () => {
+  const summary = alignmentColumnConservationSummary(['A', 'V', 'L']);
+  assert.strictEqual(summary.identityScore, 1 / 3);
+  assert.strictEqual(summary.propertySimilarityScore, 1);
+  assert.strictEqual(summary.gapCoverage, 1);
+  assert(Math.abs(summary.finalScore - ((0.7 * (1 / 3)) + 0.3)) < 1e-12);
+  assert.strictEqual(summary.scoreBand, 'moderate similarity in this dataset');
+});
+
+run('Atlas conservation scoring handles chemically dissimilar residues', () => {
+  const summary = alignmentColumnConservationSummary(['A', 'D', 'K']);
+  assert.strictEqual(summary.identityScore, 1 / 3);
+  assert.strictEqual(summary.propertySimilarityScore, 1 / 3);
+  assert.strictEqual(summary.gapCoverage, 1);
+  assert(Math.abs(summary.finalScore - (1 / 3)) < 1e-12);
+  assert.strictEqual(summary.scoreBand, 'low similarity in this dataset');
+});
+
+run('Atlas conservation scoring applies gap coverage to invariant columns with gaps', () => {
+  const summary = alignmentColumnConservationSummary(['A', 'A', '-']);
+  assert.strictEqual(summary.identityScore, 1);
+  assert.strictEqual(summary.propertySimilarityScore, 1);
+  assert.strictEqual(summary.gapCoverage, 2 / 3);
+  assert(Math.abs(summary.finalScore - (2 / 3)) < 1e-12);
+});
+
+run('Atlas conservation scoring handles variable columns with gaps', () => {
+  const summary = alignmentColumnConservationSummary(['A', 'V', '-']);
+  assert.strictEqual(summary.identityScore, 1 / 2);
+  assert.strictEqual(summary.propertySimilarityScore, 1);
+  assert.strictEqual(summary.gapCoverage, 2 / 3);
+  assert(Math.abs(summary.finalScore - ((2 / 3) * ((0.7 * 0.5) + 0.3))) < 1e-12);
+});
+
+run('Atlas conservation scoring handles one residue plus gaps and all-gap columns', () => {
+  const oneResidue = alignmentColumnConservationSummary(['A', '-', '-']);
+  assert.strictEqual(oneResidue.identityScore, 1);
+  assert.strictEqual(oneResidue.propertySimilarityScore, 1);
+  assert.strictEqual(oneResidue.gapCoverage, 1 / 3);
+  assert(Math.abs(oneResidue.finalScore - (1 / 3)) < 1e-12);
+  const allGap = alignmentColumnConservationSummary(['-', '-', '-']);
+  assert.strictEqual(allGap.identityScore, null);
+  assert.strictEqual(allGap.propertySimilarityScore, null);
+  assert.strictEqual(allGap.gapCoverage, 0);
+  assert.strictEqual(allGap.finalScore, null);
+  assert.strictEqual(allGap.scoreBand, 'unavailable: no amino-acid residues');
+});
+
+run('Atlas conservation scoring keeps ambiguous symbols outside property categories', () => {
+  const summary = alignmentColumnConservationSummary(['X', 'A', '-']);
+  assert.strictEqual(summary.identityScore, 1 / 2);
+  assert.strictEqual(summary.propertySimilarityScore, 1 / 2);
+  assert.strictEqual(summary.gapCoverage, 2 / 3);
+  assert(Math.abs(summary.finalScore - ((2 / 3) * ((0.7 * 0.5) + (0.3 * 0.5)))) < 1e-12);
+  assert.deepStrictEqual(summary.stats.unsupportedResidues, [{ residue: 'X', count: 1 }]);
+});
+
+run('Atlas conservation score bands use documented boundaries', () => {
+  assert.strictEqual(conservationScoreBand(1), 'very high similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(0.9), 'very high similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(0.89), 'high similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(0.7), 'high similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(0.69), 'moderate similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(0.4), 'moderate similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(0.39), 'low similarity in this dataset');
+  assert.strictEqual(conservationScoreBand(null), 'unavailable: no amino-acid residues');
+});
+
+run('full-alignment conservation score array matches validated alignment length', () => {
+  const result = productionAlignmentValidation();
+  const alignment = result.alignments[0];
+  const scores = fullAlignmentConservationScores(alignment.records);
+  assert.strictEqual(scores.length, alignment.alignmentLength);
+  assert.strictEqual(scores[0].columnIndex, 0);
+  assert(scores.every(score => score.stats.totalSequences === alignment.records.length));
+});
+
+run('Atlas conservation scoring can be calculated directly from aligned records', () => {
+  const records = [
+    { alignedSequence: 'AVL-' },
+    { alignedSequence: 'A-L-' },
+    { alignedSequence: 'V-D-' }
+  ];
+  assert.strictEqual(alignmentColumnConservationSummaryForRecords(records, 0).scoreBand, 'high similarity in this dataset');
+  assert.strictEqual(alignmentColumnConservationSummaryForRecords(records, 1).scoreBand, 'low similarity in this dataset');
+  assert.strictEqual(alignmentColumnConservationSummaryForRecords(records, 2).scoreBand, 'moderate similarity in this dataset');
+  assert.strictEqual(alignmentColumnConservationSummaryForRecords(records, 3).scoreBand, 'unavailable: no amino-acid residues');
+});
+
 run('Alignment View UI preserves structure behavior and avoids clickable mapping', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('Alignment View'));
@@ -640,6 +885,19 @@ run('Alignment View column controls include previous next clear and jump behavio
   assert(indexHtml.includes('alignment.alignmentLength - 1'));
 });
 
+run('Alignment View includes an accessible selectable conservation track', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Atlas score track',
+    'alignment-track-cell',
+    'fullAlignmentConservationScores',
+    'data-gap=',
+    'G = gap present',
+    'Atlas conservation score',
+    'data-alignment-column="${summary.columnIndex}"'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing conservation track text: ${text}`));
+});
+
 run('Alignment View clears selected column when dataset changes', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('state.selectedAlignmentColumnIndex = null;'));
@@ -675,12 +933,34 @@ run('Alignment Column Details displays descriptive statistics and educational ca
   ].forEach(text => assert(indexHtml.includes(text), `Missing alignment statistic text: ${text}`));
 });
 
-run('Alignment Column Details avoids formal conservation classification and structure mapping', () => {
+run('Alignment Column Details displays transparent Atlas conservation scoring', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Conservation Summary',
+    'Most common residue',
+    'Identity score',
+    'Most common property category',
+    'Property similarity score',
+    'Gap coverage',
+    'Final conservation score',
+    'Worked calculation',
+    'Final conservation score = gap coverage x',
+    'This is an educational scoring model used by this Atlas, not a universal standard for sequence conservation.',
+    'How to read this column',
+    'Treat the score as evidence from this dataset, not proof of function.',
+    'High similarity can suggest evolutionary constraint, but it does not by itself establish catalytic, structural, or regulatory importance.',
+    'Low similarity does not necessarily mean that a position is unimportant.',
+    'With only ${stats.totalSequences} sequences'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing conservation summary text: ${text}`));
+});
+
+run('Alignment Column Details avoids structure mapping and functional claims', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const start = indexHtml.indexOf('function renderAlignmentColumnDetails');
   const end = indexHtml.indexOf('function renderAlignmentView');
   const detailsRenderer = indexHtml.slice(start, end);
-  assert(!/conserved|conservation score|entropy|BLOSUM|PAM|consensus/i.test(detailsRenderer));
+  assert(!/functionally important|evolutionarily essential|active-site|adaptation|BLOSUM|PAM|consensus|entropy/i.test(detailsRenderer));
   assert(!/structure residue number|sequence-to-structure mapping/i.test(detailsRenderer));
   assert(detailsRenderer.includes('alignmentColumnStatisticsForRecords'));
+  assert(detailsRenderer.includes('alignmentColumnConservationSummaryForRecords'));
 });
