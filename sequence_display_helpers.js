@@ -70,6 +70,135 @@
     return [...sequence].map((_, index) => ((start + index) % markerInterval === 0 ? '|' : '.')).join('');
   }
 
+  const AMINO_ACID_NAMES = {
+    A: 'alanine',
+    C: 'cysteine',
+    D: 'aspartate',
+    E: 'glutamate',
+    F: 'phenylalanine',
+    G: 'glycine',
+    H: 'histidine',
+    I: 'isoleucine',
+    K: 'lysine',
+    L: 'leucine',
+    M: 'methionine',
+    N: 'asparagine',
+    P: 'proline',
+    Q: 'glutamine',
+    R: 'arginine',
+    S: 'serine',
+    T: 'threonine',
+    V: 'valine',
+    W: 'tryptophan',
+    Y: 'tyrosine'
+  };
+
+  const BIOCHEMICAL_PROPERTY_CATEGORIES = [
+    { key: 'nonpolar_aliphatic', label: 'nonpolar aliphatic', residues: ['A', 'V', 'L', 'I', 'M'] },
+    { key: 'aromatic', label: 'aromatic', residues: ['F', 'Y', 'W'] },
+    { key: 'polar_uncharged', label: 'polar uncharged', residues: ['S', 'T', 'N', 'Q'] },
+    { key: 'positively_charged', label: 'positively charged', residues: ['K', 'R', 'H'] },
+    { key: 'negatively_charged', label: 'negatively charged', residues: ['D', 'E'] },
+    { key: 'special_structural_cases', label: 'special structural cases', residues: ['G', 'P', 'C'] }
+  ];
+
+  const PROPERTY_BY_RESIDUE = BIOCHEMICAL_PROPERTY_CATEGORIES.reduce((lookup, category) => {
+    category.residues.forEach(residue => {
+      lookup[residue] = category;
+    });
+    return lookup;
+  }, {});
+
+  function referencePositionForAlignmentColumn(alignedSequence, zeroBasedColumnIndex) {
+    const text = String(alignedSequence || '');
+    const index = Number(zeroBasedColumnIndex);
+    if (!Number.isInteger(index) || index < 0 || index >= text.length) return null;
+    if (text[index] === '-') return null;
+    let position = 0;
+    for (let cursor = 0; cursor <= index; cursor += 1) {
+      if (text[cursor] !== '-') position += 1;
+    }
+    return position;
+  }
+
+  function residueDisplayName(residue) {
+    const code = String(residue || '').toUpperCase();
+    return AMINO_ACID_NAMES[code] || 'ambiguous or unsupported residue symbol';
+  }
+
+  function residuePropertyCategory(residue) {
+    const code = String(residue || '').toUpperCase();
+    return PROPERTY_BY_RESIDUE[code] || null;
+  }
+
+  function alignmentColumnState({ residueCount, gapCount, distinctResidueCount }) {
+    if (residueCount === 0) return 'all gaps';
+    if (distinctResidueCount === 1 && gapCount > 0) return 'invariant residues plus one or more gaps';
+    if (distinctResidueCount === 1) return 'invariant among non-gap residues';
+    if (gapCount > 0) return 'variable residues plus one or more gaps';
+    return 'variable among non-gap residues';
+  }
+
+  function alignmentColumnStatistics(characters) {
+    const column = Array.from(characters || []).map(char => String(char || '').toUpperCase() || '-');
+    const totalSequences = column.length;
+    const residueCounts = {};
+    const unsupportedResidueCounts = {};
+    let gapCount = 0;
+    column.forEach(char => {
+      if (char === '-') {
+        gapCount += 1;
+        return;
+      }
+      residueCounts[char] = (residueCounts[char] || 0) + 1;
+      if (!residuePropertyCategory(char)) unsupportedResidueCounts[char] = (unsupportedResidueCounts[char] || 0) + 1;
+    });
+    const residueCount = totalSequences - gapCount;
+    const distinctResidueCount = Object.keys(residueCounts).length;
+    const frequencies = Object.entries(residueCounts)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([residue, count]) => ({
+        residue,
+        name: residueDisplayName(residue),
+        count,
+        frequencyAmongAll: totalSequences ? count / totalSequences : 0,
+        frequencyAmongResidues: residueCount ? count / residueCount : 0
+      }));
+    const propertyGroups = BIOCHEMICAL_PROPERTY_CATEGORIES.map(category => {
+      const residues = category.residues
+        .filter(residue => residueCounts[residue])
+        .map(residue => ({
+          residue,
+          name: residueDisplayName(residue),
+          count: residueCounts[residue]
+        }));
+      const count = residues.reduce((sum, residue) => sum + residue.count, 0);
+      return { key: category.key, label: category.label, residues, count };
+    }).filter(group => group.count > 0);
+    const unsupportedResidues = Object.entries(unsupportedResidueCounts)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([residue, count]) => ({ residue, count }));
+
+    return {
+      totalSequences,
+      residueCount,
+      gapCount,
+      gapFrequency: totalSequences ? gapCount / totalSequences : 0,
+      distinctResidueCount,
+      residueCounts,
+      frequencies,
+      propertyGroups,
+      unsupportedResidues,
+      state: alignmentColumnState({ residueCount, gapCount, distinctResidueCount })
+    };
+  }
+
+  function alignmentColumnStatisticsForRecords(records, zeroBasedColumnIndex) {
+    const index = Number(zeroBasedColumnIndex);
+    const characters = (records || []).map(record => String(record?.alignedSequence || '')[index] || '-');
+    return alignmentColumnStatistics(characters);
+  }
+
   return {
     uniqueValues,
     joinList,
@@ -79,6 +208,13 @@
     sequencePositionRows,
     sortedCuratedRecords,
     alignmentColumnRows,
-    alignmentMarkerLine
+    alignmentMarkerLine,
+    referencePositionForAlignmentColumn,
+    residueDisplayName,
+    residuePropertyCategory,
+    alignmentColumnState,
+    alignmentColumnStatistics,
+    alignmentColumnStatisticsForRecords,
+    BIOCHEMICAL_PROPERTY_CATEGORIES
   };
 });

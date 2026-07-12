@@ -15,7 +15,12 @@ const {
   sequencePositionRows,
   sortedCuratedRecords,
   alignmentColumnRows,
-  alignmentMarkerLine
+  alignmentMarkerLine,
+  referencePositionForAlignmentColumn,
+  residuePropertyCategory,
+  alignmentColumnStatistics,
+  alignmentColumnStatisticsForRecords,
+  BIOCHEMICAL_PROPERTY_CATEGORIES
 } = require('../sequence_display_helpers.js');
 
 function productionDataset() {
@@ -170,6 +175,60 @@ run('existing Structure Sequence behavior is still wired to shared residue selec
   assert(indexHtml.includes('const sequence = sequenceFromResidues(state.residues);'));
   assert(indexHtml.includes('button.dataset.sequenceIndex = index;'));
   assert(indexHtml.includes('selectTorsionIndex(Number(item.dataset.sequenceIndex));'));
+});
+
+run('Structure mode owns the structure-derived sequence panel', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const start = indexHtml.indexOf('id="overviewPanel"');
+  const end = indexHtml.indexOf('id="sequencePanel"');
+  const overviewPanel = indexHtml.slice(start, end);
+  assert(overviewPanel.includes('id="structureSequencePanel"'));
+  assert(overviewPanel.includes('Structure Sequence'));
+  assert(overviewPanel.includes('Residues represented in the currently loaded molecular structure'));
+  assert(overviewPanel.includes('id="sequenceViewer"'));
+  assert(indexHtml.includes('function drawStructureSequence()'));
+  assert(indexHtml.includes('if (state.mode === \'overview\')'));
+  assert(indexHtml.includes('drawStructureSequence();'));
+});
+
+run('Sequence mode is limited to curated Visual Evolution Explorer content', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const start = indexHtml.indexOf('id="sequencePanel"');
+  const end = indexHtml.indexOf('id="hbondsPanel"');
+  const sequencePanel = indexHtml.slice(start, end);
+  assert(sequencePanel.includes('Visual Evolution Explorer'));
+  assert(sequencePanel.includes('Comparative Sequence Set'));
+  assert(sequencePanel.includes('curatedSequenceDataset'));
+  assert(sequencePanel.includes('curatedReferenceSequences'));
+  assert(sequencePanel.includes('curatedAlignmentView'));
+  assert(!sequencePanel.includes('id="sequenceViewer"'));
+  assert(!sequencePanel.includes('Structure Sequence:'));
+  assert(!sequencePanel.includes('1MBN sequence'));
+});
+
+run('Sequence mode renders curated content without drawing the structure sequence', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('function drawVisualEvolutionExplorer()'));
+  assert(indexHtml.includes('if (state.mode === \'sequence\') drawVisualEvolutionExplorer();'));
+  assert(!indexHtml.includes('if (state.mode === \'sequence\') drawStructureSequence();'));
+});
+
+run('mode switching preserves structure and curated sequence state', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const start = indexHtml.indexOf("document.getElementById('modeTabs').addEventListener('click'");
+  const end = indexHtml.indexOf("document.getElementById('fitWholeStructure')");
+  const modeHandler = indexHtml.slice(start, end);
+  assert(modeHandler.includes('state.mode = button.dataset.mode;'));
+  assert(!modeHandler.includes('state.selectedResidueIndex = 0'));
+  assert(!modeHandler.includes('state.selectedCuratedSequenceId = null'));
+  assert(!modeHandler.includes('state.selectedAlignmentColumnIndex = null'));
+});
+
+run('hidden inactive mode panels are removed from keyboard navigation by display none', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('.hidden { display: none; }'));
+  assert(indexHtml.includes("document.querySelectorAll('.mode-panel').forEach(el => el.classList.add('hidden'));"));
+  assert(indexHtml.includes("document.getElementById(`${state.mode}Panel`).classList.remove('hidden');"));
 });
 
 run('Reference Sequence Details panel includes required metadata labels', () => {
@@ -423,13 +482,133 @@ run('alignment block helpers preserve gap characters and marker positions', () =
   assert(alignmentMarkerLine(1, 'ABCDEFGHIJ').endsWith('|'));
 });
 
+run('alignment column helper reports ungapped reference positions without structure numbering assumptions', () => {
+  const synthetic = 'A-C--DE';
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 0), 1);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 1), null);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 2), 2);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 3), null);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 5), 3);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 6), 4);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, -1), null);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 99), null);
+});
+
+run('alignment column helper handles leading and repeated gaps', () => {
+  const synthetic = '--AB-C-D';
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 0), null);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 2), 1);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 3), 2);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 4), null);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 5), 3);
+  assert.strictEqual(referencePositionForAlignmentColumn(synthetic, 7), 4);
+});
+
+run('alignment column statistics classify invariant non-gap columns', () => {
+  const stats = alignmentColumnStatistics(['A', 'A', 'A']);
+  assert.strictEqual(stats.totalSequences, 3);
+  assert.strictEqual(stats.residueCount, 3);
+  assert.strictEqual(stats.gapCount, 0);
+  assert.strictEqual(stats.gapFrequency, 0);
+  assert.strictEqual(stats.distinctResidueCount, 1);
+  assert.strictEqual(stats.state, 'invariant among non-gap residues');
+  assert.strictEqual(stats.frequencies[0].residue, 'A');
+  assert.strictEqual(stats.frequencies[0].frequencyAmongAll, 1);
+  assert.strictEqual(stats.frequencies[0].frequencyAmongResidues, 1);
+});
+
+run('alignment column statistics classify variable non-gap columns', () => {
+  const stats = alignmentColumnStatistics(['A', 'V', 'L']);
+  assert.strictEqual(stats.residueCount, 3);
+  assert.strictEqual(stats.gapCount, 0);
+  assert.strictEqual(stats.distinctResidueCount, 3);
+  assert.strictEqual(stats.state, 'variable among non-gap residues');
+  assert.deepStrictEqual(stats.frequencies.map(entry => entry.residue), ['A', 'L', 'V']);
+});
+
+run('alignment column statistics classify invariant-plus-gap columns and one residue plus gaps', () => {
+  const stats = alignmentColumnStatistics(['A', '-', '-']);
+  assert.strictEqual(stats.residueCount, 1);
+  assert.strictEqual(stats.gapCount, 2);
+  assert.strictEqual(stats.gapFrequency, 2 / 3);
+  assert.strictEqual(stats.distinctResidueCount, 1);
+  assert.strictEqual(stats.state, 'invariant residues plus one or more gaps');
+  assert.strictEqual(stats.frequencies[0].frequencyAmongAll, 1 / 3);
+  assert.strictEqual(stats.frequencies[0].frequencyAmongResidues, 1);
+});
+
+run('alignment column statistics classify variable-plus-gap columns', () => {
+  const stats = alignmentColumnStatistics(['A', 'V', '-']);
+  assert.strictEqual(stats.residueCount, 2);
+  assert.strictEqual(stats.gapCount, 1);
+  assert.strictEqual(stats.distinctResidueCount, 2);
+  assert.strictEqual(stats.state, 'variable residues plus one or more gaps');
+  assert.strictEqual(stats.frequencies.find(entry => entry.residue === 'A').frequencyAmongAll, 1 / 3);
+  assert.strictEqual(stats.frequencies.find(entry => entry.residue === 'A').frequencyAmongResidues, 1 / 2);
+});
+
+run('alignment column statistics classify all-gap columns', () => {
+  const stats = alignmentColumnStatistics(['-', '-', '-']);
+  assert.strictEqual(stats.totalSequences, 3);
+  assert.strictEqual(stats.residueCount, 0);
+  assert.strictEqual(stats.gapCount, 3);
+  assert.strictEqual(stats.gapFrequency, 1);
+  assert.strictEqual(stats.distinctResidueCount, 0);
+  assert.strictEqual(stats.state, 'all gaps');
+  assert.deepStrictEqual(stats.frequencies, []);
+  assert.deepStrictEqual(stats.propertyGroups, []);
+});
+
+run('alignment column statistics group biochemical properties and ambiguous symbols', () => {
+  const stats = alignmentColumnStatistics(['A', 'F', 'S', 'K', 'D', 'G', 'X', '-']);
+  assert.strictEqual(stats.totalSequences, 8);
+  assert.strictEqual(stats.residueCount, 7);
+  assert.strictEqual(stats.gapCount, 1);
+  assert.deepStrictEqual(stats.propertyGroups.map(group => group.label), [
+    'nonpolar aliphatic',
+    'aromatic',
+    'polar uncharged',
+    'positively charged',
+    'negatively charged',
+    'special structural cases'
+  ]);
+  assert.deepStrictEqual(stats.unsupportedResidues, [{ residue: 'X', count: 1 }]);
+  assert.strictEqual(residuePropertyCategory('A').label, 'nonpolar aliphatic');
+  assert.strictEqual(residuePropertyCategory('X'), null);
+});
+
+run('biochemical property category memberships match documented teaching groups', () => {
+  const memberships = Object.fromEntries(BIOCHEMICAL_PROPERTY_CATEGORIES.map(group => [group.label, group.residues.join('')]));
+  assert.deepStrictEqual(memberships, {
+    'nonpolar aliphatic': 'AVLIM',
+    aromatic: 'FYW',
+    'polar uncharged': 'STNQ',
+    'positively charged': 'KRH',
+    'negatively charged': 'DE',
+    'special structural cases': 'GPC'
+  });
+});
+
+run('alignment column statistics can be calculated directly from aligned records', () => {
+  const records = [
+    { alignedSequence: 'A-C' },
+    { alignedSequence: 'AVC' },
+    { alignedSequence: 'A-C' }
+  ];
+  assert.strictEqual(alignmentColumnStatisticsForRecords(records, 0).state, 'invariant among non-gap residues');
+  assert.strictEqual(alignmentColumnStatisticsForRecords(records, 1).state, 'invariant residues plus one or more gaps');
+  assert.strictEqual(alignmentColumnStatisticsForRecords(records, 2).state, 'invariant among non-gap residues');
+});
+
 run('Alignment View UI preserves structure behavior and avoids clickable mapping', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('Alignment View'));
   assert(indexHtml.includes('Alignment position, reference-sequence position, and structure residue number are different numbering systems.'));
+  assert(indexHtml.includes('No structure residue mapping is active in this view.'));
   assert(indexHtml.includes('data-mode="overview">Structure</button>'));
   assert(indexHtml.includes('data-mode="sequence">Sequence</button>'));
   assert(!indexHtml.includes('data-alignment-residue-index'));
+  assert(!indexHtml.includes('selectTorsionIndex(Number(cell.dataset.alignmentColumn))'));
 });
 
 run('Alignment View controls are accessible radio controls', () => {
@@ -438,4 +617,70 @@ run('Alignment View controls are accessible radio controls', () => {
   assert(indexHtml.includes('name="sequenceView"'));
   assert(indexHtml.includes('Sequence Overview'));
   assert(indexHtml.includes('Alignment View'));
+});
+
+run('Alignment View supports hover and persistent alignment column selection', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('selectedAlignmentColumnIndex: null'));
+  assert(indexHtml.includes('data-alignment-column='));
+  assert(indexHtml.includes('applyAlignmentColumnHover'));
+  assert(indexHtml.includes("addEventListener('mouseover'"));
+  assert(indexHtml.includes("addEventListener('mouseout'"));
+  assert(indexHtml.includes('aria-pressed='));
+  assert(indexHtml.includes('Alignment Column Details'));
+});
+
+run('Alignment View column controls include previous next clear and jump behavior', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('data-alignment-column-nav="previous"'));
+  assert(indexHtml.includes('data-alignment-column-nav="next"'));
+  assert(indexHtml.includes('data-alignment-column-nav="clear"'));
+  assert(indexHtml.includes('id="alignmentColumnJump"'));
+  assert(indexHtml.includes('data-alignment-column-jump'));
+  assert(indexHtml.includes('alignment.alignmentLength - 1'));
+});
+
+run('Alignment View clears selected column when dataset changes', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('state.selectedAlignmentColumnIndex = null;'));
+  assert(indexHtml.includes("document.getElementById('curatedSequenceDataset').addEventListener('change'"));
+});
+
+run('Alignment Column Details displays accession, aligned character, gaps, and reference positions', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Source accession',
+    'Aligned character',
+    'Character type',
+    'Corresponding ungapped reference-sequence position',
+    'Gap; no amino acid at this alignment column',
+    'No ungapped reference-sequence position',
+    'referencePositionForAlignmentColumn'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing alignment detail text: ${text}`));
+});
+
+run('Alignment Column Details displays descriptive statistics and educational cautions', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Column Summary',
+    'Residue Frequencies',
+    'Biochemical Property Summary',
+    'Frequency among all aligned sequences',
+    'Frequency among non-gap residues only',
+    'The current dataset contains only',
+    'These values summarize only the sequences included in this curated dataset; they are not estimates of all RbcL proteins.',
+    'An invariant column in a small dataset is not by itself evidence that the position is functionally essential.',
+    'Residues with similar biochemical properties can still differ in structure, reactivity, and biological role.',
+    'Ambiguous or unsupported symbols'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing alignment statistic text: ${text}`));
+});
+
+run('Alignment Column Details avoids formal conservation classification and structure mapping', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  const start = indexHtml.indexOf('function renderAlignmentColumnDetails');
+  const end = indexHtml.indexOf('function renderAlignmentView');
+  const detailsRenderer = indexHtml.slice(start, end);
+  assert(!/conserved|conservation score|entropy|BLOSUM|PAM|consensus/i.test(detailsRenderer));
+  assert(!/structure residue number|sequence-to-structure mapping/i.test(detailsRenderer));
+  assert(detailsRenderer.includes('alignmentColumnStatisticsForRecords'));
 });

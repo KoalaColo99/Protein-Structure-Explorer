@@ -697,6 +697,101 @@
       color: var(--muted);
     }
 
+    .alignment-cell {
+      appearance: none;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      color: inherit;
+      cursor: pointer;
+      font: inherit;
+      line-height: 1.45;
+      min-width: 1.35ch;
+      padding: 0 1px;
+      text-align: center;
+    }
+
+    .alignment-cell:hover,
+    .alignment-cell.hovered,
+    .alignment-cell:focus-visible {
+      background: #eef6ff;
+      border-color: #2563eb;
+      outline: 2px solid #bfdbfe;
+      outline-offset: 1px;
+    }
+
+    .alignment-cell.selected {
+      background: #fff7ed;
+      border-color: #c2410c;
+      box-shadow: inset 0 -2px 0 #c2410c;
+      color: #7c2d12;
+      font-weight: 800;
+    }
+
+    .alignment-column-tools {
+      align-items: end;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+
+    .alignment-column-tools label {
+      color: var(--muted);
+      display: grid;
+      font-size: 12px;
+      gap: 4px;
+    }
+
+    .alignment-column-tools input {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+      width: 120px;
+    }
+
+    .alignment-column-details {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      margin: 10px 0;
+      overflow: auto;
+      padding: 10px;
+    }
+
+    .alignment-column-table {
+      border-collapse: collapse;
+      font-size: 12px;
+      min-width: 640px;
+      width: 100%;
+    }
+
+    .alignment-column-table th,
+    .alignment-column-table td {
+      border-bottom: 1px solid #edf1f5;
+      padding: 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .alignment-column-table th {
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .alignment-column-details h5 {
+      font-size: 13px;
+      margin: 14px 0 8px;
+    }
+
+    .alignment-column-table caption {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 8px 0;
+      text-align: left;
+    }
+
     .detail-grid {
       display: grid;
       gap: 7px;
@@ -1103,18 +1198,22 @@
           <div class="stat"><strong>8</strong><span>major alpha helices</span></div>
         </div>
         <button id="resetView">Reset view</button>
+        <div class="mini-card" id="structureSequencePanel">
+          <h3>Structure Sequence</h3>
+          <p>Read the loaded structure as a one-letter amino-acid sequence. Click a residue to select it using the same residue selection used by the Ramachandran and structure views.</p>
+          <div class="stats">
+            <div class="stat"><strong id="sequenceResidueCount">-</strong><span>parsed residues</span></div>
+            <div class="stat"><strong id="sequenceChainCount">-</strong><span>chain segment(s)</span></div>
+          </div>
+          <div class="chem-note"><strong>Structure Sequence:</strong> Residues represented in the currently loaded molecular structure. Some residues from the complete protein sequence may be absent.</div>
+          <div class="chem-note" id="sequenceNote"></div>
+          <div id="sequenceViewer"></div>
+        </div>
       </section>
 
       <section class="section mode-panel hidden" id="sequencePanel">
-        <h2>Sequence Explorer</h2>
-        <p>Read the loaded structure as a one-letter amino-acid sequence. Click a residue to select it using the same residue selection used by the Ramachandran and structure views.</p>
-        <div class="stats">
-          <div class="stat"><strong id="sequenceResidueCount">-</strong><span>parsed residues</span></div>
-          <div class="stat"><strong id="sequenceChainCount">-</strong><span>chain segment(s)</span></div>
-        </div>
-        <div class="chem-note"><strong>Structure sequence:</strong> Residues represented in the currently loaded molecular structure. Some residues from the complete protein sequence may be absent.</div>
-        <div class="chem-note" id="sequenceNote"></div>
-        <div id="sequenceViewer"></div>
+        <h2>Visual Evolution Explorer</h2>
+        <p>Explore instructor-curated reference sequences and alignments. This mode is separate from the structure-derived sequence of the currently loaded molecular model.</p>
         <div class="mini-card" id="curatedSequencePanel">
           <h3>Comparative Sequence Set</h3>
           <p>Choose an instructor-curated dataset of complete reference sequences for later comparison. These records are not assumed to match structure residue numbers.</p>
@@ -3550,6 +3649,7 @@ END
       selectedCuratedSequenceId: null,
       sequenceComparisonSort: 'dataset',
       expandedReferenceSequenceIds: new Set(),
+      selectedAlignmentColumnIndex: null,
       selectedHbond: null,
       selectedResidueIndex: 0,
       contactType: 'all',
@@ -4963,7 +5063,7 @@ END
       });
 
       if (state.mode === 'hbonds') drawHbonds();
-      if (state.mode === 'sequence') drawSequence();
+      if (state.mode === 'sequence') drawVisualEvolutionExplorer();
       if (state.mode === 'helixPatterns') drawHelixPatterns();
       if (state.mode === 'torsions') drawTorsion();
       if (state.mode === 'tertiary') drawContacts();
@@ -4977,7 +5077,10 @@ END
       if (state.mode === 'lesson') drawLesson();
       if (state.mode === 'gallery') drawGalleryBuilder();
       if (state.mode === 'betaTopology') drawBetaTopology();
-      if (state.mode === 'overview') state.viewer.zoomTo({ hetflag: false });
+      if (state.mode === 'overview') {
+        drawStructureSequence();
+        state.viewer.zoomTo({ hetflag: false });
+      }
 
       state.viewer.render();
       setStatus();
@@ -5032,6 +5135,18 @@ END
 
     function alignmentMarkerLine(start, sequence, markerInterval = 10) {
       return window.BVASequenceDisplay.alignmentMarkerLine(start, sequence, markerInterval);
+    }
+
+    function referencePositionForAlignmentColumn(alignedSequence, zeroBasedColumnIndex) {
+      return window.BVASequenceDisplay.referencePositionForAlignmentColumn(alignedSequence, zeroBasedColumnIndex);
+    }
+
+    function alignmentColumnStatisticsForRecords(records, zeroBasedColumnIndex) {
+      return window.BVASequenceDisplay.alignmentColumnStatisticsForRecords(records, zeroBasedColumnIndex);
+    }
+
+    function formatPercent(value) {
+      return `${(Number(value || 0) * 100).toFixed(1)}%`;
     }
 
     function scientificNameList(records) {
@@ -5248,6 +5363,39 @@ END
       return new Map((dataset?.records || []).map(record => [record.sourceAccession, record]));
     }
 
+    function clampSelectedAlignmentColumn(alignment) {
+      if (state.selectedAlignmentColumnIndex === null || state.selectedAlignmentColumnIndex === undefined) return;
+      if (!alignment || state.selectedAlignmentColumnIndex < 0 || state.selectedAlignmentColumnIndex >= alignment.alignmentLength) {
+        state.selectedAlignmentColumnIndex = null;
+      }
+    }
+
+    function selectAlignmentColumn(zeroBasedColumnIndex, toggleSelected = true) {
+      const alignment = currentCuratedAlignment();
+      const index = Number(zeroBasedColumnIndex);
+      if (!alignment || !Number.isInteger(index) || index < 0 || index >= alignment.alignmentLength) return;
+      if (toggleSelected && state.selectedAlignmentColumnIndex === index) state.selectedAlignmentColumnIndex = null;
+      else state.selectedAlignmentColumnIndex = index;
+      renderCuratedSequencePanel();
+    }
+
+    function applyAlignmentColumnHover(zeroBasedColumnIndex, active) {
+      const index = Number(zeroBasedColumnIndex);
+      if (!Number.isInteger(index)) return;
+      document.querySelectorAll(`[data-alignment-column="${index}"]`).forEach(cell => {
+        cell.classList.toggle('hovered', active);
+      });
+    }
+
+    function renderAlignmentCells(sequenceChunk, blockStart, alignedRecord) {
+      return [...sequenceChunk].map((char, offset) => {
+        const columnIndex = blockStart - 1 + offset;
+        const selected = state.selectedAlignmentColumnIndex === columnIndex;
+        const characterLabel = char === '-' ? 'gap' : `amino acid ${char}`;
+        return `<button type="button" class="alignment-cell${selected ? ' selected' : ''}" data-alignment-column="${columnIndex}" aria-pressed="${selected ? 'true' : 'false'}" aria-label="Select alignment column ${columnIndex + 1} for ${escapeHtml(alignedRecord.sourceAccession)}, ${characterLabel}">${escapeHtml(char)}</button>`;
+      }).join('');
+    }
+
     function renderAlignmentRecordBlocks(alignment, dataset) {
       const curatedByAccession = curatedRecordByAccession(dataset);
       const blocks = alignmentColumnRows(alignment.records[0]?.alignedSequence || '', 60);
@@ -5261,7 +5409,7 @@ END
                 <strong><em>${escapeHtml(curatedRecord?.organism || alignedRecord.sourceAccession)}</em></strong><br>
                 ${escapeHtml(alignedRecord.sourceAccession)}
               </div>
-              <code class="alignment-sequence" aria-label="Aligned sequence columns ${block.start} to ${block.end} for ${escapeHtml(alignedRecord.sourceAccession)}">${escapeHtml(sequenceChunk)}</code>
+              <div class="alignment-sequence" role="group" aria-label="Aligned sequence columns ${block.start} to ${block.end} for ${escapeHtml(alignedRecord.sourceAccession)}">${renderAlignmentCells(sequenceChunk, block.start, alignedRecord)}</div>
             </div>
           `;
         }).join('');
@@ -5276,6 +5424,154 @@ END
           </div>
         `;
       }).join('');
+    }
+
+    function renderAlignmentColumnControls(alignment) {
+      const selected = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
+      const hasSelection = selected !== null;
+      return `
+        <div class="alignment-column-tools" aria-label="Alignment column controls">
+          <button type="button" data-alignment-column-nav="previous" ${!hasSelection || selected <= 0 ? 'disabled' : ''}>Previous Column</button>
+          <button type="button" data-alignment-column-nav="next" ${!hasSelection || selected >= alignment.alignmentLength - 1 ? 'disabled' : ''}>Next Column</button>
+          <button type="button" data-alignment-column-nav="clear" ${!hasSelection ? 'disabled' : ''}>Clear Column Selection</button>
+          <label for="alignmentColumnJump">Jump to column
+            <input id="alignmentColumnJump" type="number" min="1" max="${alignment.alignmentLength}" step="1" value="${hasSelection ? selected + 1 : ''}" inputmode="numeric">
+          </label>
+          <button type="button" data-alignment-column-jump>Go</button>
+        </div>
+      `;
+    }
+
+    function renderAlignmentColumnSummary(stats) {
+      return `
+        <h5>Column Summary</h5>
+        <div class="evolution-summary-grid" aria-label="Selected alignment column descriptive summary">
+          <div class="evolution-summary-card"><strong>Total aligned sequences</strong><span>${stats.totalSequences}</span></div>
+          <div class="evolution-summary-card"><strong>Amino-acid residues</strong><span>${stats.residueCount} / ${stats.totalSequences}</span></div>
+          <div class="evolution-summary-card"><strong>Gaps</strong><span>${stats.gapCount} / ${stats.totalSequences} (${formatPercent(stats.gapFrequency)})</span></div>
+          <div class="evolution-summary-card"><strong>Distinct amino-acid identities</strong><span>${stats.distinctResidueCount}</span></div>
+          <div class="evolution-summary-card"><strong>Column state</strong><span>${escapeHtml(stats.state)}</span></div>
+        </div>
+        <div class="chem-note"><strong>Small dataset note</strong>The current dataset contains only ${stats.totalSequences} sequences.</div>
+      `;
+    }
+
+    function renderResidueFrequencyTable(stats) {
+      if (!stats.frequencies.length) {
+        return '<div class="chem-note"><strong>Residue Frequencies</strong>No amino-acid residues are present in this selected column; all entries are gaps.</div>';
+      }
+      const rows = stats.frequencies.map(entry => `
+        <tr>
+          <td><code aria-label="${escapeHtml(entry.name)}">${escapeHtml(entry.residue)}</code></td>
+          <td>${escapeHtml(entry.name)}</td>
+          <td>${entry.count}</td>
+          <td>${entry.count} / ${stats.totalSequences} (${formatPercent(entry.frequencyAmongAll)})</td>
+          <td>${entry.count} / ${stats.residueCount} (${formatPercent(entry.frequencyAmongResidues)})</td>
+        </tr>
+      `).join('');
+      return `
+        <h5>Residue Frequencies</h5>
+        <table class="alignment-column-table">
+          <thead>
+            <tr>
+              <th>Residue identity</th>
+              <th>Amino-acid name</th>
+              <th>Count</th>
+              <th>Frequency among all aligned sequences</th>
+              <th>Frequency among non-gap residues only</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function renderPropertySummary(stats) {
+      const groupRows = stats.propertyGroups.map(group => {
+        const members = group.residues
+          .map(residue => `<code aria-label="${escapeHtml(residue.name)}">${escapeHtml(residue.residue)}</code> ${escapeHtml(residue.name)} (${residue.count})`)
+          .join('; ');
+        return `
+          <tr>
+            <td>${escapeHtml(group.label)}</td>
+            <td>${group.count} / ${stats.residueCount}</td>
+            <td>${members}</td>
+          </tr>
+        `;
+      }).join('');
+      const unsupportedRows = stats.unsupportedResidues.length
+        ? `<tr><td>Ambiguous or unsupported symbols</td><td>${stats.unsupportedResidues.reduce((sum, residue) => sum + residue.count, 0)} / ${stats.residueCount}</td><td>${stats.unsupportedResidues.map(residue => `<code>${escapeHtml(residue.residue)}</code> (${residue.count})`).join('; ')}</td></tr>`
+        : '';
+      const body = groupRows || unsupportedRows
+        ? `${groupRows}${unsupportedRows}`
+        : '<tr><td colspan="3">No biochemical property categories are represented because this selected column contains only gaps.</td></tr>';
+      return `
+        <h5>Biochemical Property Summary</h5>
+        <table class="alignment-column-table">
+          <thead>
+            <tr>
+              <th>Property category</th>
+              <th>Count among non-gap residues</th>
+              <th>Observed residue identities</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+        <div class="chem-note"><strong>Property caution</strong>Residues with similar biochemical properties can still differ in structure, reactivity, and biological role.</div>
+      `;
+    }
+
+    function renderAlignmentColumnDetails(alignment, dataset) {
+      const selected = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
+      if (selected === null) {
+        return `
+          <div class="alignment-column-details" id="alignmentColumnDetailsPanel">
+            <h4>Alignment Column Details</h4>
+            <div class="chem-note"><strong>No alignment column selected</strong>Hover over an aligned character to preview a column, or click a character to keep that alignment column selected.</div>
+          </div>
+        `;
+      }
+      const stats = alignmentColumnStatisticsForRecords(alignment.records, selected);
+      const curatedByAccession = curatedRecordByAccession(dataset);
+      const rows = alignment.records.map(alignedRecord => {
+        const curatedRecord = curatedByAccession.get(alignedRecord.sourceAccession);
+        const char = alignedRecord.alignedSequence[selected] || '';
+        const isGap = char === '-';
+        const referencePosition = referencePositionForAlignmentColumn(alignedRecord.alignedSequence, selected);
+        return `
+          <tr>
+            <td><em>${escapeHtml(curatedRecord?.organism || 'Organism not provided')}</em></td>
+            <td>${escapeHtml(alignedRecord.sourceAccession)}</td>
+            <td><code>${escapeHtml(char || 'n/a')}</code></td>
+            <td>${isGap ? 'Gap; no amino acid at this alignment column' : 'Amino acid'}</td>
+            <td>${referencePosition === null ? 'No ungapped reference-sequence position' : `Reference-sequence position ${referencePosition}`}</td>
+          </tr>
+        `;
+      }).join('');
+      return `
+        <div class="alignment-column-details" id="alignmentColumnDetailsPanel">
+          <h4>Alignment Column Details</h4>
+          <p>Selected alignment column: <strong>${selected + 1}</strong></p>
+          ${renderAlignmentColumnSummary(stats)}
+          ${renderResidueFrequencyTable(stats)}
+          ${renderPropertySummary(stats)}
+          <div class="chem-note"><strong>Dataset boundary</strong>These values summarize only the sequences included in this curated dataset; they are not estimates of all RbcL proteins.</div>
+          <div class="chem-note"><strong>Interpretation caution</strong>An invariant column in a small dataset is not by itself evidence that the position is functionally essential.</div>
+          <table class="alignment-column-table">
+            <caption>Per-sequence alignment column characters and ungapped reference-sequence positions</caption>
+            <thead>
+              <tr>
+                <th>Organism</th>
+                <th>Source accession</th>
+                <th>Aligned character</th>
+                <th>Character type</th>
+                <th>Corresponding ungapped reference-sequence position</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
     }
 
     function renderAlignmentView() {
@@ -5301,6 +5597,7 @@ END
         container.innerHTML = `<div class="warning-text"><strong>Alignment validation issue</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`;
         return;
       }
+      clampSelectedAlignmentColumn(alignment);
       const provenance = [
         `Method: ${displayValue(alignment.alignmentMethod)}`,
         `Software or service: ${displayValue(alignment.alignmentSoftwareOrService)}`,
@@ -5311,6 +5608,8 @@ END
       container.innerHTML = `
         <div class="chem-note"><strong>Alignment View</strong>An alignment inserts gap characters so homologous sequence positions can be compared across proteins. Alignment columns represent inferred correspondence; they do not automatically prove equivalent function.</div>
         <div class="chem-note"><strong>Numbering systems</strong>Alignment position, reference-sequence position, and structure residue number are different numbering systems.</div>
+        <div class="chem-note"><strong>Column interpretation</strong>An alignment column represents an inferred correspondence among sequences. The corresponding reference-sequence position may differ among organisms because alignment gaps shift sequence numbering.</div>
+        <div class="chem-note"><strong>No structure mapping</strong>No structure residue mapping is active in this view.</div>
         <div class="evolution-summary-grid" aria-label="Multiple sequence alignment summary">
           <div class="evolution-summary-card"><strong>Alignment name</strong><span>${escapeHtml(alignment.name)}</span></div>
           <div class="evolution-summary-card"><strong>Sequences</strong><span>${alignment.records.length}</span></div>
@@ -5318,6 +5617,8 @@ END
           <div class="evolution-summary-card"><strong>Provenance</strong><span>${escapeHtml(provenance)}</span></div>
         </div>
         ${alignment.notes ? `<div class="chem-note"><strong>Instructor notes</strong>${escapeHtml(alignment.notes)}</div>` : ''}
+        ${renderAlignmentColumnControls(alignment)}
+        ${renderAlignmentColumnDetails(alignment, dataset)}
         ${renderAlignmentRecordBlocks(alignment, dataset)}
       `;
     }
@@ -5451,10 +5752,13 @@ END
       return segments;
     }
 
-    function drawSequence() {
+    function drawVisualEvolutionExplorer() {
+      renderCuratedSequencePanel();
+    }
+
+    function drawStructureSequence() {
       const container = document.getElementById('sequenceViewer');
       if (!container) return;
-      renderCuratedSequencePanel();
       const sequence = sequenceFromResidues(state.residues);
       const selectedEntry = state.torsions[state.selectedResidueIndex];
       const selectedResidue = selectedEntry?.residue || state.residues[state.selectedResidueIndex];
@@ -5470,7 +5774,7 @@ END
       const segments = sequenceSegments();
       const unknownCount = [...sequence].filter(letter => letter === 'X').length;
       document.getElementById('sequenceChainCount').textContent = segments.length;
-      document.getElementById('sequenceNote').innerHTML = `<strong>${state.structureId} sequence</strong>Sequence is derived from parsed ATOM records in the loaded PDB structure. ${unknownCount ? `${unknownCount} residue(s) are shown as X because their one-letter code is unknown.` : 'Only parsed standard amino-acid residues are shown.'}`;
+      document.getElementById('sequenceNote').innerHTML = `<strong>${state.structureId} Structure Sequence</strong>Sequence is derived from parsed ATOM records in the loaded PDB structure. ${unknownCount ? `${unknownCount} residue(s) are shown as X because their one-letter code is unknown.` : 'Only parsed standard amino-acid residues are shown.'}`;
 
       segments.forEach((segment, segmentIndex) => {
         const first = segment.residues[0]?.residue;
@@ -7880,6 +8184,7 @@ END
       state.selectedCuratedSequenceId = null;
       state.expandedReferenceSequenceIds.clear();
       state.sequenceComparisonSort = 'dataset';
+      state.selectedAlignmentColumnIndex = null;
       renderCuratedSequencePanel();
       updateSequenceStageOverview();
     });
@@ -7910,6 +8215,56 @@ END
       if (event.target.id !== 'sequenceComparisonSort') return;
       state.sequenceComparisonSort = event.target.value;
       renderCuratedSequencePanel();
+    });
+
+    document.getElementById('curatedAlignmentView').addEventListener('mouseover', event => {
+      const cell = event.target.closest('[data-alignment-column]');
+      if (!cell) return;
+      applyAlignmentColumnHover(cell.dataset.alignmentColumn, true);
+    });
+
+    document.getElementById('curatedAlignmentView').addEventListener('mouseout', event => {
+      const cell = event.target.closest('[data-alignment-column]');
+      if (!cell) return;
+      applyAlignmentColumnHover(cell.dataset.alignmentColumn, false);
+    });
+
+    document.getElementById('curatedAlignmentView').addEventListener('click', event => {
+      const cell = event.target.closest('[data-alignment-column]');
+      if (cell) {
+        selectAlignmentColumn(Number(cell.dataset.alignmentColumn));
+        return;
+      }
+      const nav = event.target.closest('[data-alignment-column-nav]');
+      if (nav) {
+        const alignment = currentCuratedAlignment();
+        const current = Number.isInteger(state.selectedAlignmentColumnIndex) ? state.selectedAlignmentColumnIndex : null;
+        if (nav.dataset.alignmentColumnNav === 'clear') {
+          state.selectedAlignmentColumnIndex = null;
+          renderCuratedSequencePanel();
+        } else if (alignment && current !== null && nav.dataset.alignmentColumnNav === 'previous') {
+          selectAlignmentColumn(Math.max(0, current - 1), false);
+        } else if (alignment && current !== null && nav.dataset.alignmentColumnNav === 'next') {
+          selectAlignmentColumn(Math.min(alignment.alignmentLength - 1, current + 1), false);
+        }
+        return;
+      }
+      const jump = event.target.closest('[data-alignment-column-jump]');
+      if (!jump) return;
+      const input = document.getElementById('alignmentColumnJump');
+      const alignment = currentCuratedAlignment();
+      const displayColumn = Number(input?.value);
+      if (!alignment || !Number.isInteger(displayColumn) || displayColumn < 1 || displayColumn > alignment.alignmentLength) return;
+      selectAlignmentColumn(displayColumn - 1, false);
+    });
+
+    document.getElementById('curatedAlignmentView').addEventListener('keydown', event => {
+      if (event.key !== 'Enter' || event.target.id !== 'alignmentColumnJump') return;
+      event.preventDefault();
+      const alignment = currentCuratedAlignment();
+      const displayColumn = Number(event.target.value);
+      if (!alignment || !Number.isInteger(displayColumn) || displayColumn < 1 || displayColumn > alignment.alignmentLength) return;
+      selectAlignmentColumn(displayColumn - 1, false);
     });
 
     document.getElementById('ramaCanvas').addEventListener('click', event => {
