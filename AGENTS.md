@@ -40,6 +40,7 @@ Never assume that alignment position, reference-sequence position, and structure
 - Do not change sequence parsing, residue numbering, conservation scoring, or structure loading as a side effect of UI work.
 - Structure-derived sequence data currently come from parsed PDB `ATOM` records through `state.residues` and `sequenceFromResidues()`.
 - Conservation in the app is a simplified teaching workflow, not a publication-grade evolutionary model.
+- Do not render a scientific feature directly from a registry status flag. Use the validated capability-availability resolver.
 
 ## Accessibility And Student Usability
 

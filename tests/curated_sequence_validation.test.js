@@ -10,7 +10,10 @@ const {
   validateCuratedSequenceAlignments
 } = require('../curated_alignment_validation.js');
 const {
-  validateAtlasDatasetRegistry
+  validateAtlasDatasetRegistry,
+  getCapabilityAvailability,
+  isCapabilityRenderable,
+  CAPABILITY_REASON_CODES
 } = require('../atlas_dataset_registry_validation.js');
 const {
   sequenceLengthStats,
@@ -81,6 +84,31 @@ function productionRegistryPayload(overrides = {}) {
 
 function productionRegistryValidation(payload = productionRegistryPayload()) {
   return validateAtlasDatasetRegistry(payload, productionCuratedValidation(), productionAlignmentValidation());
+}
+
+function availabilityContext(overrides = {}) {
+  return {
+    curatedValidation: productionCuratedValidation(),
+    alignmentValidation: productionAlignmentValidation(),
+    localStructureFiles: new Set(['1MBN.pdb']),
+    systemModels: new Set(['photosynthesis']),
+    functionAnnotations: new Set(['myoglobin_structural_features_builtin']),
+    structureMappings: new Map(),
+    helpers: {
+      alignmentColumnStatisticsForRecords,
+      fullAlignmentConservationScores,
+      conservationScoreConfig: ALIGNMENT_CONSERVATION_SCORE_CONFIG
+    },
+    ...overrides
+  };
+}
+
+function registryDataset(datasetId, payload = productionRegistryPayload()) {
+  const result = validateAtlasDatasetRegistry(payload, productionCuratedValidation(), productionAlignmentValidation());
+  assert.strictEqual(result.ok, true);
+  const dataset = result.datasets.find(item => item.stableDatasetId === datasetId);
+  assert(dataset, `Expected registry dataset ${datasetId}`);
+  return dataset;
 }
 
 function validPayload(overrides = {}) {
@@ -294,6 +322,123 @@ run('Atlas dataset registry validates referenced datasets, alignments, PDB IDs, 
   result = productionRegistryValidation(payload);
   assert.strictEqual(result.ok, false);
   assert(result.errors.some(error => error.includes('unknown top-level field')));
+});
+
+run('Atlas capability availability distinguishes declared status from renderability', () => {
+  const rubisco = registryDataset('rubisco');
+  const myoglobin = registryDataset('myoglobin');
+  const context = availabilityContext();
+
+  let result = getCapabilityAvailability(rubisco, 'referenceSequences', context);
+  assert.strictEqual(result.renderable, true);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.RENDERABLE);
+  assert.strictEqual(result.resolvedResources.curatedSequenceDataset, 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs');
+
+  result = getCapabilityAvailability(rubisco, 'structure', context);
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.STATUS_UNAVAILABLE);
+
+  result = getCapabilityAvailability(myoglobin, 'structure', context);
+  assert.strictEqual(result.renderable, true);
+  assert.strictEqual(isCapabilityRenderable(myoglobin, 'structure', context), true);
+
+  result = getCapabilityAvailability(myoglobin, 'alignment', context);
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.STATUS_UNAVAILABLE);
+});
+
+run('Atlas capability availability validates comparative sequence dependencies and missing resources', () => {
+  const payload = productionRegistryPayload();
+  payload.datasets[0].capabilities.referenceSequences.status = 'unavailable';
+  payload.datasets[0].capabilities.comparativeSequenceOverview.status = 'available';
+  payload.datasets[0].resources.curatedSequenceDatasetId = 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs';
+  const dataset = payload.datasets[0];
+  const result = getCapabilityAvailability(dataset, 'comparativeSequenceOverview', availabilityContext());
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.DEPENDENCY_UNAVAILABLE);
+  assert.strictEqual(result.dependencyFailures[0].capabilityId, 'referenceSequences');
+
+  const missing = productionRegistryPayload();
+  missing.datasets[0].capabilities.referenceSequences.status = 'available';
+  delete missing.datasets[0].resources.curatedSequenceDatasetId;
+  const missingResult = getCapabilityAvailability(missing.datasets[0], 'referenceSequences', availabilityContext());
+  assert.strictEqual(missingResult.renderable, false);
+  assert.strictEqual(missingResult.reasonCode, CAPABILITY_REASON_CODES.REQUIRED_RESOURCE_MISSING);
+});
+
+run('Atlas capability availability validates alignment resources and dataset consistency', () => {
+  const rubisco = registryDataset('rubisco');
+  const context = availabilityContext();
+  let result = getCapabilityAvailability(rubisco, 'alignment', context);
+  assert.strictEqual(result.renderable, true);
+  assert.strictEqual(result.resolvedResources.curatedAlignment, 'rubisco_rbcl_oxygenic_phototrophs_msa');
+
+  const badAlignmentValidation = JSON.parse(JSON.stringify(context.alignmentValidation));
+  badAlignmentValidation.alignments[0].datasetId = 'different_dataset';
+  result = getCapabilityAvailability(rubisco, 'alignment', availabilityContext({ alignmentValidation: badAlignmentValidation }));
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.DATASET_MISMATCH);
+
+  const emptyAlignmentValidation = JSON.parse(JSON.stringify(context.alignmentValidation));
+  emptyAlignmentValidation.alignments[0].records = [];
+  result = getCapabilityAvailability(rubisco, 'alignment', availabilityContext({ alignmentValidation: emptyAlignmentValidation }));
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.RESOURCE_VALIDATION_FAILED);
+});
+
+run('Atlas capability availability validates descriptive statistics and Atlas score helpers', () => {
+  const rubisco = registryDataset('rubisco');
+  let result = getCapabilityAvailability(rubisco, 'atlasConservationScore', availabilityContext());
+  assert.strictEqual(result.renderable, true);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.RENDERABLE);
+
+  result = getCapabilityAvailability(rubisco, 'descriptiveColumnStatistics', availabilityContext({
+    helpers: {
+      fullAlignmentConservationScores,
+      conservationScoreConfig: ALIGNMENT_CONSERVATION_SCORE_CONFIG
+    }
+  }));
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.RESOURCE_VALIDATION_FAILED);
+  assert(result.invalidResources.includes('descriptiveColumnStatisticsHelper'));
+
+  result = getCapabilityAvailability(rubisco, 'atlasConservationScore', availabilityContext({
+    helpers: {
+      alignmentColumnStatisticsForRecords,
+      fullAlignmentConservationScores: () => [],
+      conservationScoreConfig: ALIGNMENT_CONSERVATION_SCORE_CONFIG
+    }
+  }));
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.RESOURCE_VALIDATION_FAILED);
+});
+
+run('Atlas capability availability keeps sequence-to-structure mapping nonrenderable without explicit mapping resources', () => {
+  const rubisco = registryDataset('rubisco');
+  let result = getCapabilityAvailability(rubisco, 'sequenceToStructureMapping', availabilityContext());
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.STATUS_UNAVAILABLE);
+
+  const payload = productionRegistryPayload();
+  payload.datasets[0].capabilities.structure.status = 'available';
+  payload.datasets[0].resources.representativePdbId = '1ABC';
+  payload.datasets[0].capabilities.sequenceToStructureMapping.status = 'available';
+  payload.datasets[0].resources.structureMappingId = 'missing_mapping';
+  result = getCapabilityAvailability(payload.datasets[0], 'sequenceToStructureMapping', availabilityContext());
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.RESOURCE_REFERENCE_UNKNOWN);
+});
+
+run('Atlas capability availability detects circular capability dependencies', () => {
+  const rubisco = registryDataset('rubisco');
+  const result = getCapabilityAvailability(rubisco, 'alignment', availabilityContext({
+    capabilityDependencies: {
+      alignment: ['atlasConservationScore'],
+      atlasConservationScore: ['alignment']
+    }
+  }));
+  assert.strictEqual(result.renderable, false);
+  assert.strictEqual(result.reasonCode, CAPABILITY_REASON_CODES.CIRCULAR_DEPENDENCY);
 });
 
 run('existing Structure Sequence behavior is still wired to shared residue selection', () => {

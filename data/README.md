@@ -37,6 +37,22 @@ Resource references connect registry metadata to data files:
 - `structureMappingId` is reserved for future explicit sequence-to-structure mappings.
 - `functionAnnotationDatasetId` is reserved for curated function annotations.
 
+## Capability Availability Rule
+
+A scientific capability may be rendered as available only when the registry declares it available and every required resource is present, resolves successfully, passes validation, and is internally consistent with the active dataset. Registry status alone is never sufficient.
+
+The Atlas separates these checks:
+
+- **Declared status:** the registry says whether a capability is `available`, `partial`, `planned`, `unavailable`, or `archived`.
+- **Resource resolution:** referenced datasets, alignments, structures, mappings, or annotations must be found.
+- **Resource validation:** resolved scientific data must pass the relevant validator.
+- **Dataset consistency:** linked resources must describe the active dataset rather than an unrelated case study.
+- **Renderability:** the application may show a capability as usable only after status, resources, validation, and dependencies all pass.
+
+For example, an alignment capability is renderable only when the registry declares alignment available, the curated alignment ID resolves, the alignment validates, the alignment belongs to the active curated reference-sequence dataset, and dependent helpers are present for any downstream alignment-column or score displays.
+
+Current limitations: system-model and function-annotation resources are represented by registered identifiers rather than full standalone validation schemas. Do not expand their scientific meaning without adding explicit source data and validators.
+
 ## Reference Sequences
 
 `curated_sequence_sets.js` contains verified, unaligned reference protein sequences. These records are complete curated protein sequences, not residues parsed from a loaded PDB structure.

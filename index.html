@@ -5273,6 +5273,22 @@ END
       return state.atlasRegistryValidation;
     }
 
+    function atlasCapabilityResourceContext() {
+      return {
+        curatedValidation: curatedSequenceValidation(),
+        alignmentValidation: curatedAlignmentValidation(),
+        localStructureFiles: new Set(['1MBN.pdb']),
+        systemModels: new Set(['photosynthesis']),
+        functionAnnotations: new Set(['myoglobin_structural_features_builtin']),
+        structureMappings: new Map(),
+        helpers: {
+          alignmentColumnStatisticsForRecords: window.BVASequenceDisplay?.alignmentColumnStatisticsForRecords,
+          fullAlignmentConservationScores: window.BVASequenceDisplay?.fullAlignmentConservationScores,
+          conservationScoreConfig: window.BVASequenceDisplay?.ALIGNMENT_CONSERVATION_SCORE_CONFIG
+        }
+      };
+    }
+
     function capabilityBadge(capability) {
       const status = typeof capability === 'string' ? capability : capability?.status;
       return status || 'unavailable';
@@ -5297,10 +5313,36 @@ END
           ].join('; ');
           return `<div class="structure-pill"><span><strong>${escapeHtml(dataset.title)}</strong><br>${escapeHtml(dataset.canonicalBiologicalName)}<br>Default lens: ${escapeHtml(dataset.defaultLens)}<br>${escapeHtml(capabilities)}</span></div>`;
         }).join('');
+      const resolver = window.BVAAtlasRegistryValidation?.getCapabilityAvailability;
+      const diagnosticCapabilities = [
+        'structure',
+        'referenceSequences',
+        'comparativeSequenceOverview',
+        'alignment',
+        'alignmentColumnExploration',
+        'descriptiveColumnStatistics',
+        'atlasConservationScore',
+        'sequenceToStructureMapping'
+      ];
+      const context = atlasCapabilityResourceContext();
+      const diagnostic = typeof resolver === 'function'
+        ? validation.datasets.map(dataset => {
+          const entries = diagnosticCapabilities.map(capabilityId => {
+            const result = resolver(dataset, capabilityId, context);
+            const label = result.renderable ? 'renderable' : `not renderable: ${result.reasonCode}`;
+            return `<li><code>${escapeHtml(capabilityId)}</code>: declared ${escapeHtml(result.declaredStatus)}; ${escapeHtml(label)}</li>`;
+          }).join('');
+          return `<details class="registry-diagnostic"><summary>${escapeHtml(dataset.stableDatasetId)} capability availability diagnostic</summary><ul>${entries}</ul></details>`;
+        }).join('')
+        : '<p class="caption">Capability availability resolver unavailable.</p>';
       container.innerHTML = `
         <h3>Dataset Registry</h3>
         <p>Registry loaded: ${validation.datasets.length} dataset case studies. Capabilities marked unavailable are not inferred or simulated.</p>
         ${rows}
+        <div class="caption">
+          <strong>Developer diagnostic:</strong> scientific capabilities render only when registry status, resources, validation, and dependencies all pass.
+        </div>
+        ${diagnostic}
       `;
     }
 
