@@ -513,6 +513,11 @@
       padding: 10px;
     }
 
+    .reference-sequence-card.selected {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(0,114,178,.14);
+    }
+
     .reference-sequence-card h4 {
       margin: 0 0 6px;
       font-size: 14px;
@@ -536,8 +541,47 @@
       text-transform: uppercase;
     }
 
+    .detail-grid {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .detail-row {
+      border-bottom: 1px solid #edf1f5;
+      display: grid;
+      gap: 2px;
+      padding-bottom: 7px;
+    }
+
+    .detail-row:last-child { border-bottom: 0; }
+
+    .detail-row dt {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .detail-row dd {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0;
+    }
+
     #curatedSequencePanel {
       margin-top: 12px;
+    }
+
+    .reference-details-card {
+      border-top: 1px solid var(--line);
+      margin-top: 12px;
+      padding-top: 10px;
+    }
+
+    .reference-details-card h3 {
+      margin: 0 0 6px;
+      font-size: 15px;
     }
 
     .swatch {
@@ -919,6 +963,12 @@
           <select id="curatedSequenceDataset"></select>
           <div class="chem-note" id="curatedSequenceDatasetNote"></div>
           <div id="curatedReferenceSequences"></div>
+          <div class="reference-details-card" id="referenceSequenceDetailsPanel" aria-live="polite">
+            <h3>Reference Sequence Details</h3>
+            <div class="chem-note"><strong>Reference sequences:</strong> Reference sequences represent complete curated protein sequences and may include residues not present in the currently loaded molecular structure.</div>
+            <div class="chem-note"><strong>Photosynthetic categories:</strong> Photosynthetic categories such as C3 and C4 describe organism-level physiology and are not determined by the RbcL sequence alone.</div>
+            <div id="referenceSequenceDetails"></div>
+          </div>
         </div>
       </section>
 
@@ -3330,6 +3380,7 @@ END
       mode: 'overview',
       curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
       curatedSequenceValidation: null,
+      selectedCuratedSequenceId: null,
       selectedHbond: null,
       selectedResidueIndex: 0,
       contactType: 'all',
@@ -4802,6 +4853,12 @@ END
       return validation.datasets.find(dataset => dataset.datasetId === state.curatedSequenceDatasetId) || validation.datasets[0];
     }
 
+    function selectedCuratedSequenceRecord() {
+      const dataset = currentCuratedSequenceDataset();
+      if (!dataset?.records?.length || !state.selectedCuratedSequenceId) return null;
+      return dataset.records.find(record => record.stableSequenceId === state.selectedCuratedSequenceId) || null;
+    }
+
     function renderCuratedSequenceDatasetSelector() {
       const select = document.getElementById('curatedSequenceDataset');
       if (!select) return;
@@ -4829,6 +4886,7 @@ END
 
     function renderReferenceSequenceCard(record) {
       const sequence = record.aminoAcidSequence || '';
+      const selected = record.stableSequenceId === state.selectedCuratedSequenceId;
       const metadata = [
         `Organism: ${displayValue(record.organism)}`,
         `Protein/Gene: ${displayValue(record.proteinName)} / ${displayValue(record.geneName)}`,
@@ -4841,12 +4899,54 @@ END
       if (record.sourceCitation) metadata.push(`Citation: ${record.sourceCitation}`);
       if (record.notes) metadata.push(`Notes: ${record.notes}`);
       return `
-        <article class="reference-sequence-card">
+        <article class="reference-sequence-card${selected ? ' selected' : ''}">
           <span class="sequence-label">Reference Sequence</span>
-          <h4>${escapeHtml(record.stableSequenceId)}</h4>
+          <h4><em>${escapeHtml(record.organism)}</em></h4>
           <div class="reference-sequence-meta">${metadata.map(item => `<span>${escapeHtml(item)}</span>`).join('')}</div>
+          <button type="button" data-reference-sequence-id="${escapeHtml(record.stableSequenceId)}" aria-pressed="${selected ? 'true' : 'false'}">View details</button>
           <div class="diagram-box" aria-label="Amino-acid sequence for ${escapeHtml(record.stableSequenceId)}">${escapeHtml(sequence || 'No sequence provided')}</div>
         </article>
+      `;
+    }
+
+    function detailRows(rows) {
+      return rows
+        .filter(row => row.value !== null && row.value !== undefined && String(row.value).trim() !== '')
+        .map(row => `
+          <div class="detail-row">
+            <dt>${escapeHtml(row.label)}</dt>
+            <dd>${row.html ? row.value : escapeHtml(row.value)}</dd>
+          </div>
+        `)
+        .join('');
+    }
+
+    function renderReferenceSequenceDetails() {
+      const container = document.getElementById('referenceSequenceDetails');
+      if (!container) return;
+      const record = selectedCuratedSequenceRecord();
+      if (!record) {
+        container.innerHTML = '<div class="chem-note"><strong>No reference sequence selected</strong>Select a Reference Sequence card above to view biological identity, provenance, and classroom interpretation notes. This does not select a structure residue or map sequence positions to the loaded 3D model.</div>';
+        return;
+      }
+      const rows = [
+        { label: 'Organism', value: `<em>${escapeHtml(record.organism)}</em>`, html: true },
+        { label: 'Protein name', value: record.proteinName },
+        { label: 'Gene name', value: record.geneName },
+        { label: 'Broad taxonomic group', value: record.broadTaxonomicGroup },
+        { label: 'Photosynthetic category', value: record.photosyntheticCategory },
+        { label: 'Sequence length', value: `${(record.aminoAcidSequence || '').length} amino acids` },
+        { label: 'Source database', value: record.sourceDatabase },
+        { label: 'Source accession', value: record.sourceAccession },
+        { label: 'Source note or citation', value: record.sourceCitation || record.notes },
+        { label: 'Optional structure identifier', value: record.structureIdentifier },
+        { label: 'Stable internal sequence identifier', value: record.stableSequenceId }
+      ];
+      container.innerHTML = `
+        <dl class="detail-grid">
+          ${detailRows(rows)}
+        </dl>
+        <div class="chem-note"><strong>Interpretation boundary</strong>This Reference Sequence is not aligned to the Structure Sequence here. Reference-sequence positions should not be treated as structure residue numbers.</div>
       `;
     }
 
@@ -4860,6 +4960,7 @@ END
       if (!dataset) {
         note.innerHTML = '<strong>Reference sequences unavailable</strong>No local curated sequence datasets were found.';
         container.innerHTML = '';
+        renderReferenceSequenceDetails();
         return;
       }
 
@@ -4875,13 +4976,19 @@ END
 
       if (!validation.ok) {
         container.innerHTML = '<div class="warning-text">This curated sequence dataset has validation issues and should be corrected before classroom use.</div>';
+        renderReferenceSequenceDetails();
         return;
       }
       if (!dataset.records.length) {
         container.innerHTML = '<div class="chem-note"><strong>No verified records yet</strong>This dataset placeholder is ready for instructor-verified Rubisco large subunit sequences. Add records only after verifying organisms, accessions, classifications, citations, and amino-acid sequences.</div>';
+        renderReferenceSequenceDetails();
         return;
       }
+      if (state.selectedCuratedSequenceId && !dataset.records.some(record => record.stableSequenceId === state.selectedCuratedSequenceId)) {
+        state.selectedCuratedSequenceId = null;
+      }
       container.innerHTML = dataset.records.map(renderReferenceSequenceCard).join('');
+      renderReferenceSequenceDetails();
     }
 
     function sequenceSegments() {
@@ -7331,6 +7438,14 @@ END
 
     document.getElementById('curatedSequenceDataset').addEventListener('change', event => {
       state.curatedSequenceDatasetId = event.target.value;
+      state.selectedCuratedSequenceId = null;
+      renderCuratedSequencePanel();
+    });
+
+    document.getElementById('curatedReferenceSequences').addEventListener('click', event => {
+      const item = event.target.closest('[data-reference-sequence-id]');
+      if (!item) return;
+      state.selectedCuratedSequenceId = item.dataset.referenceSequenceId;
       renderCuratedSequencePanel();
     });
 

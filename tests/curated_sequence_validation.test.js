@@ -122,3 +122,56 @@ run('existing Structure Sequence behavior is still wired to shared residue selec
   assert(indexHtml.includes('button.dataset.sequenceIndex = index;'));
   assert(indexHtml.includes('selectTorsionIndex(Number(item.dataset.sequenceIndex));'));
 });
+
+run('Reference Sequence Details panel includes required metadata labels', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Reference Sequence Details',
+    'Organism',
+    'Protein name',
+    'Gene name',
+    'Broad taxonomic group',
+    'Photosynthetic category',
+    'Sequence length',
+    'Source database',
+    'Source accession',
+    'Source note or citation',
+    'Optional structure identifier',
+    'Stable internal sequence identifier'
+  ].forEach(label => assert(indexHtml.includes(label), `Missing label: ${label}`));
+});
+
+run('Reference Sequence Details handles missing optional metadata', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes("record.sourceCitation || record.notes"));
+  assert(indexHtml.includes("record.structureIdentifier"));
+  assert(indexHtml.includes(".filter(row => row.value !== null && row.value !== undefined && String(row.value).trim() !== '')"));
+});
+
+run('curated reference sequence selection updates a separate details state', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes("selectedCuratedSequenceId: null"));
+  assert(indexHtml.includes("data-reference-sequence-id"));
+  assert(indexHtml.includes("state.selectedCuratedSequenceId = item.dataset.referenceSequenceId;"));
+  assert(indexHtml.includes("renderReferenceSequenceDetails();"));
+});
+
+run('Reference Sequence Details has useful empty selection state', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('No reference sequence selected'));
+  assert(indexHtml.includes('Select a Reference Sequence card above'));
+});
+
+run('Reference Sequence UI explicitly avoids sequence-to-structure mapping assumptions', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('No sequence-to-structure mapping is performed here'));
+  assert(indexHtml.includes('Reference-sequence positions should not be treated as structure residue numbers'));
+  assert(indexHtml.includes('This does not select a structure residue or map sequence positions to the loaded 3D model'));
+});
+
+run('Reference sequence controls include accessible button state for keyboard use', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  assert(indexHtml.includes('button type="button" data-reference-sequence-id='));
+  assert(indexHtml.includes('aria-pressed='));
+  assert(indexHtml.includes("document.getElementById('curatedReferenceSequences').addEventListener('click'"));
+});
