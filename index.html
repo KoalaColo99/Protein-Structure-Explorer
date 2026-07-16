@@ -45,15 +45,51 @@
 
     .app {
       display: grid;
-      grid-template-columns: minmax(420px, 1fr) minmax(430px, 560px);
+      grid-template-columns: minmax(35%, var(--left-pane-percent, 58%)) 14px minmax(28%, 1fr);
       min-height: 100vh;
+    }
+
+    .app.resizing-split {
+      cursor: ew-resize;
+      user-select: none;
     }
 
     .stage {
       position: relative;
       min-height: 620px;
       background: #eef3f8;
+    }
+
+    .split-divider {
+      align-items: center;
+      background: linear-gradient(90deg, #d8e1eb, #f8fafc, #d8e1eb);
+      border: 0;
+      border-left: 1px solid var(--line);
       border-right: 1px solid var(--line);
+      border-radius: 0;
+      cursor: ew-resize;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 0;
+      touch-action: none;
+      width: 14px;
+      z-index: 8;
+    }
+
+    .split-divider:focus-visible {
+      outline: 3px solid rgba(0,114,178,.35);
+      outline-offset: -3px;
+    }
+
+    .split-grip {
+      background:
+        radial-gradient(circle, #64748b 1.5px, transparent 2px) 0 0 / 6px 8px,
+        radial-gradient(circle, #64748b 1.5px, transparent 2px) 3px 4px / 6px 8px;
+      border-radius: 99px;
+      height: 52px;
+      opacity: .85;
+      width: 8px;
     }
 
     #viewer {
@@ -191,7 +227,18 @@
       overflow: auto;
       max-height: 100vh;
       background: var(--panel);
-      padding: 18px;
+      padding: 14px;
+    }
+
+    .split-reset-row {
+      display: flex;
+      justify-content: flex-end;
+      margin: -4px 0 10px;
+    }
+
+    .split-reset-row button {
+      font-size: 12px;
+      padding: 7px 9px;
     }
 
     h1 {
@@ -1186,7 +1233,7 @@
       border-radius: 8px;
       background: #fff;
       margin-top: 12px;
-      padding: 12px;
+      padding: 10px;
     }
 
     .dihedral-toolbar,
@@ -1194,8 +1241,8 @@
     .dihedral-presets {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0;
+      gap: 6px;
+      margin: 7px 0;
     }
 
     .dihedral-mode-toggle {
@@ -1208,8 +1255,8 @@
       border: 1px solid var(--line);
       border-radius: 8px;
       background: #fbfdff;
-      padding: 10px;
-      margin-top: 10px;
+      padding: 8px;
+      margin-top: 8px;
     }
 
     .dihedral-control-card label {
@@ -1219,14 +1266,255 @@
     }
 
     .dihedral-control-card input[type="range"] {
+      position: relative;
+      z-index: 2;
+      pointer-events: auto;
       width: 100%;
     }
 
     .dihedral-control-card input[type="number"] {
       border: 1px solid var(--line);
       border-radius: 8px;
+      padding: 7px;
+      width: 92px;
+    }
+
+    .peptide-playground {
+      display: grid;
+      grid-template-columns: minmax(300px, 1.08fr) minmax(240px, .92fr);
+      gap: 10px;
+      margin-top: 10px;
+      align-items: stretch;
+    }
+
+    .peptide-model-card,
+    .peptide-side-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
       padding: 8px;
-      width: 120px;
+    }
+
+    .peptide-model-card svg {
+      width: 100%;
+      min-height: 250px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .dihedral-sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--blue);
+      border-radius: 8px;
+      background: rgba(255,255,255,.97);
+      box-shadow: 0 6px 18px rgba(23,32,42,.08);
+      display: grid;
+      gap: 7px;
+      margin: 8px 0;
+      padding: 8px;
+    }
+
+    .dihedral-header-row,
+    .dihedral-primary-row {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .dihedral-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 5px 8px;
+    }
+
+    .dihedral-pill strong {
+      color: var(--ink);
+    }
+
+    .segmented-control {
+      display: flex;
+      gap: 3px;
+      padding: 3px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #f8fafc;
+    }
+
+    .segmented-control button {
+      border-radius: 999px;
+      min-width: 44px;
+      padding: 6px 10px;
+      text-align: center;
+    }
+
+    .segmented-control button[aria-pressed="true"] {
+      border-color: var(--blue);
+      background: #eff6ff;
+      color: #1742a0;
+      font-weight: 800;
+    }
+
+    .primary-angle-control {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+      padding: 8px;
+    }
+
+    .primary-angle-line {
+      align-items: center;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+    }
+
+    .primary-angle-line input[type="range"] {
+      position: relative;
+      z-index: 2;
+      pointer-events: auto;
+      width: 100%;
+    }
+
+    .primary-angle-line input[type="number"] {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 7px;
+      width: 88px;
+    }
+
+    .compact-step-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .compact-step-row button {
+      padding: 6px 8px;
+      text-align: center;
+    }
+
+    .peptide-bond {
+      stroke: #8ecae6;
+      stroke-linecap: round;
+      stroke-width: 10;
+    }
+
+    .peptide-bond.peptide-omega {
+      stroke: #64748b;
+      stroke-dasharray: 8 5;
+    }
+
+    .peptide-plane {
+      fill: rgba(148,163,184,.14);
+      stroke: rgba(71,85,105,.45);
+      stroke-dasharray: 5 4;
+    }
+
+    .peptide-atom {
+      cursor: default;
+      stroke: #334155;
+      stroke-width: 2;
+    }
+
+    .peptide-atom.moving {
+      stroke: #c2410c;
+      stroke-width: 4;
+    }
+
+    .peptide-atom.fixed {
+      opacity: .45;
+    }
+
+    .peptide-label,
+    .peptide-joint-label {
+      fill: #0f172a;
+      font: 700 14px system-ui;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+
+    .peptide-joint {
+      cursor: pointer;
+    }
+
+    .peptide-joint-hit {
+      fill: transparent;
+      stroke: transparent;
+      stroke-width: 24;
+    }
+
+    .peptide-joint-ring {
+      fill: rgba(255,255,255,.18);
+      stroke: #c2410c;
+      stroke-dasharray: 7 5;
+      stroke-width: 4;
+      cursor: grab;
+      pointer-events: stroke;
+      touch-action: none;
+    }
+
+    .peptide-joint-ring:active {
+      cursor: grabbing;
+    }
+
+    .peptide-joint-ring.locked {
+      stroke: #64748b;
+      stroke-dasharray: 3 5;
+    }
+
+    .peptide-group-label {
+      fill: #475569;
+      font: 800 12px system-ui;
+      letter-spacing: .04em;
+      pointer-events: none;
+      text-anchor: middle;
+    }
+
+    .angle-dial {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 10px;
+      margin: 8px 0;
+    }
+
+    .angle-dial strong {
+      display: block;
+      font-size: 24px;
+    }
+
+    .peptide-mini-controls {
+      display: grid;
+      gap: 6px;
+    }
+
+    .peptide-mini-controls button {
+      width: 100%;
+    }
+
+    .dihedral-view-toggle {
+      display: grid;
+      gap: 6px;
+      margin: 8px 0;
+    }
+
+    .dihedral-view-toggle label {
+      align-items: center;
+      display: flex;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
     }
 
     .backbone-schematic {
@@ -1316,6 +1604,7 @@
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       .stage { min-height: 58vh; border-right: 0; border-bottom: 1px solid var(--line); }
+      .split-divider { display: none; }
       .sidebar { max-height: none; }
       .sequence-stage-overview { padding: 14px; }
     }
@@ -1323,6 +1612,7 @@
     @media (max-width: 760px) {
       .rama-layout { grid-template-columns: 1fr; }
       .alignment-block { --alignment-label-width: 150px; }
+      .peptide-playground { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 520px) {
@@ -1346,9 +1636,16 @@
       <div class="sequence-stage-overview hidden" id="sequenceStageOverview" aria-live="polite"></div>
     </section>
 
+    <div class="split-divider" id="splitDivider" role="separator" aria-orientation="vertical" aria-valuemin="35" aria-valuemax="72" aria-valuenow="58" aria-label="Resize protein viewer and dihedral controls." tabindex="0">
+      <span class="split-grip" aria-hidden="true"></span>
+    </div>
+
     <aside class="sidebar">
       <h1>Biochemistry Visual Atlas</h1>
       <p class="subhead">Interactive exploration of protein structure, chemistry, evolution, and function.</p>
+      <div class="split-reset-row">
+        <button id="resetSplitPane" type="button">Reset panel widths</button>
+      </div>
       <div class="current-structure">
         <span>Current Structure</span>
         <strong id="currentStructureLabel">Myoglobin (1MBN)</strong>
@@ -1547,47 +1844,114 @@
           </div>
         </div>
         <div class="dihedral-manipulator" id="backboneManipulatorPanel">
-          <h3>Backbone Dihedral Manipulator</h3>
+          <h3>Interactive Peptide Backbone Manipulator</h3>
           <p>This optional teaching model uses a temporary local copy of the selected backbone segment. It does not change the experimental structure.</p>
           <div class="dihedral-mode-toggle" role="radiogroup" aria-label="Backbone dihedral mode">
             <label><input type="radio" name="dihedralMode" value="inspect" checked> Inspect Native Geometry</label>
             <label><input type="radio" name="dihedralMode" value="manipulate"> Manipulate Backbone</label>
           </div>
           <div class="chem-note" id="dihedralTeachingMessage"><strong>Inspect native geometry</strong>The residue scan and Ramachandran plot show experimentally observed φ/ψ values.</div>
-          <div class="backbone-schematic" aria-label="Backbone dihedral schematic">C′(i−1) — N(i) — Cα(i) — C′(i) — N(i+1)
-              φ axis       ψ axis       ω axis
-
-φ: rotation around N—Cα     ψ: rotation around Cα—C′     ω: restricted peptide C′—N bond</div>
-          <div class="stats">
-            <div class="stat"><strong id="manipulatorResidue">-</strong><span>selected residue</span></div>
-            <div class="stat"><strong id="omegaValue">-</strong><span>omega angle</span></div>
-            <div class="stat"><strong id="manipulatorRegion">-</strong><span>temporary region</span></div>
+          <div class="dihedral-sticky-header" aria-label="Primary dihedral controls">
+            <div class="dihedral-header-row">
+              <span class="dihedral-pill">Residue <strong id="stickyManipulatorResidue">-</strong></span>
+              <span class="dihedral-pill">Native <strong id="stickyNativeAngle">-</strong></span>
+              <span class="dihedral-pill">Current <strong id="stickyCurrentAngle">-</strong></span>
+              <span class="dihedral-pill" id="stickyInteractionStatus">Mode: Rotate φ bond</span>
+            </div>
+            <div class="dihedral-primary-row">
+              <span>Selected joint</span>
+              <div class="segmented-control" aria-label="Select peptide backbone dihedral">
+                <button type="button" data-select-dihedral="phi" aria-pressed="true">φ</button>
+                <button type="button" data-select-dihedral="psi" aria-pressed="false">ψ</button>
+                <button type="button" data-select-dihedral="omega" aria-pressed="false">ω</button>
+              </div>
+              <div class="segmented-control" aria-label="Choose interaction mode">
+                <button id="bondRotationMode" type="button" data-dihedral-interaction="rotateBond" aria-pressed="true">Bond rotation</button>
+                <button id="viewRotationMode" type="button" data-dihedral-interaction="rotateView" aria-pressed="false">View rotation</button>
+              </div>
+            </div>
+            <div class="primary-angle-control">
+              <div class="primary-angle-line">
+                <strong id="primaryAngleLabel">φ</strong>
+                <input id="primaryAngleSlider" type="range" min="-180" max="180" step="1" aria-label="Selected dihedral angle">
+                <input id="primaryAngleNumber" type="number" min="-180" max="180" step="1" aria-label="Selected dihedral numeric entry">
+              </div>
+              <div class="compact-step-row" aria-label="Selected angle step controls">
+                <button type="button" data-primary-step="-10">−10°</button>
+                <button type="button" data-primary-step="-1">−1°</button>
+                <button type="button" data-primary-step="1">+1°</button>
+                <button type="button" data-primary-step="10">+10°</button>
+                <button type="button" id="resetSelectedAngle">Reset selected angle</button>
+                <button type="button" id="resetAllAngles">Reset all to native</button>
+              </div>
+            </div>
           </div>
-          <div class="dihedral-toolbar">
-            <label>Selected dihedral
-              <select id="selectedDihedral">
-                <option value="phi">φ around N—Cα</option>
-                <option value="psi">ψ around Cα—C′</option>
-                <option value="omega">ω around peptide C′—N</option>
-              </select>
-            </label>
-            <label>What moves?
-              <select id="movingSide">
-                <option value="cTerminal">Move C-terminal side</option>
-                <option value="nTerminal">Move N-terminal side</option>
-              </select>
-            </label>
-            <label><input id="showMotionTrail" type="checkbox"> Show motion trail</label>
-            <label><input id="showDihedralClashes" type="checkbox" checked> Show steric clashes</label>
-            <label><input id="showDihedralHbonds" type="checkbox" checked> Show nearby backbone H-bonds</label>
+          <div class="peptide-playground">
+            <div class="peptide-model-card">
+              <svg id="peptideBackboneSvg" viewBox="0 0 920 360" role="img" aria-label="Interactive peptide backbone model with selectable phi, psi, and omega joints"></svg>
+              <p class="viewer-note">Select φ or ψ, then drag the circular handle to rotate the connected backbone segment. The SVG atoms and bonds are rebuilt programmatically from separate objects; the textbook image is used only as visual inspiration.</p>
+            </div>
+            <div class="peptide-side-card">
+              <div class="stats">
+                <div class="stat"><strong id="manipulatorResidue">-</strong><span>selected residue</span></div>
+                <div class="stat"><strong id="omegaValue">-</strong><span>omega angle</span></div>
+                <div class="stat"><strong id="manipulatorRegion">-</strong><span>temporary region</span></div>
+              </div>
+              <div class="angle-dial">
+                <span>Selected joint</span>
+                <strong id="selectedJointDial">φ = -</strong>
+                <small id="selectedJointHelp">Rotates around N-Cα.</small>
+              </div>
+              <div class="peptide-mini-controls">
+                <button type="button" data-select-dihedral="phi">Rotate φ</button>
+                <button type="button" data-select-dihedral="psi">Rotate ψ</button>
+                <button type="button" data-select-dihedral="omega">Inspect ω</button>
+                <button id="lookDownSelectedBond" type="button">Look down selected bond</button>
+                <button id="toggleDihedralInteraction" type="button">Rotate view</button>
+                <button id="restoreNativeGeometry" type="button">Reset</button>
+              </div>
+              <div class="dihedral-view-toggle" role="radiogroup" aria-label="Dihedral structure viewer focus">
+                <strong>3D viewer focus</strong>
+                <label><input type="radio" name="dihedralViewerMode" value="wholeProtein"> Whole protein context</label>
+                <label><input type="radio" name="dihedralViewerMode" value="localBackbone" checked> Local backbone focus</label>
+              </div>
+              <label>What moves?
+                <select id="movingSide">
+                  <option value="cTerminal">Move C-terminal side</option>
+                  <option value="nTerminal">Move N-terminal side</option>
+                </select>
+              </label>
+              <div class="dihedral-toolbar">
+                <label><input id="showMotionTrail" type="checkbox"> Show motion trail</label>
+                <label><input id="showDihedralClashes" type="checkbox" checked> Show steric clashes</label>
+              </div>
+              <div class="dihedral-presets" aria-label="Secondary structure teaching presets">
+                <button type="button" data-dihedral-preset="native">Native residue angles</button>
+                <button type="button" data-dihedral-preset="alpha">α-helix-like angles</button>
+                <button type="button" data-dihedral-preset="beta">β-strand-like angles</button>
+                <button type="button" data-dihedral-preset="ppii">Extended backbone</button>
+              </div>
+            </div>
           </div>
-          <div class="dihedral-controls">
-            <button id="restoreNativeGeometry" type="button">Restore Native Geometry</button>
-            <button id="resetCurrentResidue" type="button">Reset Current Residue</button>
-            <button id="undoDihedralRotation" type="button">Undo Last Rotation</button>
-            <button id="demoPeptideRigidity" type="button">Demonstrate Peptide Rigidity</button>
-          </div>
-          <div class="dihedral-control-card">
+          <div class="chem-note" id="dihedralStatus"></div>
+          <details class="dihedral-tutorial">
+            <summary>Fallback numeric controls and advanced toggles</summary>
+            <div class="dihedral-toolbar">
+              <label>Selected dihedral
+                <select id="selectedDihedral">
+                  <option value="phi">φ around N—Cα</option>
+                  <option value="psi">ψ around Cα—C′</option>
+                  <option value="omega">ω around peptide C′—N</option>
+                </select>
+              </label>
+              <label><input id="showDihedralHbonds" type="checkbox" checked> Show nearby backbone H-bonds</label>
+            </div>
+            <div class="dihedral-controls">
+              <button id="resetCurrentResidue" type="button">Reset Current Residue</button>
+              <button id="undoDihedralRotation" type="button">Undo Last Rotation</button>
+              <button id="demoPeptideRigidity" type="button">Demonstrate Peptide Rigidity</button>
+            </div>
+            <div class="dihedral-control-card">
             <label>φ angle <span id="phiManipulatorValue">-</span>
               <input id="phiSlider" type="range" min="-180" max="180" step="1">
             </label>
@@ -1612,15 +1976,8 @@
               <button type="button" data-dihedral-step="psi:10">ψ +10°</button>
               <button type="button" data-dihedral-reset="psi">Reset ψ to native</button>
             </div>
-          </div>
-          <div class="dihedral-presets" aria-label="Secondary structure teaching presets">
-            <button type="button" data-dihedral-preset="native">Native</button>
-            <button type="button" data-dihedral-preset="alpha">α-helical example</button>
-            <button type="button" data-dihedral-preset="beta">β-strand example</button>
-            <button type="button" data-dihedral-preset="ppii">Polyproline II example</button>
-            <button type="button" data-dihedral-preset="leftAlpha">Left-handed α example</button>
-          </div>
-          <div class="chem-note" id="dihedralStatus"></div>
+            </div>
+          </details>
           <details class="dihedral-tutorial" id="dihedralTutorial">
             <summary>Guided Dihedral Tutorial</summary>
             <div id="dihedralTutorialContent"></div>
@@ -4017,12 +4374,23 @@ END
       sequenceComparisonSort: 'dataset',
       expandedReferenceSequenceIds: new Set(),
       selectedAlignmentColumnIndex: null,
+      dihedralLayout: {
+        leftPanePercent: 58,
+        minLeftPanePercent: 35,
+        maxLeftPanePercent: 72,
+        isDraggingDivider: false,
+        viewerMode: 'localBackbone',
+        rightPaneScrollPosition: 0
+      },
       backboneManipulator: {
         active: false,
         mode: 'inspect',
         selectedResidueKey: null,
         selectedDihedral: 'phi',
         movingSide: 'cTerminal',
+        interactionMode: 'rotateBond',
+        viewRotation: 0,
+        drag: null,
         nativeAngles: { phi: null, psi: null, omega: null },
         currentAngles: { phi: null, psi: null, omega: null },
         nativeCoordinates: null,
@@ -6790,6 +7158,92 @@ END
       return state.viewMode === 'focus';
     }
 
+    function clampSplitPanePercent(value) {
+      const layout = state.dihedralLayout;
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return layout.leftPanePercent;
+      return Math.max(layout.minLeftPanePercent, Math.min(layout.maxLeftPanePercent, numeric));
+    }
+
+    function refreshViewerSize() {
+      if (!state.viewer) return;
+      if (typeof state.viewer.resize === 'function') state.viewer.resize();
+      state.viewer.render();
+    }
+
+    function applySplitPanePercent(value, persist = true) {
+      const percent = clampSplitPanePercent(value);
+      state.dihedralLayout.leftPanePercent = percent;
+      const app = document.querySelector('.app');
+      const divider = document.getElementById('splitDivider');
+      if (app) app.style.setProperty('--left-pane-percent', `${percent}%`);
+      if (divider) divider.setAttribute('aria-valuenow', String(Math.round(percent)));
+      if (persist) {
+        try { sessionStorage.setItem('bva.splitPane.leftPanePercent', String(percent)); } catch (error) {}
+      }
+      refreshViewerSize();
+    }
+
+    function resetSplitPaneWidths() {
+      applySplitPanePercent(58);
+    }
+
+    function restoreSplitPaneWidths() {
+      let saved = null;
+      try { saved = sessionStorage.getItem('bva.splitPane.leftPanePercent'); } catch (error) {}
+      applySplitPanePercent(saved === null ? 58 : Number(saved), false);
+    }
+
+    function splitPanePercentFromPointer(event) {
+      const app = document.querySelector('.app');
+      if (!app) return state.dihedralLayout.leftPanePercent;
+      const rect = app.getBoundingClientRect();
+      return (event.clientX - rect.left) / rect.width * 100;
+    }
+
+    function updateDihedralViewerModeControls() {
+      document.querySelectorAll('input[name="dihedralViewerMode"]').forEach(input => {
+        input.checked = input.value === state.dihedralLayout.viewerMode;
+      });
+    }
+
+    function setDihedralViewerMode(mode) {
+      state.dihedralLayout.viewerMode = mode === 'wholeProtein' ? 'wholeProtein' : 'localBackbone';
+      updateDihedralViewerModeControls();
+      if (!state.viewer) return;
+      if (state.dihedralLayout.viewerMode === 'wholeProtein') {
+        state.viewer.zoomTo({ hetflag: false });
+        state.viewer.render();
+      } else if (state.mode === 'torsions') {
+        drawTorsion();
+      }
+    }
+
+    function captureWorkspacePosition() {
+      const sidebar = document.querySelector('.sidebar');
+      return {
+        windowX: window.scrollX,
+        windowY: window.scrollY,
+        sidebarScrollTop: sidebar?.scrollTop ?? 0,
+        activeElementId: document.activeElement?.id || null,
+        splitPanePercent: state.dihedralLayout.leftPanePercent
+      };
+    }
+
+    function restoreWorkspacePosition(snapshot) {
+      const sidebar = document.querySelector('.sidebar');
+      if (sidebar) sidebar.scrollTop = snapshot.sidebarScrollTop;
+      window.scrollTo(snapshot.windowX, snapshot.windowY);
+      applySplitPanePercent(snapshot.splitPanePercent, false);
+    }
+
+    function preserveWorkspacePosition(callback) {
+      const snapshot = captureWorkspacePosition();
+      const result = callback();
+      restoreWorkspacePosition(snapshot);
+      return result;
+    }
+
     function zoomViewerTo(selection, message) {
       if (!state.viewer || !selection) {
         setViewerControlMessage('Load a structure before using the view controls.');
@@ -7125,20 +7579,132 @@ END
       return base;
     }
 
-    function setManipulatorAngle(angleName, value, recordHistory = true) {
+    function selectedJointAvailable(jointName) {
+      return Number.isFinite(state.backboneManipulator.currentAngles[jointName]);
+    }
+
+    function setBackboneAngle(jointName, value, options = {}) {
       const manipulator = state.backboneManipulator;
-      const numeric = normalizeAngle(Number(value));
-      if (numeric === null) return;
-      if (recordHistory) manipulator.history.push({ ...manipulator.currentAngles });
-      manipulator.currentAngles[angleName] = numeric;
+      if (!peptideJoints[jointName]) return false;
+      if (!selectedJointAvailable(jointName)) {
+        const message = `${peptideJoints[jointName].label} is unavailable for this residue, but other available backbone angles can still be manipulated.`;
+        const status = document.getElementById('dihedralStatus');
+        if (status) status.innerHTML = `<strong>Angle unavailable</strong>${message}`;
+        return false;
+      }
+      let numeric = normalizeAngle(Number(value));
+      if (numeric === null) {
+        const status = document.getElementById('dihedralStatus');
+        if (status) status.innerHTML = '<strong>Check the angle</strong>Enter a number from −180° to +180°.';
+        renderManipulatorUi(selectedManipulatorEntry());
+        return false;
+      }
+      if (jointName === 'omega') {
+        const native = manipulator.nativeAngles.omega;
+        if (native === null || native === undefined) return false;
+        const limitedDelta = Math.max(-8, Math.min(8, angleDelta(numeric, native)));
+        numeric = normalizeAngle(native + limitedDelta);
+      }
+      if (options.recordHistory) manipulator.history.push({ ...manipulator.currentAngles });
+      manipulator.currentAngles[jointName] = numeric;
       rebuildManipulatorCoordinates();
-      drawTorsion();
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: options.preserveView !== false }));
       state.viewer.render();
+      return true;
+    }
+
+    function adjustBackboneAngle(jointName, delta, options = {}) {
+      const current = state.backboneManipulator.currentAngles[jointName];
+      if (!Number.isFinite(current)) return false;
+      return setBackboneAngle(jointName, current + Number(delta), { recordHistory: true, ...options });
+    }
+
+    function setManipulatorAngle(angleName, value, recordHistory = true) {
+      return setBackboneAngle(angleName, value, { recordHistory, preserveView: true });
+    }
+
+    function activateManipulatorJoint(jointName) {
+      if (!peptideJoints[jointName]) return;
+      const manipulator = state.backboneManipulator;
+      manipulator.mode = 'manipulate';
+      manipulator.active = true;
+      manipulator.selectedDihedral = jointName;
+      manipulator.interactionMode = 'rotateBond';
+      updateDihedralViewerModeControls();
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
+      state.viewer.render();
+    }
+
+    function setManipulatorOmegaPreview(value) {
+      return setBackboneAngle('omega', value, { recordHistory: false, preserveView: true });
+    }
+
+    function svgPointFromPointer(svg, event) {
+      const rect = svg.getBoundingClientRect();
+      const viewBox = svg.viewBox.baseVal;
+      return {
+        x: viewBox.x + (event.clientX - rect.left) * viewBox.width / rect.width,
+        y: viewBox.y + (event.clientY - rect.top) * viewBox.height / rect.height
+      };
+    }
+
+    function pointerAngleAroundCenter(svg, event, center) {
+      const point = svgPointFromPointer(svg, event);
+      return Math.atan2(point.y - center.y, point.x - center.x) * 180 / Math.PI;
+    }
+
+    function startPeptideDrag(event, jointName) {
+      const svg = document.getElementById('peptideBackboneSvg');
+      if (!svg || !peptideJoints[jointName]) return;
+      event.preventDefault();
+      const previousInteractionMode = state.backboneManipulator.interactionMode;
+      activateManipulatorJoint(jointName);
+      if (previousInteractionMode === 'rotateView') {
+        state.backboneManipulator.interactionMode = 'rotateView';
+        renderManipulatorUi(selectedManipulatorEntry());
+      }
+      const atoms = peptideDisplayAtoms();
+      const center = peptideJointCenter(peptideJoints[jointName], atoms);
+      state.backboneManipulator.history.push({ ...state.backboneManipulator.currentAngles });
+      state.backboneManipulator.drag = {
+        pointerId: event.pointerId,
+        jointName,
+        center,
+        startPointerAngle: pointerAngleAroundCenter(svg, event, center),
+        startAngles: { ...state.backboneManipulator.currentAngles },
+        startViewRotation: state.backboneManipulator.viewRotation || 0
+      };
+      svg.setPointerCapture?.(event.pointerId);
+    }
+
+    function continuePeptideDrag(event) {
+      const manipulator = state.backboneManipulator;
+      const drag = manipulator.drag;
+      const svg = document.getElementById('peptideBackboneSvg');
+      if (!drag || !svg || drag.pointerId !== event.pointerId) return;
+      event.preventDefault();
+      const currentPointerAngle = pointerAngleAroundCenter(svg, event, drag.center);
+      const delta = angleDelta(currentPointerAngle, drag.startPointerAngle);
+      if (manipulator.interactionMode === 'rotateView') {
+        manipulator.viewRotation = normalizeAngle(drag.startViewRotation + delta);
+        renderPeptideBackboneModel();
+        return;
+      }
+      setBackboneAngle(drag.jointName, drag.startAngles[drag.jointName] + delta, { recordHistory: false, preserveView: true });
+    }
+
+    function endPeptideDrag(event) {
+      const drag = state.backboneManipulator.drag;
+      const svg = document.getElementById('peptideBackboneSvg');
+      if (!drag || drag.pointerId !== event.pointerId) return;
+      svg?.releasePointerCapture?.(event.pointerId);
+      state.backboneManipulator.drag = null;
     }
 
     function resetManipulatorResidue() {
       syncBackboneManipulatorToSelection(true);
-      drawTorsion();
+      state.backboneManipulator.viewRotation = 0;
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
       state.viewer.render();
     }
 
@@ -7147,7 +7713,7 @@ END
       if (!previous) return;
       state.backboneManipulator.currentAngles = previous;
       rebuildManipulatorCoordinates();
-      drawTorsion();
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
       state.viewer.render();
     }
 
@@ -7188,7 +7754,190 @@ END
         phi: state.backboneManipulator.currentAngles.phi,
         psi: state.backboneManipulator.currentAngles.psi
       };
+      if (!Number.isFinite(current.phi) || !Number.isFinite(current.psi)) {
+        const missing = [
+          Number.isFinite(current.phi) ? null : 'φ',
+          Number.isFinite(current.psi) ? null : 'ψ'
+        ].filter(Boolean).join(' and ');
+        return `Ramachandran point unavailable: ${missing} missing. Available angles can still be manipulated.`;
+      }
       return ramaRegionLabel(current).replace('Common alpha-helix region', 'right-handed α-helical region');
+    }
+
+    function angleAvailabilityMessage(entry) {
+      const messages = [];
+      if (!Number.isFinite(entry.phi)) messages.push('φ unavailable at this position, commonly because the previous peptide carbonyl C′ is missing at an N-terminus or chain break.');
+      if (!Number.isFinite(entry.psi)) messages.push('ψ unavailable at this position, commonly because the next amide N is missing at a C-terminus or chain break.');
+      if (!Number.isFinite(entry.omega)) messages.push('ω unavailable because the next peptide-bond atoms are missing.');
+      if (!Number.isFinite(entry.phi) || !Number.isFinite(entry.psi)) messages.push('A Ramachandran point requires both φ and ψ; available individual angles can still be explored.');
+      return messages.join(' ');
+    }
+
+    const peptideAtomTemplate = [
+      { id: 'CAprev', label: 'Cα', elem: 'C', x: 80, y: 185, order: 0 },
+      { id: 'Cprev', label: "C′", elem: 'C', x: 190, y: 150, order: 1 },
+      { id: 'Oprev', label: 'O', elem: 'O', x: 190, y: 65, order: 1 },
+      { id: 'Ni', label: 'N', elem: 'N', x: 305, y: 185, order: 2 },
+      { id: 'Hi', label: 'H', elem: 'H', x: 305, y: 260, order: 2 },
+      { id: 'CAi', label: 'Cα', elem: 'C', x: 430, y: 150, order: 3 },
+      { id: 'Ri', label: 'R', elem: 'R', x: 455, y: 60, order: 3 },
+      { id: 'Ci', label: "C′", elem: 'C', x: 555, y: 190, order: 4 },
+      { id: 'Oi', label: 'O', elem: 'O', x: 555, y: 280, order: 4 },
+      { id: 'Nnext', label: 'N', elem: 'N', x: 670, y: 150, order: 5 },
+      { id: 'Hnext', label: 'H', elem: 'H', x: 670, y: 80, order: 5 },
+      { id: 'CAnext', label: 'Cα', elem: 'C', x: 790, y: 190, order: 6 },
+      { id: 'Rnext', label: 'R', elem: 'R', x: 805, y: 280, order: 6 }
+    ];
+
+    const peptideBonds = [
+      ['CAprev', 'Cprev'], ['Cprev', 'Oprev'], ['Cprev', 'Ni'], ['Ni', 'Hi'],
+      ['Ni', 'CAi'], ['CAi', 'Ri'], ['CAi', 'Ci'], ['Ci', 'Oi'],
+      ['Ci', 'Nnext'], ['Nnext', 'Hnext'], ['Nnext', 'CAnext'], ['CAnext', 'Rnext']
+    ];
+
+    const peptideJoints = {
+      phi: { a: 'Ni', b: 'CAi', label: 'φ', help: 'Rotates around N-Cα.' },
+      psi: { a: 'CAi', b: 'Ci', label: 'ψ', help: 'Rotates around Cα-C′.' },
+      omega: { a: 'Ci', b: 'Nnext', label: 'ω', help: 'Peptide bond: strongly restricted.' }
+    };
+
+    function peptideAtomColor(elem) {
+      if (elem === 'N') return '#0ea5e9';
+      if (elem === 'O') return '#f43f5e';
+      if (elem === 'H') return '#f8fafc';
+      if (elem === 'R') return '#8b5cf6';
+      return '#94a3b8';
+    }
+
+    function rotate2d(point, center, degrees) {
+      const theta = degrees * Math.PI / 180;
+      const cos = Math.cos(theta);
+      const sin = Math.sin(theta);
+      const dx = point.x - center.x;
+      const dy = point.y - center.y;
+      return {
+        x: center.x + dx * cos - dy * sin,
+        y: center.y + dx * sin + dy * cos
+      };
+    }
+
+    function peptideJointCenter(joint, atoms) {
+      const a = atoms.find(atom => atom.id === joint.a);
+      const b = atoms.find(atom => atom.id === joint.b);
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    }
+
+    function peptideAtomMoves(atom, jointName) {
+      const side = state.backboneManipulator.movingSide;
+      if (jointName === 'omega') return false;
+      if (side === 'cTerminal') {
+        return jointName === 'phi' ? atom.order > 3 : atom.order > 4;
+      }
+      return jointName === 'phi' ? atom.order < 2 : atom.order < 3;
+    }
+
+    function peptideDisplayAtoms() {
+      let atoms = peptideAtomTemplate.map(atom => ({ ...atom }));
+      const manipulator = state.backboneManipulator;
+      const rotationPairs = [
+        ['phi', angleDelta(manipulator.currentAngles.phi, manipulator.nativeAngles.phi)],
+        ['psi', angleDelta(manipulator.currentAngles.psi, manipulator.nativeAngles.psi)]
+      ];
+      rotationPairs.forEach(([jointName, delta]) => {
+        if (!delta) return;
+        const joint = peptideJoints[jointName];
+        const center = peptideJointCenter(joint, atoms);
+        atoms = atoms.map(atom => peptideAtomMoves(atom, jointName) ? { ...atom, ...rotate2d(atom, center, delta * 0.75) } : atom);
+      });
+      if (manipulator.viewRotation) {
+        const center = { x: 460, y: 180 };
+        atoms = atoms.map(atom => ({ ...atom, ...rotate2d(atom, center, manipulator.viewRotation) }));
+      }
+      return atoms;
+    }
+
+    function renderPeptideBackboneModel() {
+      const svg = document.getElementById('peptideBackboneSvg');
+      if (!svg) return;
+      const manipulator = state.backboneManipulator;
+      const atoms = peptideDisplayAtoms();
+      const atomById = new Map(atoms.map(atom => [atom.id, atom]));
+      const movingAtoms = new Set(atoms.filter(atom => peptideAtomMoves(atom, manipulator.selectedDihedral)).map(atom => atom.id));
+      const selectedJoint = peptideJoints[manipulator.selectedDihedral];
+      const center = peptideJointCenter(selectedJoint, atoms);
+      const angle = manipulator.currentAngles[manipulator.selectedDihedral];
+      const movingLabelX = manipulator.movingSide === 'cTerminal' ? 705 : 210;
+      const fixedLabelX = manipulator.movingSide === 'cTerminal' ? 210 : 705;
+      const bondMarkup = peptideBonds.map(([aId, bId]) => {
+        const a = atomById.get(aId);
+        const b = atomById.get(bId);
+        const omega = aId === 'Ci' && bId === 'Nnext';
+        return `<line class="peptide-bond${omega ? ' peptide-omega' : ''}" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" />`;
+      }).join('');
+      const plane = [
+        atomById.get('CAi'), atomById.get('Ci'), atomById.get('Nnext'), atomById.get('CAnext')
+      ].map(atom => `${atom.x},${atom.y}`).join(' ');
+      const atomMarkup = atoms.map(atom => {
+        const radius = atom.elem === 'R' ? 34 : atom.elem === 'H' ? 17 : 28;
+        const movingClass = movingAtoms.has(atom.id) ? ' moving' : ' fixed';
+        return `
+          <g>
+            <circle class="peptide-atom${movingClass}" cx="${atom.x}" cy="${atom.y}" r="${radius}" fill="${peptideAtomColor(atom.elem)}"></circle>
+            <text class="peptide-label" x="${atom.x}" y="${atom.y + 5}">${atom.label}</text>
+          </g>
+        `;
+      }).join('');
+      const jointMarkup = Object.entries(peptideJoints).map(([name, joint]) => {
+        const a = atomById.get(joint.a);
+        const b = atomById.get(joint.b);
+        const jointCenter = peptideJointCenter(joint, atoms);
+        const selected = manipulator.selectedDihedral === name;
+        const locked = name === 'omega';
+        const labelY = jointCenter.y - 34;
+        return `
+          <g class="peptide-joint" data-peptide-joint="${name}" tabindex="0" role="button" aria-label="Select ${joint.label} joint, ${joint.help}">
+            <line class="peptide-joint-hit" x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"></line>
+            <text class="peptide-joint-label" x="${jointCenter.x}" y="${labelY}">${joint.label}${locked ? ' 🔒' : ''}</text>
+            ${selected ? `<circle class="peptide-joint-ring${locked ? ' locked' : ''}" data-peptide-ring="${name}" cx="${jointCenter.x}" cy="${jointCenter.y}" r="${locked ? 42 : 58}"></circle>` : ''}
+            ${selected ? `<text class="peptide-joint-label" x="${jointCenter.x}" y="${jointCenter.y + 78}">${joint.help}</text>` : ''}
+          </g>
+        `;
+      }).join('');
+      const trail = manipulator.showMotionTrail && manipulator.selectedDihedral !== 'omega'
+        ? [-25, -12, 12].map((delta, index) => {
+          const p = rotate2d({ x: center.x + 72, y: center.y }, center, delta);
+          return `<circle cx="${p.x}" cy="${p.y}" r="${8 + index}" fill="#cbd5e1" opacity=".28"></circle>`;
+        }).join('')
+        : '';
+      const arrowStart = rotate2d({ x: center.x + 70, y: center.y }, center, -34);
+      const arrowEnd = rotate2d({ x: center.x + 70, y: center.y }, center, -4);
+      const positiveArrow = manipulator.selectedDihedral !== 'omega'
+        ? `<path d="M ${arrowStart.x} ${arrowStart.y} A 70 70 0 0 1 ${arrowEnd.x} ${arrowEnd.y}" fill="none" stroke="#c2410c" stroke-width="5" marker-end="url(#positiveRotationArrow)"></path>
+           <text class="peptide-joint-label" x="${arrowEnd.x + 34}" y="${arrowEnd.y - 8}">+ rotation</text>`
+        : '';
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="atomGloss" cx="35%" cy="30%">
+            <stop offset="0%" stop-color="white" stop-opacity=".75"></stop>
+            <stop offset="100%" stop-color="white" stop-opacity="0"></stop>
+          </radialGradient>
+          <marker id="positiveRotationArrow" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+            <path d="M 0 0 L 9 4.5 L 0 9 z" fill="#c2410c"></path>
+          </marker>
+        </defs>
+        <polygon class="peptide-plane" points="${plane}"></polygon>
+        ${bondMarkup}
+        ${trail}
+        ${jointMarkup}
+        ${positiveArrow}
+        ${atomMarkup}
+        <text class="peptide-group-label" x="110" y="325">Amino terminus ←</text>
+        <text class="peptide-group-label" x="790" y="325">→ Carboxyl terminus</text>
+        <text class="peptide-group-label" x="${fixedLabelX}" y="35">HELD FIXED</text>
+        <text class="peptide-group-label" x="${movingLabelX}" y="35">ROTATES TOGETHER</text>
+        <text class="peptide-joint-label" x="${center.x}" y="${center.y - 72}">${peptideJoints[manipulator.selectedDihedral].label} = ${formatAngle(angle)}</text>
+        <text class="peptide-group-label" x="460" y="340">φ      ψ      ω      φ      ψ</text>
+      `;
     }
 
     function renderManipulatorUi(entry) {
@@ -7205,6 +7954,30 @@ END
       document.getElementById('manipulatorResidue').textContent = entry.residue.label;
       document.getElementById('omegaValue').textContent = formatAngle(entry.omega);
       document.getElementById('manipulatorRegion').textContent = manipulator.mode === 'manipulate' ? manipulatorRegionLabel() : ramaRegionLabel(entry);
+      document.getElementById('selectedJointDial').textContent = `${peptideJoints[manipulator.selectedDihedral].label} = ${formatAngle(manipulator.currentAngles[manipulator.selectedDihedral])}`;
+      document.getElementById('selectedJointHelp').textContent = manipulator.interactionMode === 'rotateView'
+        ? 'You are rotating the view only; φ and ψ values do not change.'
+        : peptideJoints[manipulator.selectedDihedral].help;
+      document.getElementById('toggleDihedralInteraction').textContent = manipulator.interactionMode === 'rotateBond' ? 'Rotate view' : 'Rotate bond';
+      document.getElementById('stickyManipulatorResidue').textContent = entry.residue.label;
+      document.getElementById('stickyNativeAngle').textContent = formatAngle(manipulator.nativeAngles[manipulator.selectedDihedral]);
+      document.getElementById('stickyCurrentAngle').textContent = formatAngle(manipulator.currentAngles[manipulator.selectedDihedral]);
+      document.getElementById('stickyInteractionStatus').textContent = manipulator.interactionMode === 'rotateBond'
+        ? `Mode: Rotate ${peptideJoints[manipulator.selectedDihedral].label} bond`
+        : 'Mode: Rotate view';
+      document.getElementById('primaryAngleLabel').textContent = peptideJoints[manipulator.selectedDihedral].label;
+      document.getElementById('primaryAngleSlider').value = manipulator.currentAngles[manipulator.selectedDihedral] ?? 0;
+      document.getElementById('primaryAngleNumber').value = manipulator.currentAngles[manipulator.selectedDihedral] === null ? '' : Math.round(manipulator.currentAngles[manipulator.selectedDihedral]);
+      const primaryDisabled = manipulator.mode !== 'manipulate' || manipulator.currentAngles[manipulator.selectedDihedral] === null;
+      document.getElementById('primaryAngleSlider').disabled = primaryDisabled;
+      document.getElementById('primaryAngleNumber').disabled = primaryDisabled;
+      document.querySelectorAll('[data-select-dihedral]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.selectDihedral === manipulator.selectedDihedral));
+      });
+      document.querySelectorAll('[data-dihedral-interaction]').forEach(button => {
+        button.setAttribute('aria-pressed', String(button.dataset.dihedralInteraction === manipulator.interactionMode));
+      });
+      updateDihedralViewerModeControls();
       ['phi', 'psi'].forEach(angleName => {
         const current = manipulator.currentAngles[angleName];
         const native = manipulator.nativeAngles[angleName];
@@ -7217,6 +7990,7 @@ END
       const omegaText = entry.omega === null
         ? 'ω is unavailable because one of the atoms Cα(i), C′(i), N(i+1), or Cα(i+1) is missing.'
         : `${Math.abs(Math.abs(entry.omega) - 180) < 30 ? 'Peptide bond: approximately planar trans geometry.' : 'Possible cis or distorted peptide-bond geometry; inspect the local structure.'} The peptide C–N bond has partial double-bond character and does not rotate freely like φ and ψ.`;
+      const availabilityText = angleAvailabilityMessage(entry);
       document.getElementById('dihedralTeachingMessage').innerHTML = manipulator.mode === 'manipulate'
         ? '<strong>Teaching model active</strong>You are exploring a temporary geometric copy. The experimentally determined structure has not been changed.'
         : '<strong>Inspect native geometry</strong>The residue scan and Ramachandran plot show experimentally observed φ/ψ values.';
@@ -7225,16 +7999,19 @@ END
       const hbonds = manipulator.showHydrogenBonds ? nearbyBackboneHbondSummary(coordinates) : { native: 0, current: 0 };
       document.getElementById('dihedralStatus').innerHTML = `
         <strong>Manipulator feedback</strong>
+        ${manipulator.interactionMode === 'rotateBond' ? `You are rotating the ${peptideJoints[manipulator.selectedDihedral].label} bond.` : 'You are rotating the view only.'}<br>
         ${omegaText}<br>
+        ${availabilityText ? `${availabilityText}<br>` : ''}
         Rotation occurs around one bond. Atoms on the selected ${manipulator.movingSide === 'cTerminal' ? 'C-terminal' : 'N-terminal'} side move together while atoms on the other side remain fixed.<br>
         Steric status: ${clashes.length ? `${clashes.length} severe overlap(s) detected` : 'No major clashes'}.
         ${manipulator.showClashes ? 'Clash detection is an approximate geometric teaching model, not a molecular-mechanics energy calculation.' : ''}<br>
         ${manipulator.showHydrogenBonds ? `Native nearby backbone H-bonds: ${hbonds.native}. Current nearby backbone H-bonds: ${hbonds.current}. Backbone angles position carbonyl and amide groups for candidate hydrogen bonding.` : ''}
       `;
+      renderPeptideBackboneModel();
       renderDihedralTutorial();
     }
 
-    function drawManipulatorOverlay(entry) {
+    function drawManipulatorOverlay(entry, options = {}) {
       const manipulator = state.backboneManipulator;
       if (manipulator.mode !== 'manipulate') return;
       const coordinates = rebuildManipulatorCoordinates();
@@ -7266,7 +8043,9 @@ END
         localStericClashes(coordinates).slice(0, 8).forEach(clash => addLine(clash.atomA.current, clash.atomB.current, '#dc2626', true, 0.065));
       }
       const selected = coordinates.filter(atom => Math.abs(atom.residueIndex - state.selectedResidueIndex) <= 2);
-      if (selected.length && shouldAutoZoomSelectedResidue()) state.viewer.zoomTo({ or: selected.map(atom => ({ chain: entry.residue.chain, resi: state.residues[atom.residueIndex].resi })) });
+      if (!options.preserveView && selected.length && (shouldAutoZoomSelectedResidue() || state.dihedralLayout.viewerMode === 'localBackbone')) {
+        state.viewer.zoomTo({ or: selected.map(atom => ({ chain: entry.residue.chain, resi: state.residues[atom.residueIndex].resi })) });
+      }
     }
 
     const dihedralPresets = {
@@ -7296,7 +8075,7 @@ END
       document.getElementById('dihedralTutorialResponse').value = state.backboneManipulator.tutorialResponses[step] || '';
     }
 
-    function drawTorsion() {
+    function drawTorsion(options = {}) {
       const entry = state.torsions[state.selectedResidueIndex];
       if (!entry) return;
       syncBackboneManipulatorToSelection();
@@ -7309,13 +8088,13 @@ END
       const selection = { or: neighbors.map(residueSpec) };
       state.viewer.setStyle(selection, { stick: { colorscheme: 'Jmol', radius: 0.2 }, cartoon: { color: '#f59e0b' } });
       neighbors.forEach(res => addResidueLabel(res, res === residue ? colors().selected : '#475569'));
-      if (shouldAutoZoomSelectedResidue()) state.viewer.zoomTo(selection);
+      if (!options.preserveView && shouldAutoZoomSelectedResidue()) state.viewer.zoomTo(selection);
       document.getElementById('phiValue').textContent = formatAngle(entry.phi);
       document.getElementById('psiValue').textContent = formatAngle(entry.psi);
       renderRamaResidueDetails(entry);
       renderRamaResidueList();
       renderManipulatorUi(entry);
-      drawManipulatorOverlay(entry);
+      drawManipulatorOverlay(entry, options);
       drawRamaPlot();
     }
 
@@ -9436,6 +10215,7 @@ END
       const pdb = embeddedPdb || await fetch('./1MBN.pdb').then(r => r.text());
       applyParsedStructure(pdb, '1MBN', 'Myoglobin');
       state.viewer = $3Dmol.createViewer('viewer', { backgroundColor: '#eef3f8' });
+      restoreSplitPaneWidths();
       renderCurrentModel();
     }
 
@@ -9453,6 +10233,44 @@ END
     document.getElementById('focusFunctionalSite').addEventListener('click', focusFunctionalSite);
     document.getElementById('resetViewerView').addEventListener('click', resetViewerView);
     document.getElementById('resetView').addEventListener('click', resetViewerView);
+    document.getElementById('resetSplitPane').addEventListener('click', resetSplitPaneWidths);
+    document.getElementById('splitDivider').addEventListener('pointerdown', event => {
+      state.dihedralLayout.isDraggingDivider = true;
+      document.querySelector('.app')?.classList.add('resizing-split');
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+    document.getElementById('splitDivider').addEventListener('keydown', event => {
+      const smallStep = event.shiftKey ? 5 : 2;
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        applySplitPanePercent(state.dihedralLayout.leftPanePercent - smallStep);
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        applySplitPanePercent(state.dihedralLayout.leftPanePercent + smallStep);
+      }
+      if (event.key === 'Home') {
+        event.preventDefault();
+        applySplitPanePercent(state.dihedralLayout.minLeftPanePercent);
+      }
+      if (event.key === 'End') {
+        event.preventDefault();
+        applySplitPanePercent(state.dihedralLayout.maxLeftPanePercent);
+      }
+    });
+    document.addEventListener('pointermove', event => {
+      if (!state.dihedralLayout.isDraggingDivider) return;
+      event.preventDefault();
+      applySplitPanePercent(splitPanePercentFromPointer(event));
+    });
+    document.addEventListener('pointerup', event => {
+      if (!state.dihedralLayout.isDraggingDivider) return;
+      state.dihedralLayout.isDraggingDivider = false;
+      document.querySelector('.app')?.classList.remove('resizing-split');
+      try { document.getElementById('splitDivider')?.releasePointerCapture?.(event.pointerId); } catch (error) {}
+    });
+    window.addEventListener('resize', refreshViewerSize);
     document.querySelectorAll('input[name="viewMode"]').forEach(input => {
       input.addEventListener('change', event => {
         setViewMode(
@@ -9463,6 +10281,10 @@ END
         );
         if (state.viewMode === 'context') fitWholeStructure();
       });
+    });
+
+    document.querySelectorAll('input[name="dihedralViewerMode"]').forEach(input => {
+      input.addEventListener('change', event => setDihedralViewerMode(event.target.value));
     });
 
     document.getElementById('residueSelect').addEventListener('change', event => {
@@ -9480,29 +10302,95 @@ END
         state.backboneManipulator.mode = event.target.value;
         state.backboneManipulator.active = event.target.value === 'manipulate';
         if (state.backboneManipulator.mode === 'inspect') syncBackboneManipulatorToSelection(true);
-        drawTorsion();
+        preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
         state.viewer.render();
       });
     });
 
     document.getElementById('selectedDihedral').addEventListener('change', event => {
       state.backboneManipulator.selectedDihedral = event.target.value;
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
+      state.viewer.render();
+    });
+
+    document.querySelectorAll('[data-select-dihedral]').forEach(button => {
+      button.addEventListener('click', event => {
+        activateManipulatorJoint(event.currentTarget.dataset.selectDihedral);
+      });
+    });
+
+    document.getElementById('toggleDihedralInteraction').addEventListener('click', () => {
+      const manipulator = state.backboneManipulator;
+      manipulator.mode = 'manipulate';
+      manipulator.active = true;
+      manipulator.interactionMode = manipulator.interactionMode === 'rotateBond' ? 'rotateView' : 'rotateBond';
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
+      state.viewer.render();
+    });
+
+    document.getElementById('lookDownSelectedBond').addEventListener('click', () => {
+      const entry = selectedManipulatorEntry();
+      const manipulator = state.backboneManipulator;
+      manipulator.mode = 'manipulate';
+      manipulator.active = true;
+      manipulator.cameraMode = 'axis';
       drawTorsion();
+      if (entry) {
+        document.getElementById('dihedralStatus').innerHTML = `<strong>Look down selected bond</strong>The ${peptideJoints[manipulator.selectedDihedral].label} bond is emphasized in the 3D viewer. Rotate the view gently to inspect which atoms sit on each side of the axis.`;
+      }
       state.viewer.render();
     });
 
     document.getElementById('movingSide').addEventListener('change', event => {
       state.backboneManipulator.movingSide = event.target.value;
       rebuildManipulatorCoordinates();
-      drawTorsion();
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
       state.viewer.render();
     });
+
+    document.querySelectorAll('[data-dihedral-interaction]').forEach(button => {
+      button.addEventListener('click', event => {
+        state.backboneManipulator.mode = 'manipulate';
+        state.backboneManipulator.active = true;
+        state.backboneManipulator.interactionMode = event.currentTarget.dataset.dihedralInteraction;
+        preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
+        state.viewer.render();
+      });
+    });
+
+    document.getElementById('primaryAngleSlider').addEventListener('input', event => {
+      if (state.backboneManipulator.mode !== 'manipulate') return;
+      const angleName = state.backboneManipulator.selectedDihedral;
+      setBackboneAngle(angleName, event.target.value, { recordHistory: false, preserveView: true });
+    });
+
+    document.getElementById('primaryAngleSlider').addEventListener('change', event => {
+      if (state.backboneManipulator.mode !== 'manipulate') return;
+      const angleName = state.backboneManipulator.selectedDihedral;
+      setBackboneAngle(angleName, event.target.value, { recordHistory: false, preserveView: true });
+    });
+
+    document.getElementById('primaryAngleNumber').addEventListener('change', event => {
+      if (state.backboneManipulator.mode !== 'manipulate') return;
+      const angleName = state.backboneManipulator.selectedDihedral;
+      setBackboneAngle(angleName, event.target.value, { recordHistory: true, preserveView: true });
+    });
+
+    document.getElementById('resetSelectedAngle').addEventListener('click', () => {
+      const angleName = state.backboneManipulator.selectedDihedral;
+      const native = state.backboneManipulator.nativeAngles[angleName];
+      if (native !== null) {
+        setBackboneAngle(angleName, native, { recordHistory: true, preserveView: true });
+      }
+    });
+
+    document.getElementById('resetAllAngles').addEventListener('click', resetManipulatorResidue);
 
     ['showMotionTrail', 'showDihedralClashes', 'showDihedralHbonds'].forEach(id => {
       document.getElementById(id).addEventListener('change', event => {
         const key = id === 'showMotionTrail' ? 'showMotionTrail' : id === 'showDihedralClashes' ? 'showClashes' : 'showHydrogenBonds';
         state.backboneManipulator[key] = event.target.checked;
-        drawTorsion();
+        preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
         state.viewer.render();
       });
     });
@@ -9510,32 +10398,41 @@ END
     ['phi', 'psi'].forEach(angleName => {
       document.getElementById(`${angleName}Slider`).addEventListener('input', event => {
         if (state.backboneManipulator.mode !== 'manipulate') return;
-        setManipulatorAngle(angleName, event.target.value, false);
+        setBackboneAngle(angleName, event.target.value, { recordHistory: false, preserveView: true });
       });
       document.getElementById(`${angleName}Slider`).addEventListener('change', event => {
         if (state.backboneManipulator.mode !== 'manipulate') return;
-        state.backboneManipulator.history.push({ ...state.backboneManipulator.currentAngles });
-        setManipulatorAngle(angleName, event.target.value, false);
+        setBackboneAngle(angleName, event.target.value, { recordHistory: false, preserveView: true });
       });
       document.getElementById(`${angleName}Number`).addEventListener('change', event => {
         if (state.backboneManipulator.mode !== 'manipulate') return;
-        setManipulatorAngle(angleName, event.target.value);
+        setBackboneAngle(angleName, event.target.value, { recordHistory: true, preserveView: true });
       });
     });
 
     document.getElementById('backboneManipulatorPanel').addEventListener('click', event => {
+      const primaryStep = event.target.closest('[data-primary-step]');
+      if (primaryStep && state.backboneManipulator.mode === 'manipulate') {
+        const angleName = state.backboneManipulator.selectedDihedral;
+        adjustBackboneAngle(angleName, Number(primaryStep.dataset.primaryStep), { preserveView: true });
+        return;
+      }
+      const joint = event.target.closest('[data-peptide-joint]');
+      if (joint) {
+        activateManipulatorJoint(joint.dataset.peptideJoint);
+        return;
+      }
       const step = event.target.closest('[data-dihedral-step]');
       if (step && state.backboneManipulator.mode === 'manipulate') {
         const [angleName, amount] = step.dataset.dihedralStep.split(':');
-        const current = state.backboneManipulator.currentAngles[angleName];
-        if (current !== null) setManipulatorAngle(angleName, current + Number(amount));
+        adjustBackboneAngle(angleName, Number(amount), { preserveView: true });
         return;
       }
       const reset = event.target.closest('[data-dihedral-reset]');
       if (reset) {
         const angleName = reset.dataset.dihedralReset;
         const native = state.backboneManipulator.nativeAngles[angleName];
-        if (native !== null) setManipulatorAngle(angleName, native);
+        if (native !== null) setBackboneAngle(angleName, native, { recordHistory: true, preserveView: true });
         return;
       }
       const preset = event.target.closest('[data-dihedral-preset]');
@@ -9547,15 +10444,36 @@ END
           resetManipulatorResidue();
         } else {
           state.backboneManipulator.history.push({ ...state.backboneManipulator.currentAngles });
-          state.backboneManipulator.currentAngles.phi = info.phi;
-          state.backboneManipulator.currentAngles.psi = info.psi;
+          if (Number.isFinite(state.backboneManipulator.nativeAngles.phi)) state.backboneManipulator.currentAngles.phi = info.phi;
+          if (Number.isFinite(state.backboneManipulator.nativeAngles.psi)) state.backboneManipulator.currentAngles.psi = info.psi;
           rebuildManipulatorCoordinates();
           document.getElementById('dihedralStatus').innerHTML = `<strong>Preset example</strong>${info.label}`;
-          drawTorsion();
+          preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
           state.viewer.render();
         }
       }
     });
+
+    document.getElementById('backboneManipulatorPanel').addEventListener('keydown', event => {
+      const joint = event.target.closest('[data-peptide-joint]');
+      if (!joint || !['Enter', ' '].includes(event.key)) return;
+      event.preventDefault();
+      activateManipulatorJoint(joint.dataset.peptideJoint);
+    });
+
+    document.getElementById('peptideBackboneSvg').addEventListener('pointerdown', event => {
+      const ring = event.target.closest('[data-peptide-ring]');
+      const joint = event.target.closest('[data-peptide-joint]');
+      if (ring) {
+        startPeptideDrag(event, ring.dataset.peptideRing);
+        return;
+      }
+      if (joint) activateManipulatorJoint(joint.dataset.peptideJoint);
+    });
+
+    document.getElementById('peptideBackboneSvg').addEventListener('pointermove', continuePeptideDrag);
+    document.getElementById('peptideBackboneSvg').addEventListener('pointerup', endPeptideDrag);
+    document.getElementById('peptideBackboneSvg').addEventListener('pointercancel', endPeptideDrag);
 
     document.getElementById('restoreNativeGeometry').addEventListener('click', resetManipulatorResidue);
     document.getElementById('resetCurrentResidue').addEventListener('click', resetManipulatorResidue);
@@ -9565,10 +10483,10 @@ END
       state.backboneManipulator.selectedDihedral = 'omega';
       const omega = state.backboneManipulator.nativeAngles.omega;
       if (omega !== null) {
-        state.backboneManipulator.currentAngles.omega = normalizeAngle(omega + 8);
+        setBackboneAngle('omega', omega + 8, { recordHistory: true, preserveView: true });
         document.getElementById('dihedralStatus').innerHTML = '<strong>Peptide rigidity demo</strong>Large rotation around ω would disrupt peptide-bond planarity and is energetically unfavorable. This teaching demo shows only a small wiggle and then returns to native when reset.';
       }
-      drawTorsion();
+      preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
       state.viewer.render();
     });
 

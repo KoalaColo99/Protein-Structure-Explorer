@@ -666,7 +666,7 @@ run('Backbone Dihedral Manipulator is optional and preserves the native Ramachan
     'Residue Scan',
     'ramaResidueList',
     'ramaCanvas',
-    'Backbone Dihedral Manipulator',
+    'Interactive Peptide Backbone Manipulator',
     'Inspect Native Geometry',
     'Manipulate Backbone',
     'Teaching model active',
@@ -709,22 +709,173 @@ run('Backbone Dihedral Manipulator keeps native and hypothetical geometry separa
 run('Backbone Dihedral Manipulator provides controls, presets, clash feedback, and tutorial affordances', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   [
-    'Restore Native Geometry',
+    'peptideBackboneSvg',
+    'Rotate φ',
+    'Rotate ψ',
+    'Inspect ω',
+    'Look down selected bond',
+    'Rotate view',
+    'Reset',
     'Reset Current Residue',
     'Undo Last Rotation',
     'Demonstrate Peptide Rigidity',
     'Show motion trail',
     'Show steric clashes',
     'Show nearby backbone H-bonds',
-    'α-helical example',
-    'β-strand example',
-    'Polyproline II example',
+    'α-helix-like angles',
+    'β-strand-like angles',
+    'Extended backbone',
     'Left-handed α example',
     'localStericClashes',
     'nearbyBackboneHbondSummary',
     'Guided Dihedral Tutorial',
     'Why are dihedral angles needed?'
   ].forEach(text => assert(indexHtml.includes(text), `Missing manipulator control text: ${text}`));
+});
+
+run('Interactive Peptide Backbone Manipulator renders atoms bonds joints and drag handles programmatically', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'const peptideAtomTemplate = [',
+    'const peptideBonds = [',
+    'const peptideJoints = {',
+    "phi: { a: 'Ni', b: 'CAi'",
+    "psi: { a: 'CAi', b: 'Ci'",
+    "omega: { a: 'Ci', b: 'Nnext'",
+    'class="peptide-plane"',
+    'class="peptide-atom',
+    'class="peptide-bond',
+    'data-peptide-joint',
+    'data-peptide-ring',
+    'peptideAtomColor',
+    'HELD FIXED',
+    'ROTATES TOGETHER'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing peptide SVG model text: ${text}`));
+});
+
+run('Interactive Peptide Backbone Manipulator supports direct joint selection and pointer dragging', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'function activateManipulatorJoint',
+    'function startPeptideDrag',
+    'function continuePeptideDrag',
+    'function endPeptideDrag',
+    'svgPointFromPointer',
+    'pointerAngleAroundCenter',
+    "manipulator.interactionMode === 'rotateView'",
+    'setManipulatorOmegaPreview',
+    "document.getElementById('peptideBackboneSvg').addEventListener('pointerdown'",
+    "document.getElementById('peptideBackboneSvg').addEventListener('pointermove'",
+    "document.getElementById('backboneManipulatorPanel').addEventListener('keydown'",
+    'setPointerCapture',
+    'releasePointerCapture'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing direct manipulation text: ${text}`));
+});
+
+run('Resizable split pane supports accessible drag keyboard and reset behavior', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'id="splitDivider"',
+    'role="separator"',
+    'aria-orientation="vertical"',
+    'aria-valuemin="35"',
+    'aria-valuemax="72"',
+    'aria-valuenow="58"',
+    'Resize protein viewer and dihedral controls.',
+    'id="resetSplitPane"',
+    'state.dihedralLayout',
+    'leftPanePercent: 58',
+    'minLeftPanePercent: 35',
+    'maxLeftPanePercent: 72',
+    'function applySplitPanePercent',
+    'function resetSplitPaneWidths',
+    'splitPanePercentFromPointer',
+    'bva.splitPane.leftPanePercent',
+    "event.key === 'ArrowLeft'",
+    "event.key === 'ArrowRight'",
+    "event.key === 'Home'",
+    "event.key === 'End'",
+    'setPointerCapture',
+    'resizing-split',
+    '--left-pane-percent'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing split-pane behavior text: ${text}`));
+});
+
+run('Dihedral manipulator keeps primary angle controls aligned with visual feedback', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'dihedral-sticky-header',
+    'Primary dihedral controls',
+    'stickyManipulatorResidue',
+    'stickyNativeAngle',
+    'stickyCurrentAngle',
+    'stickyInteractionStatus',
+    'primaryAngleSlider',
+    'primaryAngleNumber',
+    'data-primary-step="-10"',
+    'data-primary-step="10"',
+    'resetSelectedAngle',
+    'resetAllAngles',
+    'Bond rotation',
+    'View rotation',
+    'data-dihedral-interaction="rotateBond"',
+    'data-dihedral-interaction="rotateView"',
+    'positiveRotationArrow',
+    '+ rotation',
+    'Whole protein context',
+    'Local backbone focus',
+    'dihedralViewerMode',
+    'setDihedralViewerMode'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing compact dihedral workspace text: ${text}`));
+});
+
+run('Dihedral manipulator preserves workspace position during routine control updates', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'function captureWorkspacePosition',
+    'function restoreWorkspacePosition',
+    'function preserveWorkspacePosition',
+    'sidebarScrollTop',
+    'window.scrollTo',
+    'splitPanePercent',
+    'drawTorsion({ preserveView: true })',
+    'drawManipulatorOverlay(entry, options)',
+    '!options.preserveView',
+    'state.dihedralLayout.leftPanePercent'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing workspace preservation text: ${text}`));
+});
+
+run('Dihedral manipulator uses one central angle update path for sliders buttons numeric fields and drag', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'function setBackboneAngle',
+    'function adjustBackboneAngle',
+    'selectedJointAvailable',
+    'manipulator.currentAngles[jointName] = numeric',
+    'rebuildManipulatorCoordinates()',
+    'renderPeptideBackboneModel()',
+    'drawRamaPlot()',
+    "setBackboneAngle(angleName, event.target.value, { recordHistory: false, preserveView: true })",
+    "setBackboneAngle(angleName, event.target.value, { recordHistory: true, preserveView: true })",
+    'adjustBackboneAngle(angleName, Number(primaryStep.dataset.primaryStep)',
+    'setBackboneAngle(drag.jointName, drag.startAngles[drag.jointName] + delta',
+    'setBackboneAngle(\'omega\''
+  ].forEach(text => assert(indexHtml.includes(text), `Missing central angle update text: ${text}`));
+});
+
+run('Dihedral manipulator handles terminal residues and incomplete Ramachandran pairs independently', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'function angleAvailabilityMessage',
+    'φ unavailable at this position',
+    'ψ unavailable at this position',
+    'ω unavailable because the next peptide-bond atoms are missing',
+    'A Ramachandran point requires both φ and ψ',
+    'Available angles can still be manipulated',
+    'selectedJointAvailable(jointName)',
+    'if (!Number.isFinite(current.phi) || !Number.isFinite(current.psi))',
+    'manipulator.currentAngles.phi !== null && manipulator.currentAngles.psi !== null'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing terminal angle behavior text: ${text}`));
 });
 
 run('Backbone Dihedral Manipulator adds temporary Ramachandran overlay without moving native points', () => {
