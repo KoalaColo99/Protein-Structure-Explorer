@@ -660,6 +660,86 @@ run('mode controls remain keyboard-accessible buttons', () => {
   assert(indexHtml.includes('<button data-mode="sequence">Sequence</button>'));
 });
 
+run('Backbone Dihedral Manipulator is optional and preserves the native Ramachandran workflow', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Residue Scan',
+    'ramaResidueList',
+    'ramaCanvas',
+    'Backbone Dihedral Manipulator',
+    'Inspect Native Geometry',
+    'Manipulate Backbone',
+    'Teaching model active',
+    'state.backboneManipulator',
+    'selectedResidueIndex',
+    'state.torsions.forEach((entry, index)',
+    'const current = state.torsions[state.selectedResidueIndex]'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing manipulator preservation text: ${text}`));
+});
+
+run('Backbone Dihedral Manipulator uses correct phi psi omega atom definitions', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    "dihedral(prev.byName.get('C'), n, ca, c)",
+    "dihedral(n, ca, c, next.byName.get('N'))",
+    "dihedral(ca, c, next.byName.get('N'), next.byName.get('CA'))",
+    "torsions.push({ residue: current, phi, psi, omega })",
+    "φ around N—Cα",
+    "ψ around Cα—C′",
+    "ω around peptide C′—N",
+    'normalizeAngle'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing dihedral definition text: ${text}`));
+});
+
+run('Backbone Dihedral Manipulator keeps native and hypothetical geometry separate', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'nativeAngles',
+    'currentAngles',
+    'nativeCoordinates',
+    'manipulatedCoordinates',
+    'history',
+    'captureManipulatorCoordinates',
+    'cloneManipulatorCoordinates',
+    'rebuildManipulatorCoordinates',
+    'const base = cloneManipulatorCoordinates(manipulator.nativeCoordinates)'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing native/hypothetical separation text: ${text}`));
+});
+
+run('Backbone Dihedral Manipulator provides controls, presets, clash feedback, and tutorial affordances', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Restore Native Geometry',
+    'Reset Current Residue',
+    'Undo Last Rotation',
+    'Demonstrate Peptide Rigidity',
+    'Show motion trail',
+    'Show steric clashes',
+    'Show nearby backbone H-bonds',
+    'α-helical example',
+    'β-strand example',
+    'Polyproline II example',
+    'Left-handed α example',
+    'localStericClashes',
+    'nearbyBackboneHbondSummary',
+    'Guided Dihedral Tutorial',
+    'Why are dihedral angles needed?'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing manipulator control text: ${text}`));
+});
+
+run('Backbone Dihedral Manipulator adds temporary Ramachandran overlay without moving native points', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    "ctx.fillText('native'",
+    "ctx.fillText('current'",
+    "manipulator.mode === 'manipulate'",
+    'manipulator.currentAngles.phi',
+    'manipulator.currentAngles.psi',
+    'state.torsions[state.selectedResidueIndex]',
+    'ctx.lineTo(tempX, tempY)'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing Ramachandran overlay text: ${text}`));
+});
+
 run('Comparative Sequence Overview renders all current reference records', () => {
   const dataset = productionDataset();
   const accessions = dataset.records.map(record => record.sourceAccession);
