@@ -821,7 +821,7 @@ run('Dihedral manipulator keeps primary angle controls aligned with visual feedb
     'data-dihedral-interaction="rotateBond"',
     'data-dihedral-interaction="rotateView"',
     'positiveRotationArrow',
-    '+ rotation',
+    'Direction of rotation',
     'Whole protein context',
     'Local backbone focus',
     'dihedralViewerMode',
@@ -876,6 +876,101 @@ run('Dihedral manipulator handles terminal residues and incomplete Ramachandran 
     'if (!Number.isFinite(current.phi) || !Number.isFinite(current.psi))',
     'manipulator.currentAngles.phi !== null && manipulator.currentAngles.psi !== null'
   ].forEach(text => assert(indexHtml.includes(text), `Missing terminal angle behavior text: ${text}`));
+});
+
+run('Dihedral motion trail uses bounded interpolated ghosts instead of accumulating frames', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'motionTrail: { native: null, intermediates: [], current: null }',
+    'function shortestAngularDelta',
+    'function interpolateAngle',
+    'function motionTrailFractions',
+    'return [0, 0.33, 0.67]',
+    'function buildMotionTrailConformations',
+    'manipulator.motionTrail = { native: null, intermediates: [], current: manipulator.manipulatedCoordinates }',
+    'native: conformations[0] || null',
+    'intermediates: conformations.slice(1)',
+    'data-motion-ghost',
+    'Native position',
+    'Intermediate ghost position'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing bounded motion trail text: ${text}`));
+  assert(!indexHtml.includes('motionFrameHistory'));
+  assert(!indexHtml.includes('trailFrames.push'));
+});
+
+run('Dihedral motion trail is visually distinct from steric clashes and explains axis-distance motion', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'Orange ghost = previous position during rotation',
+    'Red highlight = steric clash',
+    'A small change in φ or ψ can reposition a large portion of the chain.',
+    'Smaller path near the axis',
+    'Larger path farther from the axis',
+    'Direction of rotation',
+    'Rotation axis:',
+    'peptide-ghost-bond',
+    'peptide-ghost-atom',
+    'peptide-motion-path',
+    'peptide-motion-label',
+    'Steric clash: atoms too close',
+    'Turn on the motion trail and rotate φ or ψ',
+    'Which atom travels farther?'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing motion-trail teaching text: ${text}`));
+});
+
+run('Dihedral interaction modes have explicit labels help text and separate state updates', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'id="interactionModeHelp"',
+    'Bond rotation: Drag the highlighted ring to change the selected φ or ψ angle.',
+    'View rotation: Drag the model to inspect it from another direction. The dihedral angles do not change.',
+    'What is the difference?',
+    'Mode: Changing',
+    'Mode: Rotating view only',
+    'function setInteractionMode',
+    'manipulator.interactionMode = mode === \'rotateView\' ? \'rotateView\' : \'rotateBond\'',
+    'view-only',
+    'manipulator.interactionMode === \'rotateBond\' && manipulator.selectedDihedral !== \'omega\''
+  ].forEach(text => assert(indexHtml.includes(text), `Missing interaction-mode reliability text: ${text}`));
+});
+
+run('Dihedral reset controls restore authoritative state while preserving workspace context', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'function resetSelectedBackboneAngle',
+    'function resetAllBackboneAnglesToNative',
+    'setBackboneAngle(jointName, native',
+    'All available backbone angles restored to the native structure.',
+    'restored to its native value',
+    'manipulator.currentAngles = {',
+    'phi: Number.isFinite(manipulator.nativeAngles.phi)',
+    'psi: Number.isFinite(manipulator.nativeAngles.psi)',
+    'omega: Number.isFinite(manipulator.nativeAngles.omega)',
+    'preserveWorkspacePosition(() => drawTorsion({ preserveView: true }))',
+    'manipulator.motionTrail = { native: null, intermediates: [], current: null }',
+    'selectedDihedral = previousSelectedJoint',
+    'interactionMode = previousInteractionMode'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing reset reliability text: ${text}`));
+});
+
+run('Dihedral pointer interactions clean up stale captures and do not leave controls blocked', () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+  [
+    'function endBackboneInteraction',
+    'activePointerId: null',
+    'isDraggingBond: false',
+    'isRotatingView: false',
+    'isResizingPane: false',
+    'window.addEventListener(\'blur\'',
+    "event.key !== 'Escape'",
+    'lostpointercapture',
+    'pointercancel',
+    'endSplitPaneResize',
+    'setPointerCapture',
+    'releasePointerCapture',
+    'try {',
+    'Controls have been restored'
+  ].forEach(text => assert(indexHtml.includes(text), `Missing pointer cleanup text: ${text}`));
 });
 
 run('Backbone Dihedral Manipulator adds temporary Ramachandran overlay without moving native points', () => {
