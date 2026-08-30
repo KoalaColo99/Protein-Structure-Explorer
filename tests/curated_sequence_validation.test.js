@@ -462,12 +462,12 @@ run('Structure mode owns the structure-derived sequence panel', () => {
   assert(indexHtml.includes('drawStructureSequence();'));
 });
 
-run('Sequence mode is limited to curated Visual Evolution Explorer content', () => {
+run('Sequence mode is limited to curated Rubisco Sequence Atlas content', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   const start = indexHtml.indexOf('id="sequencePanel"');
   const end = indexHtml.indexOf('id="hbondsPanel"');
   const sequencePanel = indexHtml.slice(start, end);
-  assert(sequencePanel.includes('Visual Evolution Explorer'));
+  assert(sequencePanel.includes('Rubisco Sequence Atlas'));
   assert(sequencePanel.includes('Comparative Sequence Set'));
   assert(sequencePanel.includes('curatedSequenceDataset'));
   assert(sequencePanel.includes('curatedReferenceSequences'));
@@ -657,7 +657,7 @@ run('mode controls remain keyboard-accessible buttons', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('id="modeTabs" aria-label="Biochemistry Visual Atlas navigation"'));
   assert(indexHtml.includes('<button class="active" data-mode="overview">Structure</button>'));
-  assert(indexHtml.includes('<button data-mode="sequence">Sequence</button>'));
+  assert(indexHtml.includes('<button data-mode="sequence">Rubisco Sequence Atlas</button>'));
 });
 
 run('Backbone Dihedral Manipulator is optional and preserves the native Ramachandran workflow', () => {
@@ -1361,7 +1361,7 @@ run('Alignment View UI preserves structure behavior and avoids clickable mapping
   assert(indexHtml.includes('Alignment position, reference-sequence position, and structure residue number are different numbering systems.'));
   assert(indexHtml.includes('No structure residue mapping is active in this view.'));
   assert(indexHtml.includes('data-mode="overview">Structure</button>'));
-  assert(indexHtml.includes('data-mode="sequence">Sequence</button>'));
+  assert(indexHtml.includes('data-mode="sequence">Rubisco Sequence Atlas</button>'));
   assert(!indexHtml.includes('data-alignment-residue-index'));
   assert(!indexHtml.includes('selectTorsionIndex(Number(cell.dataset.alignmentColumn))'));
 });

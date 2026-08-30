@@ -1710,8 +1710,7 @@
           <h2>Protein Explorer</h2>
           <div class="atlas-tools">
             <button class="active" data-mode="overview">Structure</button>
-            <button data-mode="sequence">Sequence</button>
-            <button data-mode="conservation">Conservation</button>
+            <button data-mode="conservation">Structure Conservation</button>
             <button data-mode="torsions">Ramachandran</button>
             <button data-mode="hbonds">Backbone H-bonds</button>
             <button data-mode="tertiary">Side-chain Interactions</button>
@@ -1720,6 +1719,12 @@
             <button data-mode="solvent">Solvent Access</button>
             <button data-mode="hydrophobic">Hydrophobic Core</button>
             <button data-mode="gallery">Structure Gallery</button>
+          </div>
+        </div>
+        <div class="atlas-group">
+          <h2>Atlas Case Studies</h2>
+          <div class="atlas-tools">
+            <button data-mode="sequence">Rubisco Sequence Atlas</button>
           </div>
         </div>
         <div class="atlas-group">
@@ -1752,11 +1757,11 @@
 
       <section class="section">
         <h2>Atlas Overview</h2>
-        <p>The atlas is organized into four modules: Protein Explorer for structure and conservation, Chemical Properties for pH and charge, Function for biochemical interpretation, and Prediction for future model-comparison tools.</p>
-        <div class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
-          <h3>Dataset Registry</h3>
+        <p>The atlas is organized into Protein Explorer tools for loaded molecular structures, Chemical Properties tools for pH and charge, optional Atlas Case Studies such as Rubisco sequence evolution, and future Function/Prediction tools.</p>
+        <details class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
+          <summary><strong>Atlas Dataset Registry</strong></summary>
           <p>Loading dataset registry...</p>
-        </div>
+        </details>
       </section>
 
       <section class="section">
@@ -1822,8 +1827,8 @@
       </section>
 
       <section class="section mode-panel hidden" id="sequencePanel">
-        <h2>Visual Evolution Explorer</h2>
-        <p>Explore instructor-curated reference sequences and alignments. This mode is separate from the structure-derived sequence of the currently loaded molecular model.</p>
+        <h2>Rubisco Sequence Atlas</h2>
+        <p>Explore the instructor-curated Rubisco large-subunit sequence set and alignment as a separate case study. This is not mapped onto the molecular structure viewer until a verified Rubisco structure and residue mapping are added.</p>
         <div class="mini-card" id="curatedSequencePanel">
           <h3>Comparative Sequence Set</h3>
           <p>Inspect the active registry-resolved dataset of complete reference sequences. These records are not assumed to match structure residue numbers.</p>
@@ -2290,8 +2295,14 @@ rotation axis B—C</div>
       </section>
 
       <section class="section mode-panel hidden" id="conservationPanel">
-        <h2>Conservation</h2>
-        <p>Choose a course protein, prepare a biologically related comparison set, compute conservation, map results onto the structure, and turn the pattern into structure-function reasoning.</p>
+        <h2>Structure Conservation</h2>
+        <p>Choose a course protein, prepare a biologically related comparison set, compute a teaching-level sequence conservation score, map results onto the loaded reference structure, and turn the pattern into structure-function reasoning.</p>
+        <div class="mini-card">
+          <h3>What This Tool Is Based On</h3>
+          <p>This in-browser tool fetches selected comparison PDB files from RCSB, extracts the represented amino-acid sequence from each structure, aligns each comparison sequence to the selected reference structure sequence, and scores each reference residue by the fraction of usable comparisons with the same amino acid at that aligned position.</p>
+          <p>It is useful for classroom pattern-finding, but it is not ConSurf and not a phylogenetic evolutionary-rate calculation. It does not use homolog search, tree building, Rate4Site, or explicit sequence-to-structure mapping beyond the residues present in the loaded PDB.</p>
+          <p><strong>Separate from Rubisco:</strong> Rubisco sequence conservation lives in the Rubisco Sequence Atlas case study. It is intentionally not colored onto the structure viewer yet because this atlas does not currently include a verified Rubisco structure mapping.</p>
+        </div>
         <div class="mini-card">
           <h3>Recommended Student Workflow</h3>
           <ol>
@@ -5632,6 +5643,17 @@ END
       return computeConservationForIds(ids);
     }
 
+    function fallbackComparisonItemsForFamily(family) {
+      if (family.key !== 'myoglobin') return [];
+      return homologSequences
+        .filter(item => item.id !== family.reference)
+        .map(item => ({
+          id: `${item.id} built-in sequence`,
+          residues: [],
+          sequence: item.sequence
+        }));
+    }
+
     async function computeConservationForIds(ids) {
       const family = currentConservationFamily();
       const comparisonIds = [...new Set(ids)].filter(id => id && id !== family.reference);
@@ -5692,20 +5714,27 @@ END
           warnings.push(error.message);
         }
       }
+      const failedFetchCount = warnings.length;
 
       if (!comparisonItems.length) {
-        state.conservation = [];
-        state.conservationSources = [];
-        state.conservationResult = {
-          status: 'Conservation failed',
-          reference: family.reference,
-          attempted: comparisonIds.length,
-          used: 0,
-          skipped: comparisonIds.length,
-          warnings: warnings.length ? warnings : ['No comparison structures could be used.']
-        };
-        applyMode();
-        return;
+        const fallbackItems = fallbackComparisonItemsForFamily(family);
+        if (fallbackItems.length) {
+          comparisonItems.push(...fallbackItems);
+          warnings.push('Live RCSB comparison structures could not be used, so the atlas used its built-in myoglobin teaching sequences. These are sequence-only fallback records and are not a substitute for a curated evolutionary analysis.');
+        } else {
+          state.conservation = [];
+          state.conservationSources = [];
+          state.conservationResult = {
+            status: 'Conservation failed',
+            reference: family.reference,
+            attempted: comparisonIds.length,
+            used: 0,
+            skipped: comparisonIds.length,
+            warnings: warnings.length ? warnings : ['No comparison structures could be used.']
+          };
+          applyMode();
+          return;
+        }
       }
 
       state.conservation = computeConservationFromSequences(state.residues, comparisonItems);
@@ -5718,7 +5747,7 @@ END
         reference: family.reference,
         attempted: comparisonIds.length,
         used: comparisonItems.length,
-        skipped: warnings.length,
+        skipped: failedFetchCount,
         warnings
       };
       applyMode();
@@ -6087,7 +6116,7 @@ END
       if (!container) return;
       const validation = atlasRegistryValidation();
       if (!validation.ok) {
-        container.innerHTML = `<h3>Dataset Registry</h3><div class="warning-text"><strong>Registry validation issue</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`;
+        container.innerHTML = `<summary><strong>Atlas Dataset Registry</strong></summary><div class="warning-text"><strong>Registry validation issue</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`;
         return;
       }
       const rows = validation.datasets
@@ -6124,8 +6153,8 @@ END
         }).join('')
         : '<p class="caption">Capability availability resolver unavailable.</p>';
       container.innerHTML = `
-        <h3>Dataset Registry</h3>
-        <p>Registry loaded: ${validation.datasets.length} dataset case studies. Capabilities marked unavailable are not inferred or simulated.</p>
+        <summary><strong>Atlas Dataset Registry</strong></summary>
+        <p>Registry loaded: ${validation.datasets.length} optional dataset case studies. Capabilities marked unavailable are not inferred or simulated.</p>
         ${rows}
         <div class="caption">
           <strong>Developer diagnostic:</strong> scientific capabilities render only when registry status, resources, validation, and dependencies all pass.

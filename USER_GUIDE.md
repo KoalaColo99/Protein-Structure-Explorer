@@ -19,7 +19,8 @@ Open `index.html` in a browser. The structure viewer is on the left, and the fea
 
 The atlas navigation is organized into four modules:
 
-- **Protein Explorer:** structure, sequence placeholders, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, hydrophobic regions, and structure loading.
+- **Protein Explorer:** structure, structure conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, hydrophobic regions, and structure loading.
+- **Atlas Case Studies:** optional curated case studies such as the Rubisco Sequence Atlas. These are opened only when selected.
 - **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface.
 - **Function:** mutation sandbox and guided lessons. Ligand Binding and Active Sites are visible as coming-soon entries.
 - **Prediction:** AlphaFold prediction and comparative structural analysis are future modules. They will complement experimental Protein Data Bank structures rather than replace them.
@@ -116,11 +117,11 @@ When added, these tools should help students compare predicted models with exper
 
 Shows the full protein fold. Cartoon view makes helices, sheets, loops, domains, and overall packing easier to see. It hides atom identity, partial charges, lone pairs, resonance, and many side-chain contacts, so students should switch to atom-level views when making chemical arguments.
 
-### Sequence Explorer
+### Rubisco Sequence Atlas
 
-Displays the loaded structure as a one-letter amino-acid sequence derived from parsed PDB atom records. Chain labels and residue numbers are shown under each one-letter code. Click a residue in the sequence to select the same residue used by the Ramachandran and 3D structure views.
+The Structure Overview still displays the loaded PDB model as a one-letter amino-acid sequence derived from parsed atom records. The Rubisco Sequence Atlas is different: it displays complete curated RbcL reference sequences and an instructor-supplied alignment.
 
-The Sequence Explorer now separates three ideas:
+The Rubisco Sequence Atlas is an optional sequence/alignment case study. The atlas still separates three ideas:
 
 - **Structure Sequence:** residues represented in the currently loaded molecular structure.
 - **Reference Sequence:** a complete, instructor-curated protein sequence record.
@@ -137,7 +138,7 @@ Students can glean:
 
 Important limitation: this sequence is not downloaded separately from UniProt or RCSB FASTA. It reflects residues that are present and parsed in the loaded PDB coordinates, so unresolved residues, missing loops, engineered tags, alternate numbering, or nonstandard residues may affect what appears.
 
-The current Rubisco comparative sequence set is a placeholder for instructor-verified records. It should not be used for biological interpretation until accessions, organisms, classifications, citations, and amino-acid sequences have been verified and added.
+The current Rubisco comparative sequence set is instructor-curated for sequence and alignment exploration. It is not mapped to the structure viewer because the atlas does not yet include a verified Rubisco structure and explicit residue mapping.
 
 ### Backbone H-bonds
 
@@ -267,11 +268,15 @@ Students can glean:
 - How pH can change apparent charge.
 - Where electrostatic interactions or binding surfaces may occur.
 
-### Conservation
+### Structure Conservation
 
-The Conservation panel lets students choose a **Learning Classification** and **Course Protein**, inspect the reference PDB ID, select or remove suggested comparison structures, optionally add custom 4-character PDB IDs, and compute a teaching conservation analysis from the selected set. The Course Protein is the assigned structure students are investigating. Suggested Comparison Structures are related structures used to estimate conservation.
+The Structure Conservation panel lets students choose a **Learning Classification** and **Course Protein**, inspect the reference PDB ID, select or remove suggested comparison structures, optionally add custom 4-character PDB IDs, and compute a teaching conservation analysis from the selected set. The Course Protein is the assigned structure students are investigating. Suggested Comparison Structures are related structures used to estimate conservation.
 
-This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is a classroom reasoning tool: students choose a reference PDB structure and a small comparison set, then use the result to connect conservation with structural layers and Claim-Evidence-Reasoning explanations. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
+This feature is different from ConSurf. ConSurf is a rigorous bioinformatics server for estimating evolutionary conservation from homolog searches, multiple sequence alignment, phylogenetic trees, and Rate4Site-based evolutionary-rate calculations. This Explorer is a classroom reasoning tool: students choose a reference PDB structure and a small comparison set. The app fetches selected comparison PDB files from RCSB, extracts the represented amino-acid sequences, aligns each comparison sequence to the loaded reference structure sequence, and scores each reference residue by the fraction of usable comparisons that match at that aligned position. Use ConSurf when you need a publication-strength evolutionary conservation analysis; use this Explorer when the learning goal is to connect conservation, structure, chemistry, and function.
+
+If live RCSB comparison fetching fails for the default myoglobin case, the app can use built-in myoglobin teaching sequences so students can still see the scoring workflow. A warning is shown when this fallback is used.
+
+Rubisco is handled separately in the Rubisco Sequence Atlas. Its curated sequence/alignment conservation is not mapped onto the 3D structure viewer until a verified Rubisco structure and explicit residue mapping are added.
 
 Conservation is meaningful only when the comparison structures are homologous or otherwise biologically appropriate comparisons. Unrelated proteins will give misleading conservation scores.
 
@@ -281,7 +286,7 @@ The course list includes a validation check that flags duplicate PDB IDs or impo
 
 To compute conservation from a selected comparison set:
 
-1. Click **Conservation**.
+1. Click **Structure Conservation**.
 2. Choose a learning classification from the **Learning Classification** dropdown.
 3. Choose a course protein from the **Course Protein** dropdown.
 4. Review the reference PDB ID, biological function, and key functional features.

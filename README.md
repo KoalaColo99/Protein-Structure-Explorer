@@ -8,7 +8,8 @@ Open `index.html` in a browser, or publish this folder with GitHub Pages.
 
 The app is organized into four navigation groups:
 
-- **Protein Explorer:** structure, sequence placeholders, conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, hydrophobic regions, and structure loading.
+- **Protein Explorer:** structure, structure conservation, Ramachandran plots, backbone H-bonds, side-chain interactions, helices, beta topology, solvent access, hydrophobic regions, and structure loading.
+- **Atlas Case Studies:** optional curated datasets such as the Rubisco Sequence Atlas. These case studies do not take viewer space unless selected.
 - **Chemical Properties:** pH & Charge, Buffers, Amino Acids, Chemistry Lens, and Charge Surface tools.
 - **Function:** mutation sandbox and guided lessons, with Ligand Binding and Active Sites marked as coming soon.
 - **Prediction:** AlphaFold prediction and comparative structural analysis are future modules. They will complement experimental Protein Data Bank structures rather than replace them.
@@ -19,7 +20,7 @@ Future modules will include Ligand Binding, an expanded Mutation Explorer, Alpha
 
 Use **Structure Gallery** in the app to load a reference structure. Type one 4-character RCSB PDB ID in the **PDB ID** box, such as `1MBN`, `1CA2`, `2PTN`, or `6LU7`, then click **Load structure**.
 
-For the in-app Conservation panel, choose a **Learning Classification** and **Course Protein**. The course protein is the assigned reference structure students are investigating. When available, use the **Suggested Comparison Structures** checklist to select related structures for estimating conservation. Optional custom PDB IDs should be entered one at a time as exactly 4 letters/numbers, such as:
+For the in-app **Structure Conservation** panel, choose a **Learning Classification** and **Course Protein**. The course protein is the assigned reference structure students are investigating. When available, use the **Suggested Comparison Structures** checklist to select related structures for estimating conservation. Optional custom PDB IDs should be entered one at a time as exactly 4 letters/numbers, such as:
 
 ```text
 1YOG
@@ -47,11 +48,17 @@ python3 conservation_pipeline.py --reference 1MBN --comparisons 1YOG 1M6M 3VM9 1
 
 The pipeline writes a B-factor-colored reference PDB, a residue conservation CSV, and helper scripts for PyMOL and ChimeraX.
 
-## In-App Conservation Tab
+## In-App Structure Conservation Tab
 
-The app includes a student-friendly Conservation tab. Students can choose a learning classification and course protein, review the reference PDB ID and functional features, select or remove suggested comparison structures, add optional custom PDB IDs, load the reference structure, and compute a teaching conservation analysis. The results include a status summary, skipped/failed structure warnings, conservation categories, functional feature panels, guided interpretation questions, CER scaffolding, and residue-level 3D coloring on the reference structure.
+The app includes a student-friendly Structure Conservation tab. Students can choose a learning classification and course protein, review the reference PDB ID and functional features, select or remove suggested comparison structures, add optional custom PDB IDs, load the reference structure, and compute a teaching conservation analysis.
+
+The in-browser score is based on PDB-derived sequences: selected comparison structures are fetched from RCSB, their represented amino-acid sequences are aligned to the loaded reference structure sequence, and each reference residue is scored by the fraction of usable comparisons with the same amino acid at that aligned position. This is a classroom reasoning tool, not ConSurf or a publication-grade evolutionary-rate analysis.
+
+If live comparison-structure fetching fails for the default myoglobin case, the app can fall back to built-in myoglobin teaching sequences so the conservation table still demonstrates the workflow. The results include a status summary, skipped/failed structure warnings, conservation categories, functional feature panels, guided interpretation questions, CER scaffolding, and residue-level 3D coloring on the reference structure.
 
 Conservation results are intended for teaching and exploration. They depend on comparison-structure choice, chain selection, sequence quality, and PDB completeness, so students should interpret them alongside structural and biochemical context.
+
+The Rubisco Sequence Atlas is separate. Its curated RbcL sequence/alignment conservation view is not mapped onto the 3D structure viewer until a verified Rubisco structure and explicit residue mapping are added.
 
 ## GitHub Pages
 
