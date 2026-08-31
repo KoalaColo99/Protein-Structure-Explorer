@@ -97,6 +97,53 @@
       inset: 0;
     }
 
+    .viewer-fallback {
+      align-items: center;
+      background: linear-gradient(135deg, rgba(238,243,248,.97), rgba(255,255,255,.95));
+      color: var(--ink);
+      display: grid;
+      gap: 12px;
+      inset: 0;
+      justify-items: center;
+      padding: 24px;
+      position: absolute;
+      text-align: center;
+      z-index: 2;
+    }
+
+    .viewer-fallback.hidden,
+    .recovery-actions.hidden {
+      display: none;
+    }
+
+    .viewer-fallback-card {
+      background: rgba(255,255,255,.96);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 32px rgba(23,32,42,.12);
+      max-width: 560px;
+      padding: 18px;
+    }
+
+    .viewer-fallback-card strong {
+      display: block;
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+
+    .viewer-fallback-card p {
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .recovery-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+
     .stage.sequence-stage-active #viewer,
     .stage.sequence-stage-active .hud {
       visibility: hidden;
@@ -1672,6 +1719,7 @@
   <main class="app">
     <section class="stage">
       <div id="viewer"></div>
+      <div class="viewer-fallback hidden" id="viewerFallback" role="status" aria-live="polite"></div>
       <div class="hud">
         <div class="badge">
           <strong>Current Structure</strong>
@@ -1679,6 +1727,10 @@
           <span id="structureSubtitle">Sperm whale oxygen-storage protein, with heme cofactor</span>
         </div>
         <div class="readout" id="status">Loading structure...</div>
+        <div class="recovery-actions hidden" id="recoveryActions" aria-label="Structure and viewer recovery actions">
+          <button id="retryViewer" type="button">Retry Viewer</button>
+          <button id="retryStructure" type="button">Retry Structure</button>
+        </div>
       </div>
       <div class="sequence-stage-overview hidden" id="sequenceStageOverview" aria-live="polite"></div>
     </section>
@@ -4410,9 +4462,26 @@ END
       }
     };
 
+    const APP_STATES = {
+      STARTING: 'application starting',
+      COORDINATES_LOADING: 'structure coordinates loading',
+      COORDINATES_PARSED: 'coordinates loaded and parsed',
+      VIEWER_READY: '3D viewer ready',
+      COORDINATES_WITHOUT_3D: 'coordinates available but 3D rendering unavailable',
+      RETRIEVAL_FAILED: 'structure retrieval failed',
+      PARSING_FAILED: 'structure parsing failed',
+      NO_STRUCTURE: 'no structure selected'
+    };
+
     const state = {
       viewer: null,
       model: null,
+      appStatus: APP_STATES.STARTING,
+      structureStatus: APP_STATES.NO_STRUCTURE,
+      viewerStatus: APP_STATES.STARTING,
+      lastStructureError: '',
+      lastViewerError: '',
+      initializedCore: false,
       structureId: '1MBN',
       structureLabel: 'Myoglobin',
       pdb: '',
@@ -5794,7 +5863,139 @@ END
       return { chain: residue.chain, resi: residue.resi };
     }
 
+    function hasParsedCoordinates() {
+      return Boolean(state.pdb && state.residues.length);
+    }
+
+    function hasViewer() {
+      return Boolean(state.viewer);
+    }
+
+    function canRenderStructure() {
+      return hasViewer() && hasParsedCoordinates();
+    }
+
+    function renderViewerSafely() {
+      if (!hasViewer() || typeof state.viewer.render !== 'function') return false;
+      try {
+        state.viewer.render();
+        return true;
+      } catch (error) {
+        markViewerUnavailable(error);
+        return false;
+      }
+    }
+
+    function zoomViewerSafely(selection) {
+      if (!hasViewer() || typeof state.viewer.zoomTo !== 'function') return false;
+      try {
+        state.viewer.zoomTo(selection);
+        return true;
+      } catch (error) {
+        markViewerUnavailable(error);
+        return false;
+      }
+    }
+
+    function markViewerUnavailable(error) {
+      state.viewer = null;
+      state.model = null;
+      state.lastViewerError = error?.message || String(error || '3D rendering is unavailable in this browser.');
+      state.viewerStatus = hasParsedCoordinates() ? APP_STATES.COORDINATES_WITHOUT_3D : APP_STATES.RETRIEVAL_FAILED;
+      state.appStatus = hasParsedCoordinates() ? APP_STATES.COORDINATES_WITHOUT_3D : state.structureStatus;
+      updateSystemStatus();
+      updateViewerDependentControls();
+    }
+
+    function modeNeedsViewer(mode = state.mode) {
+      return !['sequence', 'ph', 'gallery'].includes(mode);
+    }
+
+    function viewerUnavailableMessage() {
+      if (!hasParsedCoordinates()) {
+        return 'No structure coordinates are available yet. Try Retry Structure, or use the pH, buffer, amino-acid, and Rubisco sequence tools while the structure is unavailable.';
+      }
+      return `${state.structureLabel} (${state.structureId}) coordinates were parsed, but the 3D viewer is unavailable. You can still use navigation, pH, buffers, amino-acid charge tools, guided text, and sequence-derived 2D tools. Try Retry Viewer when ready.`;
+    }
+
+    function showViewerFallback(title, message, actions = {}) {
+      const fallback = document.getElementById('viewerFallback');
+      if (!fallback) return;
+      fallback.classList.remove('hidden');
+      fallback.innerHTML = `<div class="viewer-fallback-card"><strong>${title}</strong><p>${message}</p><div class="recovery-actions"><button type="button" data-retry-viewer>Retry Viewer</button><button type="button" data-retry-structure>Retry Structure</button></div></div>`;
+      fallback.querySelector('[data-retry-viewer]')?.addEventListener('click', retryViewer);
+      fallback.querySelector('[data-retry-structure]')?.addEventListener('click', retryStructure);
+      if (actions.viewer === false) fallback.querySelector('[data-retry-viewer]')?.setAttribute('disabled', '');
+    }
+
+    function hideViewerFallback() {
+      document.getElementById('viewerFallback')?.classList.add('hidden');
+    }
+
+    function updateViewerDependentControls() {
+      const disabled = !hasViewer();
+      const controls = [
+        'fitWholeStructure',
+        'focusSelectedResidue',
+        'focusFunctionalSite',
+        'resetViewerView',
+        'resetView',
+        'proteinView',
+        'atomZoomToggle',
+        'mapConservation',
+        'showAllConservation',
+        'showHighConservation',
+        'showVariableConservation',
+        'showFunctionalConservation',
+        'resetConservationColoring'
+      ];
+      controls.forEach(id => {
+        const control = document.getElementById(id);
+        if (control) control.disabled = disabled;
+      });
+      const message = disabled ? viewerUnavailableMessage() : '';
+      setViewerControlMessage(message);
+    }
+
+    function updateSystemStatus() {
+      const status = document.getElementById('status');
+      const recovery = document.getElementById('recoveryActions');
+      const retryViewerButton = document.getElementById('retryViewer');
+      const retryStructureButton = document.getElementById('retryStructure');
+      if (!status) return;
+      const modeLabels = {
+        overview: 'Overview',
+        hbonds: 'Backbone hydrogen bonds',
+        helixPatterns: 'Helix patterns',
+        torsions: 'Ramachandran scanner',
+        tertiary: 'Side-chain interactions',
+        chemistry: 'Chemistry lens',
+        ph: 'pH, buffers, and amino-acid charge',
+        solvent: 'Solvent access',
+        hydrophobic: 'Hydrophobic core',
+        chargeSurface: 'Charge surface',
+        conservation: 'Structure conservation',
+        mutation: 'Mutation sandbox',
+        lesson: 'Guided lesson',
+        gallery: 'Structure gallery',
+        betaTopology: 'Beta sheet topology',
+        sequence: 'Rubisco Sequence Atlas'
+      };
+      if (state.appStatus === APP_STATES.COORDINATES_LOADING) status.textContent = `Loading ${state.structureId} coordinates...`;
+      else if (state.appStatus === APP_STATES.RETRIEVAL_FAILED) status.textContent = `Structure retrieval failed. ${state.lastStructureError || 'Check the PDB ID or network connection.'}`;
+      else if (state.appStatus === APP_STATES.PARSING_FAILED) status.textContent = `Structure parsing failed. ${state.lastStructureError || 'The coordinate file could not be interpreted.'}`;
+      else if (state.appStatus === APP_STATES.COORDINATES_WITHOUT_3D) status.textContent = `${modeLabels[state.mode] || 'Tool'} available without 3D rendering.`;
+      else if (state.appStatus === APP_STATES.VIEWER_READY) status.textContent = `${modeLabels[state.mode] || 'Tool'} ready.`;
+      else status.textContent = state.appStatus;
+
+      const needsRecovery = !hasViewer() || [APP_STATES.RETRIEVAL_FAILED, APP_STATES.PARSING_FAILED].includes(state.structureStatus);
+      recovery?.classList.toggle('hidden', !needsRecovery);
+      if (retryViewerButton) retryViewerButton.disabled = !hasParsedCoordinates();
+      if (retryStructureButton) retryStructureButton.disabled = false;
+    }
+
     function clearShapesAndLabels() {
+      if (!hasViewer()) return;
       state.viewer.removeAllShapes();
       state.viewer.removeAllLabels();
       if (state.viewer.removeAllSurfaces) state.viewer.removeAllSurfaces();
@@ -5886,6 +6087,7 @@ END
     }
 
     function baseStyle() {
+      if (!canRenderStructure()) return;
       state.viewer.setStyle({}, {});
       if (state.proteinView === 'cartoon') {
         state.viewer.setStyle({ hetflag: false }, { cartoon: { color: 'spectrum' } });
@@ -5908,43 +6110,84 @@ END
       state.viewer.setStyle({ resn: 'HOH' }, {});
     }
 
-    function applyMode() {
-      if (!state.viewer) return;
+    function focusActivePanel() {
+      const panel = document.getElementById(`${state.mode}Panel`);
+      if (!panel) return;
+      panel.setAttribute('tabindex', '-1');
+      panel.focus({ preventScroll: false });
+    }
+
+    function applyMode(options = {}) {
       if (state.mode !== 'torsions' && state.backboneManipulator.mode === 'manipulate') {
         state.backboneManipulator.mode = 'inspect';
         state.backboneManipulator.active = false;
       }
-      clearShapesAndLabels();
-      baseStyle();
       document.querySelectorAll('.mode-panel').forEach(el => el.classList.add('hidden'));
       document.getElementById(`${state.mode}Panel`).classList.remove('hidden');
       updateSequenceStageOverview();
       document.querySelectorAll('#modeTabs button').forEach(button => {
-        button.classList.toggle('active', button.dataset.mode === state.mode);
+        const selected = button.dataset.mode === state.mode;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-selected', selected ? 'true' : 'false');
+        if (selected) button.setAttribute('aria-current', 'page');
+        else button.removeAttribute('aria-current');
       });
 
-      if (state.mode === 'hbonds') drawHbonds();
       if (state.mode === 'sequence') drawVisualEvolutionExplorer();
-      if (state.mode === 'helixPatterns') drawHelixPatterns();
-      if (state.mode === 'torsions') drawTorsion();
-      if (state.mode === 'tertiary') drawContacts();
-      if (state.mode === 'chemistry') drawChemistry();
-      if (state.mode === 'ph') drawPhMode();
-      if (state.mode === 'solvent') drawSolventAccess();
-      if (state.mode === 'hydrophobic') drawHydrophobicRegions();
-      if (state.mode === 'chargeSurface') drawChargeSurface();
-      if (state.mode === 'conservation') drawConservation();
-      if (state.mode === 'mutation') drawMutation();
-      if (state.mode === 'lesson') drawLesson();
-      if (state.mode === 'gallery') drawGalleryBuilder();
-      if (state.mode === 'betaTopology') drawBetaTopology();
-      if (state.mode === 'overview') {
-        drawStructureSequence();
-        state.viewer.zoomTo({ hetflag: false });
+      if (state.mode === 'sequence') {
+        hideViewerFallback();
+        updateSystemStatus();
+        if (options.restoreFocus) focusActivePanel();
+        return;
       }
 
-      state.viewer.render();
-      setStatus();
+      if (!hasParsedCoordinates() && modeNeedsViewer(state.mode)) {
+        showViewerFallback('No structure coordinates available', viewerUnavailableMessage(), { viewer: false });
+        updateSystemStatus();
+        if (options.restoreFocus) focusActivePanel();
+        return;
+      }
+
+      if (canRenderStructure()) {
+        hideViewerFallback();
+        try {
+          clearShapesAndLabels();
+          baseStyle();
+          if (state.mode === 'hbonds') drawHbonds();
+          if (state.mode === 'helixPatterns') drawHelixPatterns();
+          if (state.mode === 'torsions') drawTorsion();
+          if (state.mode === 'tertiary') drawContacts();
+          if (state.mode === 'chemistry') drawChemistry();
+          if (state.mode === 'ph') drawPhMode();
+          if (state.mode === 'solvent') drawSolventAccess();
+          if (state.mode === 'hydrophobic') drawHydrophobicRegions();
+          if (state.mode === 'chargeSurface') drawChargeSurface();
+          if (state.mode === 'conservation') drawConservation();
+          if (state.mode === 'mutation') drawMutation();
+          if (state.mode === 'lesson') drawLesson();
+          if (state.mode === 'gallery') drawGalleryBuilder();
+          if (state.mode === 'betaTopology') drawBetaTopology();
+          if (state.mode === 'overview') {
+            drawStructureSequence();
+            zoomViewerSafely({ hetflag: false });
+          }
+          renderViewerSafely();
+        } catch (error) {
+          console.warn(error);
+          markViewerUnavailable(error);
+          applyMode();
+          return;
+        }
+      } else {
+        if (state.mode === 'overview') drawStructureSequence();
+        if (state.mode === 'ph') drawPhMode();
+        if (state.mode === 'gallery') drawGalleryBuilder();
+        if (state.mode === 'lesson') drawLesson();
+        showViewerFallback('3D viewer unavailable', viewerUnavailableMessage());
+      }
+
+      updateSystemStatus();
+      if (options.restoreFocus) focusActivePanel();
     }
 
     function escapeHtml(value) {
@@ -7194,7 +7437,7 @@ END
       if (!state.residues.length || !sequence.length) {
         document.getElementById('sequenceChainCount').textContent = 'none';
         document.getElementById('sequenceNote').innerHTML = '<strong>No sequence available</strong>No standard amino-acid residues were parsed from the loaded structure.';
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
         return;
       }
 
@@ -7223,10 +7466,10 @@ END
         container.appendChild(section);
       });
 
-      if (selectedResidue) {
+      if (selectedResidue && hasViewer()) {
         state.viewer.setStyle(residueSpec(selectedResidue), { stick: { colorscheme: 'Jmol', radius: 0.22 }, cartoon: { color: colors().selected }, sphere: { scale: 0.22 } });
         addResidueLabel(selectedResidue, colors().selected);
-        if (shouldAutoZoomSelectedResidue()) state.viewer.zoomTo(residueSpec(selectedResidue));
+        if (shouldAutoZoomSelectedResidue()) zoomViewerSafely(residueSpec(selectedResidue));
       }
     }
 
@@ -7261,7 +7504,7 @@ END
     function refreshViewerSize() {
       if (!state.viewer) return;
       if (typeof state.viewer.resize === 'function') state.viewer.resize();
-      state.viewer.render();
+      renderViewerSafely();
     }
 
     function applySplitPanePercent(value, persist = true) {
@@ -7313,10 +7556,13 @@ END
     function setDihedralViewerMode(mode) {
       state.dihedralLayout.viewerMode = mode === 'wholeProtein' ? 'wholeProtein' : 'localBackbone';
       updateDihedralViewerModeControls();
-      if (!state.viewer) return;
+      if (!state.viewer) {
+        setViewerControlMessage('The Ramachandran 2D plot remains available, but 3D dihedral focus needs WebGL. Try Retry Viewer.');
+        return;
+      }
       if (state.dihedralLayout.viewerMode === 'wholeProtein') {
-        state.viewer.zoomTo({ hetflag: false });
-        state.viewer.render();
+        zoomViewerSafely({ hetflag: false });
+        renderViewerSafely();
       } else if (state.mode === 'torsions') {
         drawTorsion();
       }
@@ -7352,8 +7598,8 @@ END
         setViewerControlMessage('Load a structure before using the view controls.');
         return;
       }
-      state.viewer.zoomTo(selection);
-      state.viewer.render();
+      zoomViewerSafely(selection);
+      renderViewerSafely();
       setViewerControlMessage(message);
     }
 
@@ -7368,8 +7614,8 @@ END
         return;
       }
       setViewMode('context');
-      state.viewer.zoomTo({ hetflag: false });
-      state.viewer.render();
+      zoomViewerSafely({ hetflag: false });
+      renderViewerSafely();
       setViewerControlMessage('View reset to a broad whole-protein orientation.');
     }
 
@@ -7494,7 +7740,7 @@ END
         }
         addResidueLabel(h.from, c.selected);
         addResidueLabel(h.to, c.selected);
-        state.viewer.zoomTo({ or: [residueSpec(h.from), residueSpec(h.to)] });
+        zoomViewerSafely({ or: [residueSpec(h.from), residueSpec(h.to)] });
       }
     }
 
@@ -7519,9 +7765,9 @@ END
         if (carbon && oxygen && nitrogen) {
           addAngleLabel(midpoint(oxygen, nitrogen), `C-O...N ${Math.round(angleDegrees(carbon, oxygen, nitrogen))}deg`, info.color);
         }
-        state.viewer.zoomTo({ or: [residueSpec(selected.from), residueSpec(selected.to)] });
+        zoomViewerSafely({ or: [residueSpec(selected.from), residueSpec(selected.to)] });
       } else {
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
       }
       document.getElementById('helixPatternCount').textContent = metrics.bonds.length;
       document.getElementById('helixRise').textContent = metrics.rise ? `${metrics.rise.toFixed(2)} Å/res` : 'n/a';
@@ -7554,7 +7800,7 @@ END
       document.getElementById('helixPitch').textContent = current.pitch ? `${current.pitch.toFixed(2)} Å` : 'n/a';
       document.getElementById('helixPhiPsi').textContent = current.phi && current.psi ? `${Math.round(current.phi)} / ${Math.round(current.psi)}` : 'n/a';
       document.getElementById('helixPatternNote').innerHTML = `<strong>Whole-molecule candidate overlay for ${state.structureId}</strong>${summaries.join('<br>')}<br><br>Colors show helix candidates that pass spacing, minimum-length, phi/psi, and rise/pitch filters: blue = 3-10-like i to i+3, green = alpha-like i to i+4, pink = pi-like i to i+5. This is a classroom geometry filter, not a full DSSP assignment.`;
-      state.viewer.zoomTo({ hetflag: false });
+      zoomViewerSafely({ hetflag: false });
     }
 
     function selectedManipulatorEntry() {
@@ -7759,7 +8005,7 @@ END
       manipulator.interactionMode = mode === 'rotateView' ? 'rotateView' : 'rotateBond';
       manipulator.interaction.mode = manipulator.interactionMode;
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
     }
 
     function resetSelectedBackboneAngle() {
@@ -7791,7 +8037,7 @@ END
       manipulator.motionTrail = { native: null, intermediates: [], current: null };
       rebuildManipulatorCoordinates();
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
       showBackboneStatus('All available backbone angles restored to the native structure.');
       return true;
     }
@@ -7829,10 +8075,10 @@ END
         if (options.clearMotionTrail) manipulator.motionTrail = { native: null, intermediates: [], current: null };
         rebuildManipulatorCoordinates();
         preserveWorkspacePosition(() => drawTorsion({ preserveView: options.preserveView !== false }));
-        state.viewer.render();
+        renderViewerSafely();
         return true;
       } catch (error) {
-        console.error(error);
+        console.warn(error);
         endBackboneInteraction('error');
         return false;
       }
@@ -7857,7 +8103,7 @@ END
       manipulator.interaction.mode = manipulator.interactionMode;
       updateDihedralViewerModeControls();
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
     }
 
     function setManipulatorOmegaPreview(value) {
@@ -7935,7 +8181,7 @@ END
       syncBackboneManipulatorToSelection(true);
       state.backboneManipulator.motionTrail = { native: null, intermediates: [], current: null };
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
       showBackboneStatus('All available backbone angles restored to the native structure.');
     }
 
@@ -7945,7 +8191,7 @@ END
       state.backboneManipulator.currentAngles = previous;
       rebuildManipulatorCoordinates();
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
     }
 
     function localStericClashes(coordinates) {
@@ -8330,7 +8576,7 @@ END
       }
       const selected = coordinates.filter(atom => Math.abs(atom.residueIndex - state.selectedResidueIndex) <= 2);
       if (!options.preserveView && selected.length && (shouldAutoZoomSelectedResidue() || state.dihedralLayout.viewerMode === 'localBackbone')) {
-        state.viewer.zoomTo({ or: selected.map(atom => ({ chain: entry.residue.chain, resi: state.residues[atom.residueIndex].resi })) });
+        zoomViewerSafely({ or: selected.map(atom => ({ chain: entry.residue.chain, resi: state.residues[atom.residueIndex].resi })) });
       }
     }
 
@@ -8375,7 +8621,7 @@ END
       const selection = { or: neighbors.map(residueSpec) };
       state.viewer.setStyle(selection, { stick: { colorscheme: 'Jmol', radius: 0.2 }, cartoon: { color: '#f59e0b' } });
       neighbors.forEach(res => addResidueLabel(res, res === residue ? colors().selected : '#475569'));
-      if (!options.preserveView && shouldAutoZoomSelectedResidue()) state.viewer.zoomTo(selection);
+      if (!options.preserveView && shouldAutoZoomSelectedResidue()) zoomViewerSafely(selection);
       document.getElementById('phiValue').textContent = formatAngle(entry.phi);
       document.getElementById('psiValue').textContent = formatAngle(entry.psi);
       renderRamaResidueDetails(entry);
@@ -8486,7 +8732,7 @@ END
           addAngleLabel(midpoint(oxygen, other), `${anchorA.name}-${oxygen.name}...${other.name} ${Math.round(angle)}deg`, c.selected);
         }
       }
-      state.viewer.zoomTo({ or: [atomSpec(contact.atomA), atomSpec(contact.atomB)] });
+      zoomViewerSafely({ or: [atomSpec(contact.atomA), atomSpec(contact.atomB)] });
     }
 
     function nearbyHeavyAtom(residue, atom) {
@@ -8711,7 +8957,7 @@ END
       });
       addSphere(group.carbon, c.resonance, 0.22, 0.22);
       addResidueLabel(residue, c.resonance);
-      state.viewer.zoomTo(residueSpec(residue));
+      zoomViewerSafely(residueSpec(residue));
     }
 
     function drawBackboneChemistry() {
@@ -8732,7 +8978,7 @@ END
         const angle = angleDegrees(carbon, oxygen, nitrogen);
         addAngleLabel(midpoint(oxygen, nitrogen), `C-O...N ${Math.round(angle)}deg`, c.selected);
       }
-      state.viewer.zoomTo({ or: [residueSpec(hbond.from), residueSpec(hbond.to)] });
+      zoomViewerSafely({ or: [residueSpec(hbond.from), residueSpec(hbond.to)] });
       document.getElementById('chemNote').innerHTML = `<strong>Backbone hydrogen bond</strong>${hbond.from.label} carbonyl oxygen is electron-rich, while ${hbond.to.label} amide nitrogen is polarized. The dashed line is thicker for a shorter candidate contact. The PDB model does not include most hydrogens, so the N-H donor is shown as a partial-positive nitrogen.`;
     }
 
@@ -8740,7 +8986,7 @@ END
       const c = colors();
       const contact = state.contacts.find(c => c.type === 'salt');
       if (!contact) {
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
         document.getElementById('chemNote').innerHTML = `<strong>No salt bridge detected in ${state.structureId}</strong>This loaded structure did not have a side-chain N/O charge pair within the current salt-bridge cutoff. Try Side-chain Contacts or pH & Charge to inspect polar and ionizable groups that are present.`;
         return;
       }
@@ -8759,7 +9005,7 @@ END
       }
       addResidueLabel(contact.resA, c.positive);
       addResidueLabel(contact.resB, c.negative);
-      state.viewer.zoomTo({ or: [residueSpec(contact.resA), residueSpec(contact.resB)] });
+      zoomViewerSafely({ or: [residueSpec(contact.resA), residueSpec(contact.resB)] });
       document.getElementById('chemNote').innerHTML = `<strong>Salt bridge</strong>${contactLabel(contact)} pairs opposite formal charges. The carboxylate charge is spread over two oxygens, which helps stabilize the negative state.`;
     }
 
@@ -8787,7 +9033,7 @@ END
         addChargeCloud(his93.byName.get('NE2'), c.negative, 'N');
         addResidueLabel(his93, c.resonance);
       }
-      state.viewer.zoomTo({ or: [{ resn: 'HEM' }, his93 ? residueSpec(his93) : { resn: 'HEM' }] });
+      zoomViewerSafely({ or: [{ resn: 'HEM' }, his93 ? residueSpec(his93) : { resn: 'HEM' }] });
       document.getElementById('chemNote').innerHTML = '<strong>Heme pocket polarity</strong>Nitrogen lone pairs coordinate the iron. Nearby polar residues tune the pocket while hydrophobic residues help hold the heme in place.';
     }
 
@@ -8795,7 +9041,7 @@ END
       const c = colors();
       const ligand = ligandGroups()[0];
       if (!ligand) {
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
         document.getElementById('chemNote').innerHTML = `<strong>No non-water ligand detected in ${state.structureId}</strong>This structure does not include a heme-like cofactor or other HETATM ligand to inspect. Use the other chemistry modes to explore backbone, side-chain, and pH-dependent features from this protein.`;
         return;
       }
@@ -8814,7 +9060,7 @@ END
         addResidueLabel(entry.residue, c.selected);
       });
       const selection = [{ resn: ligand.resn, chain: ligand.chain, resi: ligand.resi }, ...nearby.map(entry => residueSpec(entry.residue))];
-      state.viewer.zoomTo({ or: selection });
+      zoomViewerSafely({ or: selection });
       document.getElementById('chemNote').innerHTML = `<strong>${ligand.resn} ligand/cofactor environment</strong>${state.structureId} does not contain HEM, so this mode is showing the largest non-water ligand/cofactor in the loaded structure. Dashed lines mark nearby protein atoms within about 4 Å for students to inspect possible polar, hydrophobic, or coordination contacts.`;
     }
 
@@ -8834,7 +9080,7 @@ END
       addChargeCloud(nitrogen, c.positive, 'delta+');
       addLonePairDots(oxygen, carbon);
       addAngleLabel(carbon, 'partial double-bond character', c.resonance);
-      state.viewer.zoomTo({ or: [residueSpec(residue), residueSpec(next)] });
+      zoomViewerSafely({ or: [residueSpec(residue), residueSpec(next)] });
       document.getElementById('chemNote').innerHTML = `<strong>Peptide bond resonance</strong>The peptide C-N bond has partial double-bond character, which helps keep the backbone planar. That planarity is part of why phi and psi rotations matter so much.`;
     }
 
@@ -8852,7 +9098,7 @@ END
       });
       addSphere(cz, c.resonance, 0.24, 0.28);
       addResidueLabel(residue, c.resonance);
-      state.viewer.zoomTo(residueSpec(residue));
+      zoomViewerSafely(residueSpec(residue));
       document.getElementById('chemNote').innerHTML = `<strong>Guanidinium resonance</strong>Arginine's positive charge is delocalized over the guanidinium group. That charge spreading helps make arginine strongly basic and good at multi-point electrostatic contacts.`;
     }
 
@@ -9132,13 +9378,16 @@ END
       const color = info.type === 'acid' ? colors().negative : colors().positive;
       const neutralPercent = Math.round((1 - charged) * 100);
       const chargedPercent = Math.round(charged * 100);
-      state.viewer.setStyle(residueSpec(residue), { stick: { colorscheme: 'Jmol', radius: 0.24 } });
-      sideChainChargeAtoms(residue).forEach(atom => addChargeCloud(atom, color, `${chargedPercent}%`));
-      if (info.type === 'acid') addCarboxylateChemistry(residue);
-      addResidueLabel(residue, color);
-      state.viewer.zoomTo(residueSpec(residue));
+      if (hasViewer()) {
+        state.viewer.setStyle(residueSpec(residue), { stick: { colorscheme: 'Jmol', radius: 0.24 } });
+        sideChainChargeAtoms(residue).forEach(atom => addChargeCloud(atom, color, `${chargedPercent}%`));
+        if (info.type === 'acid') addCarboxylateChemistry(residue);
+        addResidueLabel(residue, color);
+        zoomViewerSafely(residueSpec(residue));
+      }
       document.getElementById('chargedFraction').textContent = `${chargedPercent}%`;
-      document.getElementById('phNote').innerHTML = `<strong>${residue.label}: ${info.neutral} ⇌ ${info.charged}</strong>At pH ${state.pH.toFixed(1)}, about ${chargedPercent}% is in the charged form and ${neutralPercent}% is neutral. ${info.note}`;
+      const renderNote = hasViewer() ? '' : ' The protein residue calculation is still available, but the 3D highlight is disabled until the viewer starts.';
+      document.getElementById('phNote').innerHTML = `<strong>${residue.label}: ${info.neutral} ⇌ ${info.charged}</strong>At pH ${state.pH.toFixed(1)}, about ${chargedPercent}% is in the charged form and ${neutralPercent}% is neutral. ${info.note}${renderNote}`;
     }
 
     function shownSolventResidues() {
@@ -9171,7 +9420,7 @@ END
         ? 'Small SASA means little surface is reachable by a rolling water-sized probe, so the residue is more buried.'
         : 'Large SASA means more of the residue surface is reachable by a rolling water-sized probe, so the residue is more solvent-exposed.';
       document.getElementById('solventNote').innerHTML = `<strong>Solvent-accessible surface area</strong>${note} Values are approximate Å² from the embedded model.`;
-      if (shown.length) state.viewer.zoomTo({ or: shown.map(entry => residueSpec(entry.residue)) });
+      if (shown.length) zoomViewerSafely({ or: shown.map(entry => residueSpec(entry.residue)) });
     }
 
     function populateSolventList(entries) {
@@ -9182,8 +9431,8 @@ END
         item.className = 'item';
         item.innerHTML = `<strong>${entry.residue.label}</strong><span>${Math.round(entry.area)} Å² solvent-accessible surface area</span><div class="strength-meter"><div class="strength-fill" style="width:${Math.min(100, entry.area / (state.sasa[0]?.area || 1) * 100)}%;background:${colors().exposed}"></div></div>`;
         item.addEventListener('click', () => {
-          state.viewer.zoomTo(residueSpec(entry.residue));
-          state.viewer.render();
+          zoomViewerSafely(residueSpec(entry.residue));
+          renderViewerSafely();
         });
         list.appendChild(item);
       });
@@ -9228,7 +9477,7 @@ END
       document.getElementById('acidicSurfaceCount').textContent = countWithPercent(acid, exposed.length);
       document.getElementById('basicSurfaceCount').textContent = countWithPercent(base, exposed.length);
       document.getElementById('chargeSurfaceNote').innerHTML = `<strong>pH ${state.pH.toFixed(1)} surface charge</strong>Orange-red marks mostly deprotonated acidic groups; blue marks mostly protonated basic groups. Use the pH slider in pH & Charge, then return here to see the surface update.`;
-      state.viewer.zoomTo({ hetflag: false });
+      zoomViewerSafely({ hetflag: false });
     }
 
     function hydrophobicEntries() {
@@ -9254,7 +9503,7 @@ END
       document.getElementById('hydrophobicBuriedCount').textContent = countWithPercent(buried.length, allHydrophobic.length);
       populateHydrophobicList(shown);
       document.getElementById('hydrophobicNote').innerHTML = `<strong>Hydrophobic effect evidence</strong>Buried hydrophobic residues have smaller SASA values, consistent with nonpolar side chains packing away from water inside this globular protein. Try Surface or Space-filling view to see how these side chains contribute to the packed core. Exposed hydrophobic patches are worth asking about: they may indicate a binding surface, packing interface, or local pocket.`;
-      if (shown.length) state.viewer.zoomTo({ or: shown.map(entry => residueSpec(entry.residue)) });
+      if (shown.length) zoomViewerSafely({ or: shown.map(entry => residueSpec(entry.residue)) });
     }
 
     function populateHydrophobicList(entries) {
@@ -9265,8 +9514,8 @@ END
         item.className = 'item';
         item.innerHTML = `<strong>${entry.residue.label}</strong><span>${Math.round(entry.area)} Å² SASA; ${entry.area < 55 ? 'buried/core-like' : 'more exposed'}</span>`;
         item.addEventListener('click', () => {
-          state.viewer.zoomTo(residueSpec(entry.residue));
-          state.viewer.render();
+          zoomViewerSafely(residueSpec(entry.residue));
+          renderViewerSafely();
         });
         list.appendChild(item);
       });
@@ -9561,8 +9810,8 @@ END
       state.conservationMapMode = 'features';
       state.selectedConservationResidueKey = row.entry.residue.key;
       applyMode();
-      state.viewer.zoomTo(residueSpec(row.entry.residue));
-      state.viewer.render();
+      zoomViewerSafely(residueSpec(row.entry.residue));
+      renderViewerSafely();
     }
 
     function conservationColor(score) {
@@ -9719,7 +9968,7 @@ END
           : `<strong>Conservation not computed yet</strong>Prepare a comparison set for ${currentConservationFamily().name}, then click Compute Conservation. The table will appear after at least one valid comparison structure is used.`;
         renderConservationTable([]);
         renderCerGenerator([]);
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
         return;
       }
       const conserved = state.conservation.filter(entry => entry.score === 1);
@@ -9737,7 +9986,7 @@ END
       applyConservationStructureColoring(layerRows);
       renderConservationTable(layerRows);
       renderCerGenerator(layerRows);
-      state.viewer.zoomTo({ hetflag: false });
+      zoomViewerSafely({ hetflag: false });
     }
 
     function sortedConservationRows(rows) {
@@ -9770,8 +10019,8 @@ END
           state.selectedConservationResidueKey = residue.key;
           applyMode();
           if (shouldAutoZoomSelectedResidue()) {
-            state.viewer.zoomTo(residueSpec(residue));
-            state.viewer.render();
+            zoomViewerSafely(residueSpec(residue));
+            renderViewerSafely();
           } else {
             setViewerControlMessage(`${residue.label} is highlighted. Use Focus Selected Residue when you want molecular detail.`);
           }
@@ -9842,7 +10091,7 @@ END
       } else if (state.mutation === 'L104D') {
         document.getElementById('mutationNote').innerHTML = '<strong>Leu 104 -> Asp</strong>This introduces a charged/polar acidic group into a hydrophobic region near the heme environment. It is a good “hydrophobic core disruption” prediction exercise.';
       }
-      state.viewer.zoomTo({ or: selected.map(residueSpec) });
+      zoomViewerSafely({ or: selected.map(residueSpec) });
     }
 
     function drawGenericMutationScan() {
@@ -9853,7 +10102,7 @@ END
         addLine(salt.atomA, salt.atomB, c.salt, true, interactionRadius(salt.distance, 4.0, 2.7));
         addResidueLabel(salt.resA, c.salt);
         addResidueLabel(salt.resB, c.salt);
-        state.viewer.zoomTo({ or: [residueSpec(salt.resA), residueSpec(salt.resB)] });
+        zoomViewerSafely({ or: [residueSpec(salt.resA), residueSpec(salt.resB)] });
         document.getElementById('mutationNote').innerHTML = `<strong>${state.structureId} generic mutation scan: charged contact</strong>The curated menu labels are myoglobin examples, but this overlay now uses the loaded protein. A mutation such as ${salt.resA.label} -> neutral or ${salt.resB.label} -> neutral would test whether this ${salt.distance.toFixed(2)} Å salt bridge helps stabilize the local fold or binding surface.`;
         return;
       }
@@ -9864,7 +10113,7 @@ END
         const selections = buriedHydrophobics.map(entry => residueSpec(entry.residue));
         state.viewer.setStyle({ or: selections }, { stick: { colorscheme: 'Jmol', radius: 0.2 }, sphere: { scale: 0.24 } });
         buriedHydrophobics.forEach(entry => addResidueLabel(entry.residue, c.hydrophobic));
-        state.viewer.zoomTo({ or: selections });
+        zoomViewerSafely({ or: selections });
         document.getElementById('mutationNote').innerHTML = `<strong>${state.structureId} generic mutation scan: hydrophobic core</strong>No close salt bridge was detected, so this view highlights buried hydrophobic residues from this protein. A mutation from a buried nonpolar side chain to a charged or very polar residue would be a good prediction exercise about core packing and solvent exclusion.`;
         return;
       }
@@ -9872,12 +10121,12 @@ END
       if (ion) {
         state.viewer.setStyle(residueSpec(ion), { stick: { colorscheme: 'Jmol', radius: 0.24 }, sphere: { scale: 0.25 } });
         addResidueLabel(ion, c.selected);
-        state.viewer.zoomTo(residueSpec(ion));
+        zoomViewerSafely(residueSpec(ion));
         document.getElementById('mutationNote').innerHTML = `<strong>${state.structureId} generic mutation scan: ionizable residue</strong>This view highlights ${ion.label}. Ask what would happen if this residue became neutral, nonpolar, or oppositely charged, then compare predictions with the pH, charge-surface, and contact overlays.`;
         return;
       }
       state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
-      state.viewer.zoomTo({ hetflag: false });
+      zoomViewerSafely({ hetflag: false });
       document.getElementById('mutationNote').innerHTML = `<strong>${state.structureId} generic mutation scan</strong>The loaded structure has been recomputed, but no obvious salt bridge, buried hydrophobic cluster, or ionizable standard residue was found by the current heuristics.`;
     }
 
@@ -9942,8 +10191,9 @@ END
     }
 
     function drawLessonOverlay(scene) {
+      if (!hasViewer() && scene.mode !== 'ph') return;
       if (scene.mode === 'overview') {
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
       } else if (scene.mode === 'hbonds') {
         drawHbonds();
       } else if (scene.mode === 'chemistry') {
@@ -10017,7 +10267,7 @@ END
       const code = document.getElementById('pdbSuggestion').value.trim().toUpperCase() || '____';
       const examples = entry.examples.map(example => `${example.id} (${example.label})`).join('; ');
       document.getElementById('galleryNote').innerHTML = `<strong>${document.getElementById('galleryClass').selectedOptions[0].textContent}</strong>Suggested examples: ${examples}.<br><br><strong>Readiness checklist for ${code}</strong>Look for: ${entry.evidence}. For a general PDB-code version, the tool needs: structure fetch, ligand/cofactor detection, chain/domain selection, generic active-site/contact discovery, screenshot/export support, and a fallback prompt set when no ligand or no standard residues are present.`;
-      state.viewer.zoomTo({ hetflag: false });
+      zoomViewerSafely({ hetflag: false });
     }
 
     function sheetResidues(sheet) {
@@ -10086,7 +10336,7 @@ END
       document.getElementById('betaSheetCount').textContent = `${allGroups.length} / ${state.sheets.length}`;
 
       if (!state.sheets.length) {
-        state.viewer.zoomTo({ hetflag: false });
+        zoomViewerSafely({ hetflag: false });
         betaTopologyExamples.forEach(example => {
           const item = document.createElement('div');
           item.className = 'item';
@@ -10113,7 +10363,7 @@ END
         item.innerHTML = `<strong>Sheet ${group.sheetId}: ${group.type}${group.barrelLike ? ', barrel-like candidate' : ''}</strong><span>${group.strands.length} strands; ${group.residues.length} residues. ${ranges}</span>`;
         item.addEventListener('click', () => {
           state.selectedSheetKey = group.sheetId;
-          state.viewer.zoomTo({ or: group.residues.map(residueSpec) });
+          zoomViewerSafely({ or: group.residues.map(residueSpec) });
           drawBetaTopology();
         });
         list.appendChild(item);
@@ -10127,8 +10377,8 @@ END
       }
 
       const selected = allGroups.find(group => group.sheetId === state.selectedSheetKey) || groups[0];
-      if (selected?.residues.length) state.viewer.zoomTo({ or: selected.residues.map(residueSpec) });
-      else state.viewer.zoomTo({ hetflag: false });
+      if (selected?.residues.length) zoomViewerSafely({ or: selected.residues.map(residueSpec) });
+      else zoomViewerSafely({ hetflag: false });
       document.getElementById('betaTopologyNote').innerHTML = `<strong>PDB SHEET record classification</strong>Parallel and antiparallel labels come from the structure file's strand sense values. Mixed means a sheet contains both directions. Barrel-like is a teaching heuristic for sheets with six or more strands; a rigorous beta-barrel/topology assignment would also check closure, strand order, and hydrogen-bond network.`;
     }
 
@@ -10448,36 +10698,106 @@ END
       state.pdb = pdb;
       state.structureId = id.toUpperCase();
       state.structureLabel = label;
-      const parsed = parsePdb(state.pdb);
-      Object.assign(state, parsed);
-      state.hbonds = computeBackboneHbonds(state.residues);
-      state.torsions = computeTorsions(state.residues);
-      state.contacts = computeContacts(state.residues, state.atoms);
-      state.ionizable = state.residues.filter(residue => ionizableInfo[residue.resn]);
-      state.solvent = computeSolventAccess(state.residues);
-      state.sasa = computeSasa(state.residues, state.atoms);
-      state.conservation = [];
-      state.conservationSources = [];
-      resetStructureState();
-      document.getElementById('structureTitle').textContent = `${state.structureLabel} (${state.structureId})`;
-      document.getElementById('structureSubtitle').textContent = `${state.residues.length} amino-acid residues detected; features recomputed from loaded coordinates`;
-      document.getElementById('currentStructureLabel').textContent = `${state.structureLabel} (${state.structureId})`;
-      document.title = 'Biochemistry Visual Atlas';
+      try {
+        const parsed = parsePdb(state.pdb);
+        if (!parsed.residues.length) throw new Error('No standard amino-acid residues were found in this coordinate file.');
+        Object.assign(state, parsed);
+        state.hbonds = computeBackboneHbonds(state.residues);
+        state.torsions = computeTorsions(state.residues);
+        state.contacts = computeContacts(state.residues, state.atoms);
+        state.ionizable = state.residues.filter(residue => ionizableInfo[residue.resn]);
+        state.solvent = computeSolventAccess(state.residues);
+        state.sasa = computeSasa(state.residues, state.atoms);
+        state.conservation = [];
+        state.conservationSources = [];
+        state.structureStatus = APP_STATES.COORDINATES_PARSED;
+        state.lastStructureError = '';
+        resetStructureState();
+        document.getElementById('structureTitle').textContent = `${state.structureLabel} (${state.structureId})`;
+        document.getElementById('structureSubtitle').textContent = `${state.residues.length} amino-acid residues detected; features recomputed from loaded coordinates`;
+        document.getElementById('currentStructureLabel').textContent = `${state.structureLabel} (${state.structureId})`;
+        document.title = 'Biochemistry Visual Atlas';
+        populateControls();
+        populateLessonList();
+        populateProteinPresets();
+        renderAtlasDatasetRegistrySummary();
+        return true;
+      } catch (error) {
+        state.structureStatus = APP_STATES.PARSING_FAILED;
+        state.appStatus = APP_STATES.PARSING_FAILED;
+        state.lastStructureError = error?.message || 'The coordinate file could not be parsed.';
+        state.pdb = '';
+        state.atoms = [];
+        state.residues = [];
+        state.residueMap = new Map();
+        state.hbonds = [];
+        state.torsions = [];
+        state.contacts = [];
+        state.ionizable = [];
+        state.solvent = [];
+        state.sasa = [];
+        updateSystemStatus();
+        throw error;
+      }
     }
 
     function renderCurrentModel() {
-      if (!state.viewer) return;
-      if (state.viewer.removeAllModels) state.viewer.removeAllModels();
-      clearShapesAndLabels();
-      state.model = state.viewer.addModel(state.pdb, 'pdb');
-      state.viewer.setViewStyle({ style: 'outline', color: '#cbd5e1', width: 0.035 });
-      state.viewer.zoomTo();
+      if (!canRenderStructure()) {
+        state.viewerStatus = APP_STATES.COORDINATES_WITHOUT_3D;
+        state.appStatus = APP_STATES.COORDINATES_WITHOUT_3D;
+        updateViewerDependentControls();
+        applyMode();
+        return false;
+      }
+      try {
+        if (state.viewer.removeAllModels) state.viewer.removeAllModels();
+        clearShapesAndLabels();
+        state.model = state.viewer.addModel(state.pdb, 'pdb');
+        state.viewer.setViewStyle({ style: 'outline', color: '#cbd5e1', width: 0.035 });
+        zoomViewerSafely();
+        state.viewerStatus = APP_STATES.VIEWER_READY;
+        state.appStatus = APP_STATES.VIEWER_READY;
+        updateViewerDependentControls();
+        applyMode();
+        return true;
+      } catch (error) {
+        console.warn(error);
+        markViewerUnavailable(error);
+        applyMode();
+        return false;
+      }
+    }
 
-      populateControls();
-      populateLessonList();
-      populateProteinPresets();
-      renderAtlasDatasetRegistrySummary();
-      applyMode();
+    async function fetchStructureCoordinates(code) {
+      try {
+        const response = await fetch(`https://files.rcsb.org/download/${code}.pdb`);
+        if (!response.ok) throw new Error(`RCSB returned ${response.status} for ${code}`);
+        return { pdb: await response.text(), source: 'RCSB PDB' };
+      } catch (remoteError) {
+        if (code === '1MBN') {
+          const fallbackResponse = await fetch('./1MBN.pdb');
+          if (fallbackResponse.ok) {
+            return { pdb: await fallbackResponse.text(), source: 'local fallback', remoteError };
+          }
+        }
+        throw remoteError;
+      }
+    }
+
+    async function loadInitialStructure() {
+      state.structureId = '1MBN';
+      state.structureLabel = 'Myoglobin';
+      state.structureStatus = APP_STATES.COORDINATES_LOADING;
+      state.appStatus = APP_STATES.COORDINATES_LOADING;
+      updateSystemStatus();
+      const embeddedPdb = document.getElementById('embeddedPdb')?.textContent?.trim();
+      const pdb = embeddedPdb || await fetch('./1MBN.pdb').then(response => {
+        if (!response.ok) throw new Error(`Local myoglobin file returned ${response.status}`);
+        return response.text();
+      });
+      applyParsedStructure(pdb, '1MBN', 'Myoglobin');
+      state.appStatus = hasViewer() ? APP_STATES.VIEWER_READY : APP_STATES.COORDINATES_WITHOUT_3D;
+      renderCurrentModel();
     }
 
     async function loadStructureById(id, label = id) {
@@ -10486,24 +10806,87 @@ END
         document.getElementById('galleryNote').innerHTML = '<strong>Check the PDB ID</strong>Use a 4-character PDB ID, such as 1MBN or 1CA2.';
         return;
       }
-      document.getElementById('status').textContent = `Loading ${code} from RCSB...`;
+      state.structureId = code;
+      state.structureLabel = label || selectedPresetLabel(code);
+      state.structureStatus = APP_STATES.COORDINATES_LOADING;
+      state.appStatus = APP_STATES.COORDINATES_LOADING;
+      updateSystemStatus();
       document.getElementById('galleryNote').innerHTML = `<strong>Loading ${code}</strong>Fetching coordinates from RCSB PDB and recomputing structural features.`;
-      const response = await fetch(`https://files.rcsb.org/download/${code}.pdb`);
-      if (!response.ok) throw new Error(`RCSB returned ${response.status} for ${code}`);
-      const pdb = await response.text();
-      applyParsedStructure(pdb, code, label || selectedPresetLabel(code));
-      state.mode = 'overview';
-      renderCurrentModel();
-      document.getElementById('galleryNote').innerHTML = `<strong>${code} loaded</strong>The viewer recomputed residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, SASA, hydrophobic regions, charge surfaces, beta sheets, ligand/cofactor contacts, and helix-pattern candidates from the loaded structure. Conservation still needs a biologically related comparison set for newly loaded proteins.`;
+      try {
+        const result = await fetchStructureCoordinates(code);
+        applyParsedStructure(result.pdb, code, label || selectedPresetLabel(code));
+        state.mode = 'overview';
+        renderCurrentModel();
+        const fallbackText = result.source === 'local fallback' ? ' RCSB was unavailable, so the bundled local myoglobin file was used.' : '';
+        document.getElementById('galleryNote').innerHTML = `<strong>${code} loaded</strong>${fallbackText} The atlas recomputed residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, SASA, hydrophobic regions, charge surfaces, beta sheets, ligand/cofactor contacts, and helix-pattern candidates from the loaded structure. Conservation still needs a biologically related comparison set for newly loaded proteins.`;
+      } catch (error) {
+        state.structureStatus = APP_STATES.RETRIEVAL_FAILED;
+        state.appStatus = APP_STATES.RETRIEVAL_FAILED;
+        state.lastStructureError = error?.message || `Could not retrieve ${code}.`;
+        document.getElementById('galleryNote').innerHTML = `<strong>Could not load ${code}</strong>Check the PDB ID or network connection, then use Retry Structure. Non-3D tools remain available.`;
+        updateSystemStatus();
+        applyMode();
+        throw error;
+      }
+    }
+
+    function initializeViewerSubsystem() {
+      if (!window.$3Dmol || typeof $3Dmol.createViewer !== 'function') {
+        throw new Error('3Dmol.js did not load, so WebGL rendering is unavailable.');
+      }
+      state.viewer = $3Dmol.createViewer('viewer', { backgroundColor: '#eef3f8' });
+      state.viewerStatus = hasParsedCoordinates() ? APP_STATES.VIEWER_READY : APP_STATES.STARTING;
+      state.lastViewerError = '';
+      return state.viewer;
+    }
+
+    function initializeCoreInterface() {
+      state.initializedCore = true;
+      restoreSplitPaneWidths();
+      populateControls();
+      populateLessonList();
+      populateProteinPresets();
+      renderAtlasDatasetRegistrySummary();
+      applyMode();
+    }
+
+    async function retryViewer() {
+      try {
+        initializeViewerSubsystem();
+        renderCurrentModel();
+      } catch (error) {
+        console.warn(error);
+        markViewerUnavailable(error);
+      }
+    }
+
+    async function retryStructure() {
+      try {
+        await loadStructureById(state.structureId || '1MBN', state.structureLabel || 'Myoglobin');
+      } catch (error) {
+        console.error(error);
+      }
     }
 
     async function init() {
-      const embeddedPdb = document.getElementById('embeddedPdb')?.textContent?.trim();
-      const pdb = embeddedPdb || await fetch('./1MBN.pdb').then(r => r.text());
-      applyParsedStructure(pdb, '1MBN', 'Myoglobin');
-      state.viewer = $3Dmol.createViewer('viewer', { backgroundColor: '#eef3f8' });
-      restoreSplitPaneWidths();
-      renderCurrentModel();
+      initializeCoreInterface();
+      try {
+        initializeViewerSubsystem();
+      } catch (error) {
+        console.warn(error);
+        markViewerUnavailable(error);
+      }
+      try {
+        await loadInitialStructure();
+      } catch (error) {
+        console.error(error);
+        state.structureStatus = error?.message?.includes('No standard amino-acid residues') ? APP_STATES.PARSING_FAILED : APP_STATES.RETRIEVAL_FAILED;
+        state.appStatus = state.structureStatus;
+        state.lastStructureError = error?.message || 'Could not load the structure files.';
+        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, Rubisco sequence, and guided text tools. Try Retry Structure when ready.', { viewer: false });
+        updateSystemStatus();
+        applyMode();
+      }
     }
 
     document.getElementById('modeTabs').addEventListener('click', event => {
@@ -10512,9 +10895,11 @@ END
       state.mode = button.dataset.mode;
       if (state.mode !== 'hbonds') state.selectedHbond = null;
       if (state.mode !== 'tertiary') state.selectedContact = null;
-      applyMode();
+      applyMode({ restoreFocus: true });
     });
 
+    document.getElementById('retryViewer').addEventListener('click', retryViewer);
+    document.getElementById('retryStructure').addEventListener('click', retryStructure);
     document.getElementById('fitWholeStructure').addEventListener('click', fitWholeStructure);
     document.getElementById('focusSelectedResidue').addEventListener('click', focusSelectedResidue);
     document.getElementById('focusFunctionalSite').addEventListener('click', focusFunctionalSite);
@@ -10599,14 +10984,14 @@ END
         state.backboneManipulator.active = event.target.value === 'manipulate';
         if (state.backboneManipulator.mode === 'inspect') syncBackboneManipulatorToSelection(true);
         preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-        state.viewer.render();
+        renderViewerSafely();
       });
     });
 
     document.getElementById('selectedDihedral').addEventListener('change', event => {
       state.backboneManipulator.selectedDihedral = event.target.value;
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
     });
 
     document.querySelectorAll('[data-select-dihedral]').forEach(button => {
@@ -10630,14 +11015,14 @@ END
       if (entry) {
         document.getElementById('dihedralStatus').innerHTML = `<strong>Look down selected bond</strong>The ${peptideJoints[manipulator.selectedDihedral].label} bond is emphasized in the 3D viewer. Rotate the view gently to inspect which atoms sit on each side of the axis.`;
       }
-      state.viewer.render();
+      renderViewerSafely();
     });
 
     document.getElementById('movingSide').addEventListener('change', event => {
       state.backboneManipulator.movingSide = event.target.value;
       rebuildManipulatorCoordinates();
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
     });
 
     document.querySelectorAll('[data-dihedral-interaction]').forEach(button => {
@@ -10675,7 +11060,7 @@ END
         const key = id === 'showMotionTrail' ? 'showMotionTrail' : id === 'showDihedralClashes' ? 'showClashes' : 'showHydrogenBonds';
         state.backboneManipulator[key] = event.target.checked;
         preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-        state.viewer.render();
+        renderViewerSafely();
       });
     });
 
@@ -10733,7 +11118,7 @@ END
           rebuildManipulatorCoordinates();
           document.getElementById('dihedralStatus').innerHTML = `<strong>Preset example</strong>${info.label}`;
           preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-          state.viewer.render();
+          renderViewerSafely();
         }
       }
     });
@@ -10772,7 +11157,7 @@ END
         document.getElementById('dihedralStatus').innerHTML = '<strong>Peptide rigidity demo</strong>Large rotation around ω would disrupt peptide-bond planarity and is energetically unfavorable. This teaching demo shows only a small wiggle and then returns to native when reset.';
       }
       preserveWorkspacePosition(() => drawTorsion({ preserveView: true }));
-      state.viewer.render();
+      renderViewerSafely();
     });
 
     document.getElementById('dihedralTutorialResponse').addEventListener('input', event => {
@@ -11214,8 +11599,11 @@ END
     });
 
     init().catch(error => {
-      console.error(error);
-      document.getElementById('status').textContent = 'Could not load the structure files.';
+      console.warn(error);
+      state.appStatus = state.structureStatus || APP_STATES.RETRIEVAL_FAILED;
+      state.lastStructureError = error?.message || 'Could not load the structure files.';
+      updateSystemStatus();
+      showViewerFallback('Atlas started in recovery mode', 'Some startup work failed, but the non-3D teaching tools should remain available. Try Retry Structure or Retry Viewer.', { viewer: hasParsedCoordinates() });
     });
   </script>
 </body>
