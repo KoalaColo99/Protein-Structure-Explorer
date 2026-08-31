@@ -359,6 +359,166 @@
       margin-bottom: 16px;
     }
 
+    .student-mode-switch {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 7px;
+      margin: 0 0 12px;
+    }
+
+    .student-mode-switch button {
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .front-door,
+    .pathway-panel,
+    .learning-context {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      margin: 0 0 14px;
+      padding: 11px;
+    }
+
+    .front-door h2,
+    .pathway-panel h2 {
+      font-size: 16px;
+      margin: 0 0 7px;
+    }
+
+    .front-door p,
+    .pathway-panel p,
+    .learning-context span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    .pathway-grid {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pathway-card {
+      display: grid;
+      gap: 4px;
+      min-height: 68px;
+      text-align: left;
+    }
+
+    .pathway-card strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .pathway-card span {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .pathway-objectives {
+      margin: 8px 0 10px;
+      padding-left: 18px;
+    }
+
+    .pathway-objectives li {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+      margin: 3px 0;
+    }
+
+    .pathway-progress {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .pathway-step {
+      align-items: start;
+      display: grid;
+      gap: 4px;
+      grid-template-columns: 26px 1fr;
+      min-height: 44px;
+    }
+
+    .pathway-step .step-number {
+      align-items: center;
+      background: #e2e8f0;
+      border-radius: 999px;
+      display: flex;
+      font-size: 12px;
+      font-weight: 800;
+      height: 24px;
+      justify-content: center;
+      width: 24px;
+    }
+
+    .pathway-step.active .step-number {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .pathway-step button {
+      padding: 8px;
+      width: 100%;
+    }
+
+    .learning-context {
+      display: grid;
+      gap: 7px;
+    }
+
+    .context-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+    }
+
+    .context-item {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .context-item strong {
+      display: block;
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .student-mode-learn [data-student-area],
+    .student-mode-explore [data-student-area],
+    .student-mode-analyze [data-student-area] {
+      display: none;
+    }
+
+    .student-mode-explore [data-student-area~="explore"],
+    .student-mode-analyze [data-student-area~="analyze"] {
+      display: grid;
+    }
+
+    .student-mode-learn .front-door,
+    .student-mode-learn .pathway-panel {
+      display: block;
+    }
+
+    .student-mode-learn:not(.student-pathway-active) .mode-panel {
+      display: none;
+    }
+
+    .student-mode-explore .front-door,
+    .student-mode-explore .pathway-panel,
+    .student-mode-analyze .front-door,
+    .student-mode-analyze .pathway-panel {
+      display: none;
+    }
+
     .atlas-group {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1757,12 +1917,44 @@
         <p><strong>Function &amp; Prediction</strong> — Connect structure to biological function and compare experimental structures with predictive models (coming soon).</p>
       </section>
 
+      <div class="student-mode-switch" id="studentModeSwitch" role="tablist" aria-label="Atlas navigation modes">
+        <button type="button" data-student-mode="learn" class="active" role="tab" aria-selected="true">Learn</button>
+        <button type="button" data-student-mode="explore" role="tab" aria-selected="false">Explore</button>
+        <button type="button" data-student-mode="analyze" role="tab" aria-selected="false">Analyze</button>
+      </div>
+
+      <section class="learning-context" aria-label="Current learning context">
+        <span>Current context</span>
+        <div class="context-grid">
+          <div class="context-item"><span>Structure</span><strong id="contextStructure">Myoglobin (1MBN)</strong></div>
+          <div class="context-item"><span>Chain</span><strong id="contextChain">A</strong></div>
+          <div class="context-item"><span>Selected residue</span><strong id="contextResidue">none</strong></div>
+          <div class="context-item"><span>Pathway</span><strong id="contextPathway">Front door</strong></div>
+        </div>
+      </section>
+
+      <section class="front-door" id="frontDoor" aria-labelledby="frontDoorTitle">
+        <h2 id="frontDoorTitle" tabindex="-1">What would you like to investigate?</h2>
+        <p>Choose one pathway. Your current protein and selected residue stay in place as you move between pathways and tools.</p>
+        <div class="pathway-grid" id="pathwayGrid"></div>
+      </section>
+
+      <section class="pathway-panel hidden" id="pathwayPanel" aria-live="polite">
+        <h2 id="pathwayTitle">Pathway</h2>
+        <p id="pathwaySummary"></p>
+        <ol class="pathway-objectives" id="pathwayObjectives"></ol>
+        <div class="pathway-progress" id="pathwayProgress"></div>
+        <div class="button-row">
+          <button type="button" id="returnToFrontDoor">Return to front door</button>
+          <button type="button" id="continuePathway">Continue pathway</button>
+        </div>
+      </section>
+
       <div class="atlas-nav" id="modeTabs" aria-label="Biochemistry Visual Atlas navigation">
-        <div class="atlas-group">
-          <h2>Protein Explorer</h2>
+        <div class="atlas-group" data-student-area="explore">
+          <h2>Explore Current Protein</h2>
           <div class="atlas-tools">
             <button class="active" data-mode="overview">Structure</button>
-            <button data-mode="conservation">Structure Conservation</button>
             <button data-mode="torsions">Ramachandran</button>
             <button data-mode="hbonds">Backbone H-bonds</button>
             <button data-mode="tertiary">Side-chain Interactions</button>
@@ -1770,37 +1962,48 @@
             <button data-mode="betaTopology">Beta / Topology</button>
             <button data-mode="solvent">Solvent Access</button>
             <button data-mode="hydrophobic">Hydrophobic Core</button>
-            <button data-mode="gallery">Structure Gallery</button>
           </div>
         </div>
-        <div class="atlas-group">
+        <div class="atlas-group" data-student-area="explore">
           <h2>Atlas Case Studies</h2>
           <div class="atlas-tools">
             <button data-mode="sequence">Rubisco Sequence Atlas</button>
           </div>
         </div>
-        <div class="atlas-group">
-          <h2>Chemical Properties</h2>
+        <div class="atlas-group" data-student-area="explore">
+          <h2>Explore Chemistry</h2>
           <div class="atlas-tools">
             <button data-mode="ph">pH & Charge</button>
-            <button data-mode="ph">Buffers</button>
-            <button data-mode="ph">Amino Acids</button>
             <button data-mode="chemistry">Chemistry Lens</button>
             <button data-mode="chargeSurface">Charge Surface</button>
-          </div>
-        </div>
-        <div class="atlas-group">
-          <h2>Function</h2>
-          <div class="atlas-tools">
-            <button disabled>Ligands<span class="coming-soon">Coming soon</span></button>
-            <button disabled>Active Sites<span class="coming-soon">Coming soon</span></button>
             <button data-mode="mutation">Mutation Sandbox</button>
             <button data-mode="lesson">Guided Lesson</button>
           </div>
         </div>
-        <div class="atlas-group">
-          <h2>Prediction</h2>
+        <div class="atlas-group" data-student-area="analyze">
+          <h2>Analyze &amp; Advanced Tools</h2>
           <div class="atlas-tools">
+            <button data-mode="gallery">Custom PDB Loading</button>
+            <button data-mode="conservation">Conservation Analysis</button>
+            <button data-mode="torsions">Measurements: Phi/Psi</button>
+            <button data-mode="solvent">Measurements: SASA</button>
+            <button data-mode="tertiary">Measurements: Contacts</button>
+            <button data-mode="mutation">Mutation Sandbox</button>
+          </div>
+        </div>
+        <div class="atlas-group" data-student-area="analyze">
+          <h2>Data &amp; Export Readiness</h2>
+          <div class="atlas-tools">
+            <button data-mode="sequence">Sequence Data</button>
+            <button data-mode="overview">Structure Sequence</button>
+            <button data-mode="gallery">Image / Dataset Export Plan</button>
+          </div>
+        </div>
+        <div class="atlas-group" data-student-area="analyze">
+          <h2>Development Roadmap</h2>
+          <div class="atlas-tools">
+            <button disabled>Ligands<span class="coming-soon">Coming soon</span></button>
+            <button disabled>Active Sites<span class="coming-soon">Coming soon</span></button>
             <button disabled>AlphaFold<span class="coming-soon">Coming soon</span></button>
             <button disabled>Comparative Structures<span class="coming-soon">Coming soon</span></button>
           </div>
@@ -1816,7 +2019,7 @@
         </details>
       </section>
 
-      <section class="section">
+      <section class="section" data-student-area="analyze">
         <h2>Display</h2>
         <div class="row">
           <label for="paletteMode">Palette</label>
@@ -1855,6 +2058,17 @@
           <p class="viewer-note">Use “Fit Whole Structure” when you need context. Use “Focus Selected Residue” when you need molecular detail.</p>
           <div class="warning-text" id="viewerControlMessage"></div>
         </div>
+      </section>
+
+      <section class="section" data-student-area="analyze">
+        <h2>Export</h2>
+        <p>Capture lightweight evidence from the current structure and learning context without leaving the static page.</p>
+        <div class="button-row">
+          <button type="button" id="exportStructureSummary">Download structure summary JSON</button>
+          <button type="button" id="downloadViewerImage">Download current viewer image</button>
+          <button type="button" id="copyLearningSummary">Copy learning summary</button>
+        </div>
+        <div class="warning-text" id="exportStatus" aria-live="polite"></div>
       </section>
 
       <section class="section mode-panel" id="overviewPanel">
@@ -4473,6 +4687,90 @@ END
       NO_STRUCTURE: 'no structure selected'
     };
 
+    const LEARNING_PATHWAYS = {
+      sequence_structure: {
+        letter: 'A',
+        title: 'How does sequence produce structure?',
+        summary: 'Amino acids -> peptide backbone -> Ramachandran constraints -> secondary structure',
+        objectives: [
+          'Identify how amino-acid side-chain properties influence local structure.',
+          'Explain how peptide-bond geometry constrains backbone rotation.',
+          'Use phi/psi values to connect sequence positions with allowed backbone conformations.',
+          'Recognize backbone hydrogen-bond patterns that support common secondary structures.'
+        ],
+        steps: [
+          { label: 'Amino acids', mode: 'ph', prompt: 'Start by comparing side-chain charge, polarity, and pKa behavior.' },
+          { label: 'Peptide backbone', mode: 'overview', prompt: 'Read the structure sequence and locate the repeating backbone pattern.' },
+          { label: 'Ramachandran constraints', mode: 'torsions', prompt: 'Choose a residue and connect its phi/psi values to allowed regions.' },
+          { label: 'Secondary structure', mode: 'hbonds', prompt: 'Look for recurring backbone hydrogen bonds that stabilize helices or sheets.' }
+        ]
+      },
+      folded_stability: {
+        letter: 'B',
+        title: 'What stabilizes a folded protein?',
+        summary: 'Backbone hydrogen bonds -> side-chain interactions -> hydrophobic core -> solvent exposure',
+        objectives: [
+          'Classify stabilizing interactions as backbone, side-chain, hydrophobic, or solvent-related.',
+          'Use structural evidence to describe why buried and exposed residues play different roles.',
+          'Compare local contacts with whole-protein packing.'
+        ],
+        steps: [
+          { label: 'Backbone hydrogen bonds', mode: 'hbonds', prompt: 'Find repeated backbone contacts and decide whether they support secondary structure.' },
+          { label: 'Side-chain interactions', mode: 'tertiary', prompt: 'Compare salt bridges, hydrogen bonds, hydrophobic contacts, and heme contacts.' },
+          { label: 'Hydrophobic core', mode: 'hydrophobic', prompt: 'Look for nonpolar residues packed away from water.' },
+          { label: 'Solvent exposure', mode: 'solvent', prompt: 'Use SASA values to separate exposed surfaces from buried residues.' }
+        ]
+      },
+      ph_effects: {
+        letter: 'C',
+        title: 'How does pH affect a protein?',
+        summary: 'Amino-acid ionization -> residue protonation -> net charge -> charge distribution',
+        objectives: [
+          'Predict protonation trends from pH and pKa.',
+          'Estimate charged fraction for a selected ionizable residue.',
+          'Relate residue charge changes to protein surface charge distribution.'
+        ],
+        steps: [
+          { label: 'Amino-acid ionization', mode: 'ph', prompt: 'Use the amino-acid table to predict which form dominates.' },
+          { label: 'Residue protonation', mode: 'ph', prompt: 'Select an ionizable residue from the loaded structure and adjust pH.' },
+          { label: 'Net charge thinking', mode: 'ph', prompt: 'Use charged fractions to reason about how many groups contribute positive or negative charge.' },
+          { label: 'Charge distribution', mode: 'chargeSurface', prompt: 'Map likely acidic and basic surface regions at the chosen pH.' }
+        ]
+      },
+      structure_function: {
+        letter: 'D',
+        title: 'How does structure support function?',
+        summary: 'Overall fold -> functional site -> residue interactions -> mutation reasoning',
+        objectives: [
+          'Describe the relationship between global fold and a functional site.',
+          'Identify residues or cofactors that provide functional evidence.',
+          'Predict how a mutation could alter charge, packing, or binding.'
+        ],
+        steps: [
+          { label: 'Overall fold', mode: 'overview', prompt: 'Start broad: describe the fold and any visible cofactors.' },
+          { label: 'Functional site', mode: 'conservation', prompt: 'Inspect functional-feature suggestions and conserved regions as evidence.' },
+          { label: 'Residue interactions', mode: 'tertiary', prompt: 'Focus on contacts near a selected residue or cofactor.' },
+          { label: 'Mutation reasoning', mode: 'mutation', prompt: 'Make a claim about what chemical feature changes in a mutation.' }
+        ]
+      },
+      protein_evolution: {
+        letter: 'E',
+        title: 'How has this protein evolved?',
+        summary: 'Sequence comparison -> conservation -> structural mapping -> functional interpretation',
+        objectives: [
+          'Distinguish curated sequence comparison from structure-residue mapping.',
+          'Interpret conservation scores as evidence rather than proof.',
+          'Connect conserved residues or regions to possible structural or functional roles.'
+        ],
+        steps: [
+          { label: 'Sequence comparison', mode: 'sequence', prompt: 'Compare curated Rubisco sequences without assuming structure numbering.' },
+          { label: 'Conservation', mode: 'conservation', prompt: 'Prepare and compute a biologically related comparison set for the loaded structure.' },
+          { label: 'Structural mapping', mode: 'conservation', prompt: 'Map computed conservation onto the current reference structure when available.' },
+          { label: 'Functional interpretation', mode: 'mutation', prompt: 'Use conservation and chemistry evidence to reason about mutation effects.' }
+        ]
+      }
+    };
+
     const state = {
       viewer: null,
       model: null,
@@ -4498,6 +4796,9 @@ END
       conservationSources: [],
       sheets: [],
       mode: 'overview',
+      studentMode: 'learn',
+      activePathway: null,
+      activePathwayStep: 0,
       activeEvolutionDatasetId: 'rubisco',
       curatedSequenceDatasetId: 'photosynthesis_rubisco_large_subunit_oxygenic_phototrophs',
       curatedSequenceValidation: null,
@@ -5994,6 +6295,238 @@ END
       if (retryStructureButton) retryStructureButton.disabled = false;
     }
 
+    function currentResidue() {
+      return state.torsions[state.selectedResidueIndex]?.residue || state.residues[state.selectedResidueIndex] || null;
+    }
+
+    function updateLearningContext() {
+      const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
+      const residue = currentResidue();
+      document.getElementById('contextStructure').textContent = `${state.structureLabel} (${state.structureId})`;
+      document.getElementById('contextChain').textContent = residue?.chain || state.residues[0]?.chain || 'none';
+      document.getElementById('contextResidue').textContent = residue ? residue.label : 'none selected';
+      document.getElementById('contextPathway').textContent = pathway ? `${pathway.letter}. ${pathway.title}` : 'Front door';
+    }
+
+    function renderStudentModeControls() {
+      const app = document.querySelector('.app');
+      app?.classList.remove('student-mode-learn', 'student-mode-explore', 'student-mode-analyze', 'student-pathway-active');
+      app?.classList.add(`student-mode-${state.studentMode}`);
+      app?.classList.toggle('student-pathway-active', Boolean(state.activePathway));
+      document.querySelectorAll('#studentModeSwitch button').forEach(button => {
+        const selected = button.dataset.studentMode === state.studentMode;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-selected', selected ? 'true' : 'false');
+      });
+      document.getElementById('frontDoor')?.classList.toggle('hidden', !(state.studentMode === 'learn' && !state.activePathway));
+      document.getElementById('pathwayPanel')?.classList.toggle('hidden', !(state.studentMode === 'learn' && state.activePathway));
+    }
+
+    function renderFrontDoor() {
+      const grid = document.getElementById('pathwayGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+      Object.entries(LEARNING_PATHWAYS).forEach(([id, pathway]) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'pathway-card';
+        button.dataset.pathway = id;
+        button.setAttribute('aria-label', `${pathway.letter}. ${pathway.title}. ${pathway.summary}`);
+        button.innerHTML = `<strong>${pathway.letter}. ${pathway.title}</strong><span>${pathway.summary}</span>`;
+        grid.appendChild(button);
+      });
+    }
+
+    function renderPathwayPanel() {
+      const panel = document.getElementById('pathwayPanel');
+      const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
+      if (!panel || !pathway) return;
+      document.getElementById('pathwayTitle').textContent = `${pathway.letter}. ${pathway.title}`;
+      document.getElementById('pathwaySummary').textContent = pathway.summary;
+      const objectives = document.getElementById('pathwayObjectives');
+      objectives.innerHTML = pathway.objectives.map(objective => `<li>${objective}</li>`).join('');
+      const progress = document.getElementById('pathwayProgress');
+      progress.innerHTML = '';
+      pathway.steps.forEach((step, index) => {
+        const item = document.createElement('div');
+        item.className = `pathway-step${index === state.activePathwayStep ? ' active' : ''}`;
+        item.innerHTML = `<span class="step-number">${index + 1}</span><button type="button" data-pathway-step="${index}" aria-current="${index === state.activePathwayStep ? 'step' : 'false'}"><strong>${step.label}</strong><span>${step.prompt}</span></button>`;
+        progress.appendChild(item);
+      });
+      document.getElementById('continuePathway').textContent = state.activePathwayStep >= pathway.steps.length - 1 ? 'Restart pathway' : 'Continue pathway';
+      updateLearningContext();
+    }
+
+    function writeStudentRoute(push = true) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('student', state.studentMode);
+      params.set('tool', state.mode);
+      if (state.activePathway) {
+        params.set('pathway', state.activePathway);
+        params.set('step', String(state.activePathwayStep));
+      } else {
+        params.delete('pathway');
+        params.delete('step');
+      }
+      const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
+      const method = push ? 'pushState' : 'replaceState';
+      window.history[method]({ studentMode: state.studentMode, pathway: state.activePathway, step: state.activePathwayStep, mode: state.mode }, '', nextUrl);
+    }
+
+    function readStudentRouteFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const studentMode = params.get('student');
+      const pathway = params.get('pathway');
+      const mode = params.get('tool');
+      const step = Number(params.get('step'));
+      if (['learn', 'explore', 'analyze'].includes(studentMode)) state.studentMode = studentMode;
+      const hasPathway = pathway && LEARNING_PATHWAYS[pathway];
+      if (hasPathway) {
+        state.studentMode = 'learn';
+        state.activePathway = pathway;
+        const pathwaySteps = LEARNING_PATHWAYS[pathway].steps;
+        state.activePathwayStep = Number.isInteger(step) ? Math.max(0, Math.min(pathwaySteps.length - 1, step)) : 0;
+        state.mode = pathwaySteps[state.activePathwayStep].mode;
+      } else {
+        state.activePathway = null;
+      }
+      if (!hasPathway && mode && document.getElementById(`${mode}Panel`)) state.mode = mode;
+    }
+
+    function setStudentMode(mode, options = {}) {
+      if (!['learn', 'explore', 'analyze'].includes(mode)) return;
+      state.studentMode = mode;
+      if (mode !== 'learn') state.activePathway = null;
+      renderStudentModeControls();
+      renderPathwayPanel();
+      updateLearningContext();
+      applyMode({ restoreFocus: options.restoreFocus });
+      if (options.updateUrl !== false) writeStudentRoute(options.push !== false);
+    }
+
+    function enterPathway(pathwayId, stepIndex = 0, options = {}) {
+      const pathway = LEARNING_PATHWAYS[pathwayId];
+      if (!pathway) return;
+      state.studentMode = 'learn';
+      state.activePathway = pathwayId;
+      state.activePathwayStep = Math.max(0, Math.min(pathway.steps.length - 1, Number(stepIndex) || 0));
+      state.mode = pathway.steps[state.activePathwayStep].mode;
+      renderStudentModeControls();
+      renderPathwayPanel();
+      applyMode({ restoreFocus: options.restoreFocus !== false });
+      if (options.updateUrl !== false) writeStudentRoute(options.push !== false);
+    }
+
+    function activatePathwayStep(index, options = {}) {
+      if (!state.activePathway) return;
+      enterPathway(state.activePathway, index, options);
+    }
+
+    function returnToFrontDoor(options = {}) {
+      state.studentMode = 'learn';
+      state.activePathway = null;
+      state.activePathwayStep = 0;
+      renderStudentModeControls();
+      renderPathwayPanel();
+      updateLearningContext();
+      document.getElementById('frontDoorTitle')?.focus?.();
+      if (options.updateUrl !== false) writeStudentRoute(options.push !== false);
+    }
+
+    function structureSummaryPayload() {
+      const residue = currentResidue();
+      const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
+      return {
+        generatedAt: new Date().toISOString(),
+        structure: {
+          id: state.structureId,
+          label: state.structureLabel,
+          residueCount: state.residues.length,
+          chainCount: new Set(state.residues.map(residueItem => residueItem.chain || '(blank)')).size,
+          hbondCandidates: state.hbonds.length,
+          sideChainContacts: state.contacts.length,
+          parsedAtoms: state.atoms.length
+        },
+        selectedResidue: residue ? {
+          label: residue.label,
+          chain: residue.chain,
+          resi: residue.resi,
+          resn: residue.resn
+        } : null,
+        studentNavigation: {
+          mode: state.studentMode,
+          tool: state.mode,
+          pathway: pathway ? pathway.title : null,
+          pathwayStep: pathway ? pathway.steps[state.activePathwayStep]?.label : null
+        },
+        viewer: {
+          appStatus: state.appStatus,
+          structureStatus: state.structureStatus,
+          viewerStatus: state.viewerStatus
+        }
+      };
+    }
+
+    function setExportStatus(message) {
+      const status = document.getElementById('exportStatus');
+      if (status) status.textContent = message;
+    }
+
+    function downloadStructureSummary() {
+      const payload = structureSummaryPayload();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${state.structureId || 'structure'}-atlas-summary.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setExportStatus('Structure summary JSON downloaded.');
+    }
+
+    function downloadViewerImage() {
+      const canvas = document.querySelector('#viewer canvas');
+      if (!canvas) {
+        setExportStatus('No viewer canvas is available. Try Retry Viewer, then download the image.');
+        return;
+      }
+      try {
+        const link = document.createElement('a');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${state.structureId || 'structure'}-viewer.png`;
+        link.click();
+        setExportStatus('Current viewer image downloaded.');
+      } catch (error) {
+        setExportStatus('The browser could not export the current viewer image.');
+      }
+    }
+
+    async function copyLearningSummary() {
+      const payload = structureSummaryPayload();
+      const text = [
+        `Structure: ${payload.structure.label} (${payload.structure.id})`,
+        `Selected residue: ${payload.selectedResidue ? payload.selectedResidue.label : 'none selected'}`,
+        `Mode: ${payload.studentNavigation.mode}`,
+        `Pathway: ${payload.studentNavigation.pathway || 'front door'}`,
+        `Current tool: ${payload.studentNavigation.tool}`,
+        `Evidence: ${payload.structure.residueCount} parsed residues, ${payload.structure.hbondCandidates} backbone H-bond candidates, ${payload.structure.sideChainContacts} side-chain contacts.`
+      ].join('\n');
+      try {
+        await navigator.clipboard.writeText(text);
+        setExportStatus('Learning summary copied.');
+      } catch (error) {
+        setExportStatus('Copy was blocked by the browser. You can still download the JSON summary.');
+      }
+    }
+
+    function activateButtonFromKeyboard(event) {
+      if (!['Enter', ' '].includes(event.key)) return;
+      const button = event.target.closest('button');
+      if (!button || button.disabled) return;
+      event.preventDefault();
+      button.click();
+    }
+
     function clearShapesAndLabels() {
       if (!hasViewer()) return;
       state.viewer.removeAllShapes();
@@ -6136,6 +6669,7 @@ END
       if (state.mode === 'sequence') drawVisualEvolutionExplorer();
       if (state.mode === 'sequence') {
         hideViewerFallback();
+        updateLearningContext();
         updateSystemStatus();
         if (options.restoreFocus) focusActivePanel();
         return;
@@ -6143,6 +6677,7 @@ END
 
       if (!hasParsedCoordinates() && modeNeedsViewer(state.mode)) {
         showViewerFallback('No structure coordinates available', viewerUnavailableMessage(), { viewer: false });
+        updateLearningContext();
         updateSystemStatus();
         if (options.restoreFocus) focusActivePanel();
         return;
@@ -6186,6 +6721,7 @@ END
         showViewerFallback('3D viewer unavailable', viewerUnavailableMessage());
       }
 
+      updateLearningContext();
       updateSystemStatus();
       if (options.restoreFocus) focusActivePanel();
     }
@@ -10842,12 +11378,18 @@ END
 
     function initializeCoreInterface() {
       state.initializedCore = true;
+      readStudentRouteFromUrl();
+      renderFrontDoor();
+      renderStudentModeControls();
+      renderPathwayPanel();
+      updateLearningContext();
       restoreSplitPaneWidths();
       populateControls();
       populateLessonList();
       populateProteinPresets();
       renderAtlasDatasetRegistrySummary();
       applyMode();
+      writeStudentRoute(false);
     }
 
     async function retryViewer() {
@@ -10892,14 +11434,59 @@ END
     document.getElementById('modeTabs').addEventListener('click', event => {
       const button = event.target.closest('button[data-mode]');
       if (!button) return;
+      state.activePathway = null;
       state.mode = button.dataset.mode;
       if (state.mode !== 'hbonds') state.selectedHbond = null;
       if (state.mode !== 'tertiary') state.selectedContact = null;
+      applyMode({ restoreFocus: true });
+      writeStudentRoute(true);
+    });
+    document.getElementById('modeTabs').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('studentModeSwitch').addEventListener('click', event => {
+      const button = event.target.closest('button[data-student-mode]');
+      if (!button) return;
+      setStudentMode(button.dataset.studentMode, { restoreFocus: true, push: true });
+    });
+    document.getElementById('studentModeSwitch').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('pathwayGrid').addEventListener('click', event => {
+      const button = event.target.closest('button[data-pathway]');
+      if (!button) return;
+      enterPathway(button.dataset.pathway, 0, { restoreFocus: true, push: true });
+    });
+    document.getElementById('pathwayGrid').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('pathwayProgress').addEventListener('click', event => {
+      const button = event.target.closest('button[data-pathway-step]');
+      if (!button) return;
+      activatePathwayStep(Number(button.dataset.pathwayStep), { restoreFocus: true, push: true });
+    });
+    document.getElementById('pathwayProgress').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('returnToFrontDoor').addEventListener('click', () => {
+      returnToFrontDoor({ push: true });
+    });
+
+    document.getElementById('continuePathway').addEventListener('click', () => {
+      if (!state.activePathway) return;
+      const steps = LEARNING_PATHWAYS[state.activePathway].steps;
+      const next = state.activePathwayStep >= steps.length - 1 ? 0 : state.activePathwayStep + 1;
+      activatePathwayStep(next, { restoreFocus: true, push: true });
+    });
+
+    window.addEventListener('popstate', () => {
+      readStudentRouteFromUrl();
+      renderStudentModeControls();
+      renderPathwayPanel();
       applyMode({ restoreFocus: true });
     });
 
     document.getElementById('retryViewer').addEventListener('click', retryViewer);
     document.getElementById('retryStructure').addEventListener('click', retryStructure);
+    document.getElementById('exportStructureSummary').addEventListener('click', downloadStructureSummary);
+    document.getElementById('downloadViewerImage').addEventListener('click', downloadViewerImage);
+    document.getElementById('copyLearningSummary').addEventListener('click', copyLearningSummary);
     document.getElementById('fitWholeStructure').addEventListener('click', fitWholeStructure);
     document.getElementById('focusSelectedResidue').addEventListener('click', focusSelectedResidue);
     document.getElementById('focusFunctionalSite').addEventListener('click', focusFunctionalSite);
