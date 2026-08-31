@@ -2085,6 +2085,9 @@
           <h2>Analyze &amp; Advanced Tools</h2>
           <div class="atlas-tools">
             <button data-mode="gallery">Custom PDB Loading</button>
+            <button data-mode="ligands">Ligand Explorer</button>
+            <button data-mode="activeSite">Active-Site Explorer</button>
+            <button data-mode="comparison">Structure Comparison</button>
             <button data-mode="conservation">Conservation Analysis</button>
             <button data-mode="torsions">Measurements: Phi/Psi</button>
             <button data-mode="solvent">Measurements: SASA</button>
@@ -2103,10 +2106,7 @@
         <div class="atlas-group" data-student-area="analyze">
           <h2>Development Roadmap</h2>
           <div class="atlas-tools">
-            <button disabled>Ligands<span class="coming-soon">Coming soon</span></button>
-            <button disabled>Active Sites<span class="coming-soon">Coming soon</span></button>
             <button disabled>AlphaFold<span class="coming-soon">Coming soon</span></button>
-            <button disabled>Comparative Structures<span class="coming-soon">Coming soon</span></button>
           </div>
         </div>
       </div>
@@ -2164,10 +2164,36 @@
       <section class="section" data-student-area="analyze">
         <h2>Export</h2>
         <p>Capture lightweight evidence from the current structure and learning context without leaving the static page.</p>
+        <div class="guided-controls">
+          <label for="studentClaimInput">Student claim</label>
+          <textarea id="studentClaimInput" rows="2" placeholder="Claim: what do you think this molecular evidence shows?"></textarea>
+          <label for="studentEvidenceInput">Supporting evidence</label>
+          <textarea id="studentEvidenceInput" rows="2" placeholder="Evidence: selected residues, distances, pH values, SASA, contacts, or plot position."></textarea>
+          <label for="studentReasoningInput">Reasoning</label>
+          <textarea id="studentReasoningInput" rows="3" placeholder="Reasoning: connect the evidence to the biochemical principle."></textarea>
+          <label for="instructorPromptInput">Optional instructor prompt for starting link</label>
+          <textarea id="instructorPromptInput" rows="2" placeholder="Example: Use the pH pathway to explain why histidine changes charge near physiological pH."></textarea>
+          <label for="instructorObjectivesInput">Suggested learning objectives</label>
+          <textarea id="instructorObjectivesInput" rows="2" placeholder="Example: Identify the selected residue; report pH and pKa; explain fractional protonation."></textarea>
+          <label for="completionChecklistInput">Student completion checklist</label>
+          <textarea id="completionChecklistInput" rows="2" placeholder="Example: prediction made; evidence captured; claim revised; assumptions stated."></textarea>
+          <label for="activityLinkOutput">Shareable instructor starting-state link</label>
+          <input id="activityLinkOutput" type="text" readonly aria-describedby="activityPrivacyNote">
+          <p class="viewer-note" id="activityPrivacyNote">Activity links encode safe setup state only. Student names, claims, evidence, and reasoning are kept local unless intentionally copied or downloaded.</p>
+        </div>
         <div class="button-row">
+          <button type="button" id="createActivityLink">Create starting-state link</button>
           <button type="button" id="exportStructureSummary">Download structure summary JSON</button>
           <button type="button" id="downloadViewerImage">Download current viewer image</button>
+          <button type="button" id="downloadPlotSvg">Download current 2D plot SVG</button>
+          <button type="button" id="downloadMeasurementsCsv">Download selected-measurements CSV</button>
+          <button type="button" id="downloadMarkdownSummary">Download Markdown analysis</button>
+          <button type="button" id="downloadCerReport">Download printable CER report</button>
           <button type="button" id="copyLearningSummary">Copy learning summary</button>
+        </div>
+        <div class="mini-card" id="molecularEvidenceCard" aria-live="polite">
+          <h3>Molecular Evidence Card</h3>
+          <p>Fill in a claim, evidence, and reasoning above, then export a local report for submission.</p>
         </div>
         <div class="warning-text" id="exportStatus" aria-live="polite"></div>
       </section>
@@ -2804,6 +2830,115 @@ rotation axis B—C</div>
         <div class="chem-note" id="chargeSurfaceNote"></div>
       </section>
 
+      <section class="section mode-panel hidden" id="ligandsPanel">
+        <h2>Ligand Explorer</h2>
+        <p>Inspect observed non-protein coordinates without assuming they are biologically meaningful binding events. Ligands, cofactors, ions, water, and likely crystallization additives are separated when possible.</p>
+        <div class="row">
+          <label for="ligandFilter">Show</label>
+          <select id="ligandFilter">
+            <option value="all">All observed heterogens</option>
+            <option value="cofactor">Cofactors and prosthetic groups</option>
+            <option value="ligand">Likely ligands</option>
+            <option value="ion">Ions and metals</option>
+            <option value="additive">Likely crystallization additives</option>
+            <option value="water">Waters</option>
+          </select>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong id="ligandCount">-</strong><span>groups shown</span></div>
+          <div class="stat"><strong id="nearbyLigandResidues">-</strong><span>nearby residues</span></div>
+          <div class="stat"><strong id="selectedLigandCategory">-</strong><span>selected category</span></div>
+        </div>
+        <div class="legend">
+          <div class="key"><span class="swatch" style="background:#111827"></span> cofactor / prosthetic group</div>
+          <div class="key"><span class="swatch" style="background:#0072b2"></span> ion or metal</div>
+          <div class="key"><span class="swatch" style="background:#009e73"></span> likely ligand</div>
+          <div class="key"><span class="swatch" style="background:#64748b"></span> water or crystallization additive</div>
+        </div>
+        <div class="list" id="ligandList"></div>
+        <table class="rama-data-table" id="ligandContactTable">
+          <caption>Nearby residues and distances for the selected observed ligand group</caption>
+          <thead>
+            <tr><th>Residue</th><th>Closest atoms</th><th>Distance</th><th>Cautious contact label</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="chem-note" id="ligandNote"></div>
+        <details id="ligandMethodDisclosure">
+          <summary>Ligand classification and contact method</summary>
+          <p>HETATM groups are classified from residue names and element patterns: common cofactors such as HEM are labeled cofactors; recognized metals and simple inorganic ions are labeled ions; water is separate; common crystallization additives such as glycerol, sulfate, phosphate, PEG/EDO, and buffer ions are labeled likely additives.</p>
+          <p>Nearby residues are reported from closest heavy-atom distances, usually within 4.5 Å. Contact labels are cautious geometry descriptions such as polar contact candidate, hydrophobic proximity, ionic/coordination candidate, or close contact. They are not binding-affinity measurements and do not prove biological significance.</p>
+        </details>
+      </section>
+
+      <section class="section mode-panel hidden" id="activeSitePanel">
+        <h2>Active-Site Explorer</h2>
+        <p>Use curated teaching annotations to inspect functional residues. Geometry can support interpretation, but this tool does not infer an active site from proximity alone.</p>
+        <div class="row">
+          <label for="activeSiteFilter">Show</label>
+          <select id="activeSiteFilter">
+            <option value="all">All curated residues</option>
+            <option value="catalytic">Catalytic residues</option>
+            <option value="binding">Binding residues</option>
+            <option value="structural">Structural residues</option>
+            <option value="uncertain">Uncertain or context-dependent residues</option>
+          </select>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong id="activeSiteAnnotationCount">-</strong><span>curated residues shown</span></div>
+          <div class="stat"><strong id="activeSiteMappedCount">-</strong><span>mapped to coordinates</span></div>
+          <div class="stat"><strong id="activeSiteCategory">-</strong><span>selected role</span></div>
+        </div>
+        <div class="legend">
+          <div class="key"><span class="swatch" style="background:#d55e00"></span> catalytic</div>
+          <div class="key"><span class="swatch" style="background:#009e73"></span> binding</div>
+          <div class="key"><span class="swatch" style="background:#0072b2"></span> structural</div>
+          <div class="key"><span class="swatch" style="background:#8b5cf6"></span> uncertain / context-dependent</div>
+        </div>
+        <div class="list" id="activeSiteList"></div>
+        <table class="rama-data-table" id="activeSiteEvidenceTable">
+          <caption>Curated active-site evidence and coordinate context</caption>
+          <thead>
+            <tr><th>Residue</th><th>Curated role</th><th>Evidence source</th><th>Coordinate context</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="chem-note" id="activeSiteNote"></div>
+        <details id="activeSiteMethodDisclosure">
+          <summary>Active-site annotation method</summary>
+          <p>Active-site residues are shown only when this atlas has a curated teaching annotation for the loaded PDB ID. Categories distinguish catalytic, binding, structural, and uncertain residues. The citation and evidence source are displayed with each annotation.</p>
+          <p>Nearby ligand or residue distances are reported as coordinate context, not as proof of catalytic function. If no curated annotation exists, the tool intentionally avoids naming an active site from geometry alone.</p>
+        </details>
+      </section>
+
+      <section class="section mode-panel hidden" id="comparisonPanel">
+        <h2>Structure Comparison</h2>
+        <p>Compare the loaded experimental structure with curated related experimental structures or predicted models. The module reports mapping limits before interpretation.</p>
+        <div class="row">
+          <label for="comparisonCaseSelect">Teaching comparison</label>
+          <select id="comparisonCaseSelect"></select>
+        </div>
+        <div class="stats">
+          <div class="stat"><strong id="comparisonCoverage">-</strong><span>alignment coverage</span></div>
+          <div class="stat"><strong id="comparisonRmsd">-</strong><span>reported RMSD</span></div>
+          <div class="stat"><strong id="comparisonConfidence">-</strong><span>prediction confidence</span></div>
+        </div>
+        <table class="rama-data-table" id="comparisonTable">
+          <caption>Experimental-versus-predicted or related-structure comparison summary</caption>
+          <thead>
+            <tr><th>Comparison</th><th>Type</th><th>Mapping and coverage</th><th>RMSD / confidence</th><th>Interpretation limit</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="chem-note" id="comparisonResidueNote"></div>
+        <div class="chem-note" id="comparisonNote"></div>
+        <details id="comparisonMethodDisclosure">
+          <summary>Structure-comparison method</summary>
+          <p>Curated examples report precomputed teaching-level alignment coverage, residue mapping notes, RMSD values when available, and prediction-confidence summaries when a predicted model is included. This static page does not run a structural-alignment server.</p>
+          <p>RMSD is sensitive to which atoms and residues are aligned, and a low global RMSD can hide important local differences. Missing experimental coordinates, unresolved flexible loops, predicted disorder, and low-confidence prediction regions are reported separately when the curated case includes that information.</p>
+        </details>
+      </section>
+
       <section class="section mode-panel hidden" id="hydrophobicPanel">
         <h2>Hydrophobic Core</h2>
         <p>Hydrophobic side chains are grouped by solvent accessibility. Buried hydrophobic residues help form the globular core; exposed hydrophobic patches can indicate binding or packing surfaces.</p>
@@ -3004,7 +3139,7 @@ rotation axis B—C</div>
 
       <section class="section mode-panel hidden" id="mutationPanel">
         <h2>Mutation Sandbox</h2>
-        <p>Ask “what changes chemically?” before asking whether the whole protein folds differently.</p>
+        <p>Use residue substitutions as a qualitative reasoning model. This is not a quantitative stability prediction; it helps students predict which chemical features might change.</p>
         <div class="row">
           <label for="mutationSelect">Try</label>
           <select id="mutationSelect">
@@ -3016,7 +3151,38 @@ rotation axis B—C</div>
             <option value="L104D">Leu 104 -> Asp</option>
           </select>
         </div>
+        <div class="row">
+          <label for="mutationResidueSelect">Current structure residue</label>
+          <select id="mutationResidueSelect"></select>
+        </div>
+        <div class="row">
+          <label for="mutationSubstitutionSelect">Substitute with</label>
+          <select id="mutationSubstitutionSelect"></select>
+        </div>
+        <div class="guided-controls">
+          <label for="mutationPredictionInput">Initial prediction</label>
+          <textarea id="mutationPredictionInput" rows="2" placeholder="Predict what changes: size, charge, polarity, hydrogen bonding, packing, or contacts."></textarea>
+          <label for="mutationRevisionInput">Revised prediction after evidence</label>
+          <textarea id="mutationRevisionInput" rows="2" placeholder="Revise your claim after comparing properties and nearby contacts."></textarea>
+        </div>
+        <table class="rama-data-table" id="mutationPropertyTable">
+          <caption>Qualitative property comparison for the selected substitution</caption>
+          <thead>
+            <tr><th>Feature</th><th>Original residue</th><th>Substitution</th><th>Reasoning cue</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <div class="stats">
+          <div class="stat"><strong id="mutationNearbyContacts">-</strong><span>nearby contacts</span></div>
+          <div class="stat"><strong id="mutationPotentialClashes">-</strong><span>possible size conflicts</span></div>
+        </div>
+        <div class="chem-note" id="mutationEvidenceNote"></div>
         <div class="chem-note" id="mutationNote"></div>
+        <details id="mutationMethodDisclosure">
+          <summary>Mutation reasoning method</summary>
+          <p>This sandbox compares residue class, approximate side-chain size, polarity, charge near pH 7, hydrogen-bond donor/acceptor capacity, and hydrophobicity. Nearby contacts come from observed coordinate distances; possible clashes are simple size-and-distance flags, not molecular mechanics.</p>
+          <p>Use the output to formulate and revise a prediction. It does not calculate ΔΔG, pKa shifts, folding probability, binding affinity, or disease impact.</p>
+        </details>
       </section>
 
       <section class="section mode-panel hidden" id="lessonPanel">
@@ -4908,6 +5074,7 @@ END
   </script>
 
   <script>
+    const ATLAS_VERSION = '2026.08-phase4';
     const PALETTES = {
       classic: {
         hbond: '#0891b2',
@@ -5043,8 +5210,13 @@ END
       lastStructureError: '',
       lastViewerError: '',
       initializedCore: false,
+      pendingActivityState: null,
+      activityValidationWarnings: [],
       structureId: '1MBN',
       structureLabel: 'Myoglobin',
+      structureSource: 'embedded local myoglobin',
+      structureModel: '1',
+      activeChain: 'A',
       pdb: '',
       atoms: [],
       residues: [],
@@ -5143,6 +5315,21 @@ END
       selectedAminoAcid: 'ASP',
       bufferPka: 7.4,
       selectedIonIndex: 0,
+      ligandFilter: 'all',
+      selectedLigandIndex: 0,
+      activeSiteFilter: 'all',
+      selectedActiveSiteIndex: 0,
+      comparisonCase: '',
+      studentObservations: {
+        claim: '',
+        evidence: '',
+        reasoning: ''
+      },
+      instructorSupport: {
+        prompt: '',
+        objectives: '',
+        checklist: ''
+      },
       paletteMode: 'safe',
       proteinView: 'cartoon',
       viewMode: 'context',
@@ -5150,6 +5337,10 @@ END
       solventType: 'exposed',
       selectedContact: null,
       mutation: 'E85Q',
+      mutationResidueKey: '',
+      mutationSubstitution: 'ALA',
+      mutationPrediction: '',
+      mutationRevision: '',
       lessonIndex: 0,
       hydrophobicType: 'buried',
       galleryClass: 'oxygen',
@@ -5232,6 +5423,28 @@ END
       TRP: { label: 'Tryptophan', classification: 'aromatic, nonpolar', special: '', sideChain: null },
       TYR: { label: 'Tyrosine', classification: 'aromatic, polar uncharged', special: 'phenol can ionize at high pH', sideChain: { name: 'side chain phenol', pKa: 10.1, type: 'acid' } },
       VAL: { label: 'Valine', classification: 'nonpolar', special: '', sideChain: null }
+    };
+    const mutationPropertyData = {
+      ALA: { size: 'small', sizeScore: 2, polarity: 'nonpolar', charge: 'neutral', hbond: 'none', hydrophobicity: 'hydrophobic' },
+      ARG: { size: 'large', sizeScore: 5, polarity: 'polar basic', charge: 'positive', hbond: 'donor-rich', hydrophobicity: 'hydrophilic' },
+      ASN: { size: 'medium', sizeScore: 3, polarity: 'polar', charge: 'neutral', hbond: 'donor and acceptor', hydrophobicity: 'hydrophilic' },
+      ASP: { size: 'medium', sizeScore: 3, polarity: 'acidic', charge: 'negative', hbond: 'acceptor', hydrophobicity: 'hydrophilic' },
+      CYS: { size: 'medium', sizeScore: 3, polarity: 'weakly polar', charge: 'mostly neutral', hbond: 'weak donor/acceptor', hydrophobicity: 'mixed' },
+      GLN: { size: 'large', sizeScore: 4, polarity: 'polar', charge: 'neutral', hbond: 'donor and acceptor', hydrophobicity: 'hydrophilic' },
+      GLU: { size: 'large', sizeScore: 4, polarity: 'acidic', charge: 'negative', hbond: 'acceptor', hydrophobicity: 'hydrophilic' },
+      GLY: { size: 'tiny', sizeScore: 1, polarity: 'flexible backbone special case', charge: 'neutral', hbond: 'none', hydrophobicity: 'mixed' },
+      HIS: { size: 'large', sizeScore: 4, polarity: 'aromatic basic', charge: 'partly positive near pH 7', hbond: 'donor or acceptor', hydrophobicity: 'mixed' },
+      ILE: { size: 'large', sizeScore: 4, polarity: 'nonpolar', charge: 'neutral', hbond: 'none', hydrophobicity: 'hydrophobic' },
+      LEU: { size: 'large', sizeScore: 4, polarity: 'nonpolar', charge: 'neutral', hbond: 'none', hydrophobicity: 'hydrophobic' },
+      LYS: { size: 'large', sizeScore: 5, polarity: 'polar basic', charge: 'positive', hbond: 'donor', hydrophobicity: 'hydrophilic' },
+      MET: { size: 'large', sizeScore: 4, polarity: 'weakly nonpolar thioether', charge: 'neutral', hbond: 'acceptor weak/rare', hydrophobicity: 'hydrophobic' },
+      PHE: { size: 'large', sizeScore: 5, polarity: 'aromatic nonpolar', charge: 'neutral', hbond: 'none', hydrophobicity: 'hydrophobic' },
+      PRO: { size: 'medium', sizeScore: 3, polarity: 'nonpolar cyclic', charge: 'neutral', hbond: 'none as backbone donor', hydrophobicity: 'hydrophobic' },
+      SER: { size: 'small', sizeScore: 2, polarity: 'polar', charge: 'neutral', hbond: 'donor and acceptor', hydrophobicity: 'hydrophilic' },
+      THR: { size: 'medium', sizeScore: 3, polarity: 'polar', charge: 'neutral', hbond: 'donor and acceptor', hydrophobicity: 'mixed' },
+      TRP: { size: 'very large', sizeScore: 6, polarity: 'aromatic mixed', charge: 'neutral', hbond: 'donor', hydrophobicity: 'hydrophobic' },
+      TYR: { size: 'very large', sizeScore: 6, polarity: 'aromatic polar', charge: 'mostly neutral', hbond: 'donor and acceptor', hydrophobicity: 'mixed' },
+      VAL: { size: 'medium', sizeScore: 3, polarity: 'nonpolar', charge: 'neutral', hbond: 'none', hydrophobicity: 'hydrophobic' }
     };
     const homologSequences = [
       { id: '1MBN', label: 'sperm whale myoglobin', sequence: 'VLSEGEWQLVLHVWAKVEADVAGHGQDILIRLFKSHPETLEKFDRFKHLKTEAEMKASEDLKKHGVTVLTALGAILKKKGHHEAELKPLAQSHATKHKIPIKYLEFISEAIIHVLHSRHPGDFGADAQGAMNKALELFRKDIAAKYKELGYQG' },
@@ -6562,6 +6775,9 @@ END
         chargeSurface: 'Charge surface',
         conservation: 'Structure conservation',
         mutation: 'Mutation sandbox',
+        ligands: 'Ligand explorer',
+        activeSite: 'Active-site explorer',
+        comparison: 'Structure comparison',
         lesson: 'Guided lesson',
         gallery: 'Structure gallery',
         betaTopology: 'Beta sheet topology',
@@ -6660,6 +6876,13 @@ END
 
     function readStudentRouteFromUrl() {
       const params = new URLSearchParams(window.location.search);
+      const decodedActivity = decodeActivityState(params.get('activity'));
+      state.activityValidationWarnings = decodedActivity.warnings;
+      if (decodedActivity.state) {
+        state.pendingActivityState = decodedActivity.state;
+        restoreSessionState(decodedActivity.state);
+        return;
+      }
       const studentMode = params.get('student');
       const pathway = params.get('pathway');
       const mode = params.get('tool');
@@ -6718,14 +6941,475 @@ END
       if (options.updateUrl !== false) writeStudentRoute(options.push !== false);
     }
 
+    function safeText(value, maxLength = 800) {
+      return String(value ?? '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+    }
+
+    function safePdbId(value) {
+      const code = String(value || '').trim().toUpperCase();
+      return /^[A-Z0-9]{4}$/.test(code) ? code : null;
+    }
+
+    function safeMode(value) {
+      const mode = String(value || '');
+      return document.getElementById(`${mode}Panel`) ? mode : null;
+    }
+
+    function safeStudentMode(value) {
+      return ['learn', 'explore', 'analyze'].includes(value) ? value : null;
+    }
+
+    function safePathway(value) {
+      return value && LEARNING_PATHWAYS[value] ? value : null;
+    }
+
+    function safeNumber(value, fallback, min, max) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return fallback;
+      return Math.max(min, Math.min(max, numeric));
+    }
+
+    function encodeActivityState(activityState) {
+      const json = JSON.stringify(activityState);
+      return btoa(unescape(encodeURIComponent(json))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    }
+
+    function decodeActivityState(encoded) {
+      if (!encoded) return { state: null, warnings: [] };
+      const warnings = [];
+      try {
+        const padded = encoded.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((encoded.length + 3) % 4);
+        const parsed = JSON.parse(decodeURIComponent(escape(atob(padded))));
+        return { state: validateActivityState(parsed, warnings), warnings };
+      } catch (error) {
+        return { state: null, warnings: ['Malformed activity link state was ignored.'] };
+      }
+    }
+
+    function validateActivityState(candidate, warnings = []) {
+      if (!candidate || typeof candidate !== 'object') {
+        warnings.push('Unsupported activity state was ignored.');
+        return null;
+      }
+      const pdbId = safePdbId(candidate.pdbId);
+      if (candidate.pdbId && !pdbId) warnings.push('Invalid PDB ID was ignored.');
+      const tool = safeMode(candidate.tool);
+      if (candidate.tool && !tool) warnings.push('Unsupported tool was ignored.');
+      const studentMode = safeStudentMode(candidate.studentMode) || 'learn';
+      const pathway = safePathway(candidate.pathway);
+      if (candidate.pathway && !pathway) warnings.push('Unsupported pathway was ignored.');
+      const selectedResidueIndex = Number.isInteger(Number(candidate.selectedResidueIndex))
+        ? Math.max(0, Number(candidate.selectedResidueIndex))
+        : 0;
+      return {
+        schema: 1,
+        pdbId: pdbId || '1MBN',
+        structureSource: safeText(candidate.structureSource || 'activity link', 120),
+        model: safeText(candidate.model || '1', 20),
+        chain: safeText(candidate.chain || 'A', 20),
+        selectedResidueIndex,
+        studentMode,
+        pathway,
+        pathwayStep: Math.max(0, Number(candidate.pathwayStep) || 0),
+        tool: tool || 'overview',
+        pH: safeNumber(candidate.pH, 7.0, 0, 14),
+        phCompare: safeNumber(candidate.phCompare, 5.0, 0, 14),
+        hhGroup: hhGroups[candidate.hhGroup] ? candidate.hhGroup : 'ASP',
+        aminoAcid: aminoAcidChargeData[candidate.aminoAcid] ? candidate.aminoAcid : 'ASP',
+        peptideSequence: safeText(candidate.peptideSequence || 'HDEK', 60).toUpperCase().replace(/[^ARNDCQEGHILKMFPSTWYV]/g, ''),
+        representation: ['cartoon', 'sticks', 'spacefill', 'surface'].includes(candidate.representation) ? candidate.representation : 'cartoon',
+        palette: PALETTES[candidate.palette] ? candidate.palette : 'safe',
+        visibleCategories: {
+          contactType: ['all', 'salt', 'sideHbond', 'hydrophobic', 'heme'].includes(candidate.visibleCategories?.contactType) ? candidate.visibleCategories.contactType : 'all',
+          stabilityToggles: {
+            backbone: candidate.visibleCategories?.stabilityToggles?.backbone !== false,
+            sidechain: candidate.visibleCategories?.stabilityToggles?.sidechain !== false,
+            salt: candidate.visibleCategories?.stabilityToggles?.salt !== false,
+            hydrophobic: candidate.visibleCategories?.stabilityToggles?.hydrophobic !== false,
+            solvent: candidate.visibleCategories?.stabilityToggles?.solvent !== false
+          }
+        },
+        instructor: {
+          prompt: safeText(candidate.instructor?.prompt, 500),
+          objectives: safeText(candidate.instructor?.objectives, 500),
+          checklist: safeText(candidate.instructor?.checklist, 500)
+        }
+      };
+    }
+
+    function selectedResidueSnapshot() {
+      const residues = new Map();
+      [currentResidue(), selectedStabilityResidue()].filter(Boolean).forEach(residue => residues.set(residue.key, residue));
+      if (state.selectedContact) {
+        residues.set(state.selectedContact.resA.key, state.selectedContact.resA);
+        if (state.selectedContact.resB?.key) residues.set(state.selectedContact.resB.key, state.selectedContact.resB);
+      }
+      if (state.selectedHbond) {
+        residues.set(state.selectedHbond.from.key, state.selectedHbond.from);
+        residues.set(state.selectedHbond.to.key, state.selectedHbond.to);
+      }
+      return [...residues.values()].map(residue => ({
+        label: residue.label,
+        chain: residue.chain,
+        resi: residue.resi,
+        resn: residue.resn
+      }));
+    }
+
+    function serializeSessionState(options = {}) {
+      const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
+      const session = {
+        schema: 1,
+        atlasVersion: ATLAS_VERSION,
+        pdbId: state.structureId,
+        structureSource: state.structureSource,
+        model: state.structureModel,
+        chain: state.activeChain || currentResidue()?.chain || 'A',
+        selectedResidueIndex: state.selectedResidueIndex,
+        selectedResidues: selectedResidueSnapshot(),
+        studentMode: state.studentMode,
+        pathway: state.activePathway,
+        pathwayTitle: pathway?.title || null,
+        pathwayStep: state.activePathwayStep,
+        tool: state.mode,
+        pH: state.pH,
+        phCompare: state.phCompare,
+        hhGroup: state.hhGroup,
+        aminoAcid: state.selectedAminoAcid,
+        peptideSequence: state.peptideSequence,
+        representation: state.proteinView,
+        palette: state.paletteMode,
+        visibleCategories: {
+          contactType: state.contactType,
+          solventType: state.solventType,
+          hydrophobicType: state.hydrophobicType,
+          stabilityToggles: { ...state.stabilityToggles }
+        },
+        calculations: calculationDisclosure(),
+        instructor: options.includeInstructor ? { ...state.instructorSupport } : undefined
+      };
+      if (options.includeResponses) session.studentObservations = { ...state.studentObservations };
+      return session;
+    }
+
+    function restoreSessionState(activityState) {
+      const activity = validateActivityState(activityState, state.activityValidationWarnings);
+      if (!activity) return false;
+      state.structureId = activity.pdbId;
+      state.structureModel = activity.model;
+      state.activeChain = activity.chain;
+      state.selectedResidueIndex = Math.min(activity.selectedResidueIndex, Math.max(0, state.residues.length - 1));
+      state.selectedStabilityResidueIndex = state.selectedResidueIndex;
+      state.studentMode = activity.studentMode;
+      state.activePathway = activity.pathway;
+      state.activePathwayStep = activity.pathway ? Math.min(activity.pathwayStep, LEARNING_PATHWAYS[activity.pathway].steps.length - 1) : 0;
+      state.mode = activity.pathway ? LEARNING_PATHWAYS[activity.pathway].steps[state.activePathwayStep].mode : activity.tool;
+      state.pH = activity.pH;
+      state.phCompare = activity.phCompare;
+      state.hhGroup = activity.hhGroup;
+      state.selectedAminoAcid = activity.aminoAcid;
+      state.peptideSequence = activity.peptideSequence;
+      state.proteinView = activity.representation;
+      state.paletteMode = activity.palette;
+      state.contactType = activity.visibleCategories.contactType;
+      state.stabilityToggles = { ...state.stabilityToggles, ...activity.visibleCategories.stabilityToggles };
+      state.instructorSupport = { ...activity.instructor };
+      return true;
+    }
+
+    function calculationDisclosure() {
+      return {
+        pH: 'Henderson-Hasselbalch independent ionizable-group model with intrinsic/model-compound pKa values unless stated otherwise.',
+        hbondThreshold: 'Backbone C=O...N candidate hydrogen bonds use distance <= 3.35 Å; side-chain polar contacts use <= 3.45 Å.',
+        saltBridgeThreshold: 'Opposite-charge side-chain polar atoms within 4.0 Å are labeled salt-bridge candidates.',
+        hydrophobicThreshold: 'Hydrophobic contacts use nonpolar side-chain carbons within 4.25 Å; hydrophobic core means hydrophobic residue SASA below 55 Å².',
+        sasa: 'SASA uses a Shrake-Rupley style 1.4 Å probe where practical, with an approximate fallback for large structures.',
+        caution: 'Detected contacts and calculated fractions are teaching evidence, not measured energetic contributions or quantitative stability predictions.'
+      };
+    }
+
+    function quantitativeObservations() {
+      const residue = currentResidue();
+      const torsion = state.torsions[state.selectedResidueIndex];
+      const stabilityResidue = selectedStabilityResidue();
+      const stabilityEvidence = stabilityResidue ? stabilityEvidenceForResidue(stabilityResidue) : null;
+      const ligand = selectedLigandGroup();
+      const ligandNearby = ligand ? nearbyResiduesForLigand(ligand) : [];
+      const activeSite = selectedActiveSiteAnnotation();
+      const mutationResidue = selectedMutationResidue();
+      const mutationContacts = mutationNearbyContacts(mutationResidue);
+      const mutationClashes = mutationPotentialClashes(mutationResidue, state.mutationSubstitution);
+      const comparison = selectedComparisonEntry();
+      return {
+        selectedResidue: residue ? residue.label : 'none',
+        phi: torsion ? formatAngle(torsion.phi) : 'n/a',
+        psi: torsion ? formatAngle(torsion.psi) : 'n/a',
+        omega: torsion ? formatAngle(torsion.omega) : 'n/a',
+        pH: state.pH.toFixed(1),
+        selectedIonizableResidue: state.ionizable[state.selectedIonIndex]?.label || 'none',
+        backboneHbondCandidates: state.hbonds.length,
+        sideChainContacts: state.contacts.length,
+        selectedSasa: stabilityEvidence?.sasa === null || stabilityEvidence?.sasa === undefined ? 'n/a' : `${Math.round(stabilityEvidence.sasa)} Å²`,
+        selectedContactCount: stabilityEvidence?.role.contacts.length ?? 0,
+        selectedLigand: ligand ? ligandGroupLabel(ligand) : 'none',
+        selectedLigandCategory: ligand ? classifyLigandGroup(ligand).label : 'none',
+        selectedLigandNearbyResidues: ligandNearby.length,
+        selectedActiveSiteResidue: activeSite ? activeSite.mappedResidue?.label || `${activeSite.resn} ${activeSite.chain}:${activeSite.resi}` : 'none',
+        selectedActiveSiteRole: activeSite ? activeSiteRole(activeSite).label : 'none',
+        selectedActiveSiteEvidence: activeSite ? activeSite.evidence : 'none',
+        mutationModel: mutationResidue ? `${mutationResidue.label} -> ${aminoAcidChargeData[state.mutationSubstitution]?.label || state.mutationSubstitution}` : 'none',
+        mutationNearbyContacts: mutationContacts.length,
+        mutationPotentialClashes: mutationClashes.length,
+        mutationPrediction: state.mutationPrediction || 'none',
+        mutationRevision: state.mutationRevision || 'none',
+        comparisonTarget: comparison ? comparison.label : 'none',
+        comparisonType: comparison ? comparison.type : 'none',
+        comparisonCoverage: comparison ? `${Math.round(comparison.coverage * 100)}%` : 'none',
+        comparisonRmsd: comparison && Number.isFinite(comparison.rmsd) ? `${comparison.rmsd.toFixed(1)} Å` : 'n/a',
+        comparisonMappingUncertainty: comparison ? comparison.residueMapping : 'none'
+      };
+    }
+
+    function currentViewImageDataUrl() {
+      const viewerCanvas = document.querySelector('#viewer canvas');
+      if (viewerCanvas) {
+        try { return viewerCanvas.toDataURL('image/png'); } catch (error) {}
+      }
+      if (state.mode === 'torsions') {
+        const ramaCanvas = document.getElementById('ramaCanvas');
+        if (ramaCanvas) {
+          try { return ramaCanvas.toDataURL('image/png'); } catch (error) {}
+        }
+      }
+      if (state.mode === 'ph') {
+        const phCanvas = document.getElementById('phTitrationCanvas');
+        if (phCanvas) {
+          try { return phCanvas.toDataURL('image/png'); } catch (error) {}
+        }
+      }
+      return null;
+    }
+
+    function molecularEvidencePayload(options = {}) {
+      const session = serializeSessionState({ includeResponses: true, includeInstructor: true });
+      return {
+        atlasVersion: ATLAS_VERSION,
+        timestamp: new Date().toISOString(),
+        structure: {
+          id: state.structureId,
+          label: state.structureLabel,
+          source: state.structureSource,
+          model: state.structureModel,
+          chain: session.chain,
+          parsedAtoms: state.atoms.length,
+          residueCount: state.residues.length
+        },
+        selectedFeature: selectedResidueSnapshot(),
+        capturedMolecularView: {
+          mode: state.mode,
+          representation: state.proteinView,
+          palette: state.paletteMode,
+          imageIncluded: Boolean(options.includeImage),
+          imagePngDataUrl: options.includeImage ? currentViewImageDataUrl() : null,
+          textEquivalent: viewTextEquivalent()
+        },
+        quantitativeObservations: quantitativeObservations(),
+        studentClaim: state.studentObservations.claim,
+        supportingEvidence: state.studentObservations.evidence,
+        reasoning: state.studentObservations.reasoning,
+        assumptionsAndThresholds: calculationDisclosure(),
+        instructorSupport: { ...state.instructorSupport },
+        privacy: 'Stored locally in this browser page until the learner intentionally downloads or copies an export. No student account or external submission is used.'
+      };
+    }
+
+    function viewTextEquivalent() {
+      const observations = quantitativeObservations();
+      return `${state.structureLabel} (${state.structureId}), tool ${state.mode}, selected residue ${observations.selectedResidue}, phi ${observations.phi}, psi ${observations.psi}, pH ${observations.pH}, ${observations.backboneHbondCandidates} backbone H-bond candidates, ${observations.sideChainContacts} side-chain contacts.`;
+    }
+
+    function renderMolecularEvidenceCard() {
+      const card = document.getElementById('molecularEvidenceCard');
+      if (!card) return;
+      syncEvidenceCaptureControls();
+      const payload = molecularEvidencePayload({ includeImage: false });
+      const activeObservationKeys = {
+        ligands: ['selectedLigand', 'selectedLigandCategory', 'selectedLigandNearbyResidues'],
+        activeSite: ['selectedActiveSiteResidue', 'selectedActiveSiteRole', 'selectedActiveSiteEvidence'],
+        mutation: ['mutationModel', 'mutationNearbyContacts', 'mutationPotentialClashes', 'mutationPrediction', 'mutationRevision'],
+        comparison: ['comparisonTarget', 'comparisonType', 'comparisonCoverage', 'comparisonRmsd', 'comparisonMappingUncertainty']
+      };
+      const advancedObservations = (activeObservationKeys[state.mode] || [])
+        .map(key => [key, payload.quantitativeObservations[key]])
+        .filter(([, value]) => value && value !== 'none')
+        .map(([key, value]) => `<li><strong>${escapeHtml(key)}:</strong> ${escapeHtml(value)}</li>`)
+        .join('');
+      card.innerHTML = `
+        <h3>Molecular Evidence Card</h3>
+        <p><strong>Structure:</strong> ${escapeHtml(payload.structure.label)} (${escapeHtml(payload.structure.id)}) from ${escapeHtml(payload.structure.source)}; model ${escapeHtml(payload.structure.model)}, chain ${escapeHtml(payload.structure.chain)}.</p>
+        <p><strong>Selected feature:</strong> ${payload.selectedFeature.length ? payload.selectedFeature.map(item => escapeHtml(item.label)).join(', ') : 'none selected'}.</p>
+        <p><strong>Quantitative observations:</strong> pH ${payload.quantitativeObservations.pH}; φ ${payload.quantitativeObservations.phi}; ψ ${payload.quantitativeObservations.psi}; selected SASA ${payload.quantitativeObservations.selectedSasa}; contacts ${payload.quantitativeObservations.selectedContactCount}.</p>
+        ${advancedObservations ? `<ul>${advancedObservations}</ul>` : ''}
+        <p><strong>Claim:</strong> ${escapeHtml(payload.studentClaim || 'No claim entered yet.')}</p>
+        <p><strong>Evidence:</strong> ${escapeHtml(payload.supportingEvidence || 'No supporting evidence entered yet.')}</p>
+        <p><strong>Reasoning:</strong> ${escapeHtml(payload.reasoning || 'No reasoning entered yet.')}</p>
+        <p class="viewer-note">${escapeHtml(payload.capturedMolecularView.textEquivalent)}</p>
+      `;
+    }
+
+    function syncEvidenceCaptureControls() {
+      [
+        ['studentClaimInput', state.studentObservations.claim],
+        ['studentEvidenceInput', state.studentObservations.evidence],
+        ['studentReasoningInput', state.studentObservations.reasoning],
+        ['instructorPromptInput', state.instructorSupport.prompt],
+        ['instructorObjectivesInput', state.instructorSupport.objectives],
+        ['completionChecklistInput', state.instructorSupport.checklist]
+      ].forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element && document.activeElement !== element && element.value !== value) element.value = value;
+      });
+      if (state.activityValidationWarnings.length) setExportStatus(state.activityValidationWarnings.join(' '));
+    }
+
+    function downloadTextFile(filename, text, type = 'text/plain') {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function csvEscape(value) {
+      const text = String(value ?? '');
+      return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function selectedMeasurementsCsv() {
+      const rows = [['structure_id', 'structure_source', 'residue', 'chain', 'resi', 'resn', 'phi', 'psi', 'omega', 'sasa', 'contacts', 'pH']];
+      selectedResidueSnapshot().forEach(snapshot => {
+        const residue = state.residues.find(item => item.chain === snapshot.chain && item.resi === snapshot.resi && item.resn === snapshot.resn);
+        const torsion = state.torsions.find(entry => entry.residue === residue);
+        const sasa = residue ? residueSasaEntry(residue)?.area : null;
+        const contacts = residue ? residueContactList(residue).length : 0;
+        rows.push([
+          state.structureId,
+          state.structureSource,
+          snapshot.label,
+          snapshot.chain,
+          snapshot.resi,
+          snapshot.resn,
+          torsion ? formatAngle(torsion.phi) : 'n/a',
+          torsion ? formatAngle(torsion.psi) : 'n/a',
+          torsion ? formatAngle(torsion.omega) : 'n/a',
+          Number.isFinite(sasa) ? Math.round(sasa) : 'n/a',
+          contacts,
+          state.pH.toFixed(1)
+        ]);
+      });
+      return rows.map(row => row.map(csvEscape).join(',')).join('\n');
+    }
+
+    function markdownEvidenceSummary() {
+      const payload = molecularEvidencePayload({ includeImage: false });
+      const lines = [
+        `# Molecular Evidence Card`,
+        ``,
+        `Atlas version: ${payload.atlasVersion}`,
+        `Timestamp: ${payload.timestamp}`,
+        ``,
+        `## Structure`,
+        `${payload.structure.label} (${payload.structure.id}); source: ${payload.structure.source}; model ${payload.structure.model}; chain ${payload.structure.chain}.`,
+        ``,
+        `## Selected Feature`,
+        payload.selectedFeature.length ? payload.selectedFeature.map(item => `- ${item.label} chain ${item.chain} residue ${item.resi} (${item.resn})`).join('\n') : '- None selected',
+        ``,
+        `## Text Equivalent For Visual Evidence`,
+        payload.capturedMolecularView.textEquivalent,
+        ``,
+        `## Quantitative Observations`,
+        Object.entries(payload.quantitativeObservations).map(([key, value]) => `- ${key}: ${value}`).join('\n'),
+        ``,
+        `## Claim`,
+        payload.studentClaim || 'No claim entered.',
+        ``,
+        `## Evidence`,
+        payload.supportingEvidence || 'No evidence entered.',
+        ``,
+        `## Reasoning`,
+        payload.reasoning || 'No reasoning entered.',
+        ``,
+        `## Assumptions And Thresholds`,
+        Object.values(payload.assumptionsAndThresholds).map(value => `- ${value}`).join('\n'),
+        ``,
+        `## Privacy`,
+        payload.privacy
+      ];
+      return lines.join('\n');
+    }
+
+    function printableCerHtml() {
+      const payload = molecularEvidencePayload({ includeImage: true });
+      const image = payload.capturedMolecularView.imagePngDataUrl
+        ? `<img alt="Captured molecular view for ${escapeHtml(payload.structure.label)}" src="${payload.capturedMolecularView.imagePngDataUrl}" style="max-width:100%;border:1px solid #dce3eb;border-radius:8px;">`
+        : '<p>No screenshot was captured. Use the text equivalent and quantitative evidence below.</p>';
+      return `<!doctype html><html><head><meta charset="utf-8"><title>CER Report ${escapeHtml(payload.structure.id)}</title><style>body{font-family:system-ui,Arial,sans-serif;line-height:1.45;max-width:900px;margin:24px auto;padding:0 18px;color:#0f172a} h1,h2{color:#1e3a8a} table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid #e5e7eb;padding:6px;text-align:left}</style></head><body>
+        <h1>Printable CER Report</h1>
+        <p><strong>Atlas version:</strong> ${escapeHtml(payload.atlasVersion)}<br><strong>Timestamp:</strong> ${escapeHtml(payload.timestamp)}</p>
+        <h2>Structure And Provenance</h2>
+        <p>${escapeHtml(payload.structure.label)} (${escapeHtml(payload.structure.id)}), source ${escapeHtml(payload.structure.source)}, model ${escapeHtml(payload.structure.model)}, chain ${escapeHtml(payload.structure.chain)}.</p>
+        <h2>Visual Evidence</h2>${image}<p><strong>Text equivalent:</strong> ${escapeHtml(payload.capturedMolecularView.textEquivalent)}</p>
+        <h2>Claim</h2><p>${escapeHtml(payload.studentClaim || 'No claim entered.')}</p>
+        <h2>Evidence</h2><p>${escapeHtml(payload.supportingEvidence || 'No evidence entered.')}</p>
+        <h2>Reasoning</h2><p>${escapeHtml(payload.reasoning || 'No reasoning entered.')}</p>
+        <h2>Quantitative Observations</h2><table><tbody>${Object.entries(payload.quantitativeObservations).map(([key, value]) => `<tr><th>${escapeHtml(key)}</th><td>${escapeHtml(value)}</td></tr>`).join('')}</tbody></table>
+        <h2>Assumptions And Thresholds</h2><ul>${Object.values(payload.assumptionsAndThresholds).map(value => `<li>${escapeHtml(value)}</li>`).join('')}</ul>
+        <h2>Instructor Prompt And Checklist</h2><p><strong>Prompt:</strong> ${escapeHtml(payload.instructorSupport.prompt || 'None provided.')}</p><p><strong>Objectives:</strong> ${escapeHtml(payload.instructorSupport.objectives || 'None provided.')}</p><p><strong>Checklist:</strong> ${escapeHtml(payload.instructorSupport.checklist || 'None provided.')}</p>
+        <h2>Privacy</h2><p>${escapeHtml(payload.privacy)}</p>
+      </body></html>`;
+    }
+
+    function currentPlotSvg() {
+      if (state.mode === 'torsions') {
+        const obs = quantitativeObservations();
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="340" role="img" aria-label="Text equivalent Ramachandran plot export"><rect width="100%" height="100%" fill="#fbfdff"/><text x="24" y="42" font-family="Arial" font-size="22">Ramachandran evidence export</text><text x="24" y="82" font-family="Arial" font-size="16">Residue: ${escapeHtml(obs.selectedResidue)}</text><text x="24" y="112" font-family="Arial" font-size="16">Phi: ${escapeHtml(obs.phi)}; Psi: ${escapeHtml(obs.psi)}; Omega: ${escapeHtml(obs.omega)}</text><text x="24" y="150" font-family="Arial" font-size="14">Use the in-page canvas/table for plotted positions; this SVG provides an accessible static summary.</text></svg>`;
+      }
+      if (state.mode === 'ph') {
+        const obs = quantitativeObservations();
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="340" role="img" aria-label="Text equivalent pH titration export"><rect width="100%" height="100%" fill="#fbfdff"/><text x="24" y="42" font-family="Arial" font-size="22">pH and charge evidence export</text><text x="24" y="82" font-family="Arial" font-size="16">pH: ${escapeHtml(obs.pH)}</text><text x="24" y="112" font-family="Arial" font-size="16">Selected ionizable residue: ${escapeHtml(obs.selectedIonizableResidue)}</text><text x="24" y="150" font-family="Arial" font-size="14">Use the in-page canvas/table for the full titration curve; this SVG provides an accessible static summary.</text></svg>`;
+      }
+      return null;
+    }
+
+    function createActivityLink() {
+      state.instructorSupport.prompt = document.getElementById('instructorPromptInput')?.value || '';
+      state.instructorSupport.objectives = document.getElementById('instructorObjectivesInput')?.value || '';
+      state.instructorSupport.checklist = document.getElementById('completionChecklistInput')?.value || '';
+      const activity = serializeSessionState({ includeInstructor: true, includeResponses: false });
+      const params = new URLSearchParams();
+      params.set('activity', encodeActivityState(activity));
+      const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+      const output = document.getElementById('activityLinkOutput');
+      if (output) output.value = url;
+      setExportStatus('Starting-state link created. Student responses were not encoded.');
+      return url;
+    }
+
     function structureSummaryPayload() {
       const residue = currentResidue();
       const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
       return {
+        atlasVersion: ATLAS_VERSION,
         generatedAt: new Date().toISOString(),
+        sessionState: serializeSessionState({ includeResponses: false, includeInstructor: true }),
         structure: {
           id: state.structureId,
           label: state.structureLabel,
+          source: state.structureSource,
+          model: state.structureModel,
+          chain: state.activeChain || residue?.chain || 'A',
           residueCount: state.residues.length,
           chainCount: new Set(state.residues.map(residueItem => residueItem.chain || '(blank)')).size,
           hbondCandidates: state.hbonds.length,
@@ -6748,7 +7432,8 @@ END
           appStatus: state.appStatus,
           structureStatus: state.structureStatus,
           viewerStatus: state.viewerStatus
-        }
+        },
+        molecularEvidenceCard: molecularEvidencePayload({ includeImage: false })
       };
     }
 
@@ -6786,7 +7471,35 @@ END
       }
     }
 
+    function downloadCurrentPlotSvg() {
+      const svg = currentPlotSvg();
+      if (!svg) {
+        setExportStatus('SVG export is available for Ramachandran and pH 2D evidence views.');
+        return;
+      }
+      downloadTextFile(`${state.structureId || 'structure'}-${state.mode}-evidence.svg`, svg, 'image/svg+xml');
+      setExportStatus('Accessible SVG evidence summary downloaded.');
+    }
+
+    function downloadMeasurementsCsv() {
+      downloadTextFile(`${state.structureId || 'structure'}-selected-measurements.csv`, selectedMeasurementsCsv(), 'text/csv');
+      setExportStatus('Selected residue measurements CSV downloaded.');
+    }
+
+    function downloadMarkdownSummary() {
+      downloadTextFile(`${state.structureId || 'structure'}-analysis-summary.md`, markdownEvidenceSummary(), 'text/markdown');
+      setExportStatus('Markdown analysis summary downloaded.');
+    }
+
+    function downloadCerReport() {
+      downloadTextFile(`${state.structureId || 'structure'}-cer-report.html`, printableCerHtml(), 'text/html');
+      setExportStatus('Printable CER report downloaded.');
+    }
+
     async function copyLearningSummary() {
+      state.studentObservations.claim = document.getElementById('studentClaimInput')?.value || state.studentObservations.claim;
+      state.studentObservations.evidence = document.getElementById('studentEvidenceInput')?.value || state.studentObservations.evidence;
+      state.studentObservations.reasoning = document.getElementById('studentReasoningInput')?.value || state.studentObservations.reasoning;
       const payload = structureSummaryPayload();
       const text = [
         `Structure: ${payload.structure.label} (${payload.structure.id})`,
@@ -6794,7 +7507,9 @@ END
         `Mode: ${payload.studentNavigation.mode}`,
         `Pathway: ${payload.studentNavigation.pathway || 'front door'}`,
         `Current tool: ${payload.studentNavigation.tool}`,
-        `Evidence: ${payload.structure.residueCount} parsed residues, ${payload.structure.hbondCandidates} backbone H-bond candidates, ${payload.structure.sideChainContacts} side-chain contacts.`
+        `Evidence: ${payload.structure.residueCount} parsed residues, ${payload.structure.hbondCandidates} backbone H-bond candidates, ${payload.structure.sideChainContacts} side-chain contacts.`,
+        `Claim: ${payload.molecularEvidenceCard.studentClaim || 'No claim entered.'}`,
+        `Reasoning: ${payload.molecularEvidenceCard.reasoning || 'No reasoning entered.'}`
       ].join('\n');
       try {
         await navigator.clipboard.writeText(text);
@@ -6956,6 +7671,7 @@ END
         hideViewerFallback();
         updateLearningContext();
         updateSystemStatus();
+        renderMolecularEvidenceCard();
         if (options.restoreFocus) focusActivePanel();
         return;
       }
@@ -6964,6 +7680,7 @@ END
         showViewerFallback('No structure coordinates available', viewerUnavailableMessage(), { viewer: false });
         updateLearningContext();
         updateSystemStatus();
+        renderMolecularEvidenceCard();
         if (options.restoreFocus) focusActivePanel();
         return;
       }
@@ -6984,6 +7701,9 @@ END
           if (state.mode === 'chargeSurface') drawChargeSurface();
           if (state.mode === 'conservation') drawConservation();
           if (state.mode === 'mutation') drawMutation();
+          if (state.mode === 'ligands') drawLigandExplorer();
+          if (state.mode === 'activeSite') drawActiveSiteExplorer();
+          if (state.mode === 'comparison') drawStructureComparison();
           if (state.mode === 'lesson') drawLesson();
           if (state.mode === 'gallery') drawGalleryBuilder();
           if (state.mode === 'betaTopology') drawBetaTopology();
@@ -7000,6 +7720,12 @@ END
         }
       } else {
         if (state.mode === 'overview') drawStructureSequence();
+        if (state.mode === 'torsions') drawTorsion();
+        if (state.mode === 'tertiary') drawContacts();
+        if (state.mode === 'ligands') drawLigandExplorer();
+        if (state.mode === 'activeSite') drawActiveSiteExplorer();
+        if (state.mode === 'mutation') drawMutation();
+        if (state.mode === 'comparison') drawStructureComparison();
         if (state.mode === 'ph') drawPhMode();
         if (state.mode === 'gallery') drawGalleryBuilder();
         if (state.mode === 'lesson') drawLesson();
@@ -7008,6 +7734,7 @@ END
 
       updateLearningContext();
       updateSystemStatus();
+      renderMolecularEvidenceCard();
       if (options.restoreFocus) focusActivePanel();
     }
 
@@ -9758,6 +10485,504 @@ END
       return [...groups.values()].sort((a, b) => b.atoms.length - a.atoms.length);
     }
 
+    const knownCofactors = new Set(['HEM', 'HEC', 'FAD', 'FMN', 'NAD', 'NAP', 'NDP', 'ADP', 'ATP', 'GDP', 'GTP', 'PLP', 'COA', 'SAM', 'SAH', 'RET']);
+    const likelyAdditives = new Set(['GOL', 'EDO', 'PEG', 'PG4', 'PGE', 'SO4', 'PO4', 'ACT', 'ACE', 'FMT', 'TRS', 'MES', 'HEP', 'BME', 'DMS']);
+    const simpleIons = new Set(['CL', 'BR', 'IOD', 'NA', 'K', 'CA', 'MG', 'MN', 'ZN', 'FE', 'CU', 'NI', 'CO']);
+
+    function allHeterogenGroups() {
+      const groups = new Map();
+      state.atoms
+        .filter(atom => atom.record === 'HETATM')
+        .forEach(atom => {
+          const key = `${atom.resn}:${atom.chain}:${atom.resi}`;
+          if (!groups.has(key)) groups.set(key, { key, resn: atom.resn, chain: atom.chain, resi: atom.resi, atoms: [] });
+          groups.get(key).atoms.push(atom);
+        });
+      return [...groups.values()].sort((a, b) => {
+        const categoryOrder = { cofactor: 0, ligand: 1, ion: 2, additive: 3, water: 4 };
+        return (categoryOrder[classifyLigandGroup(a).category] ?? 9) - (categoryOrder[classifyLigandGroup(b).category] ?? 9) || b.atoms.length - a.atoms.length;
+      });
+    }
+
+    function classifyLigandGroup(group) {
+      const resn = group.resn;
+      const elements = new Set(group.atoms.map(atom => atom.elem));
+      if (resn === 'HOH') return { category: 'water', label: 'water', color: '#64748b' };
+      if (knownCofactors.has(resn)) return { category: 'cofactor', label: 'cofactor / prosthetic group', color: '#111827' };
+      if (simpleIons.has(resn) || group.atoms.length === 1 && [...elements].some(element => metalElements.has(element))) return { category: 'ion', label: 'ion or metal', color: '#0072b2' };
+      if (likelyAdditives.has(resn) || group.atoms.length <= 3 && [...elements].every(element => ['O', 'S', 'P', 'CL', 'NA'].includes(element))) return { category: 'additive', label: 'likely crystallization additive', color: '#64748b' };
+      return { category: 'ligand', label: 'likely ligand', color: '#009e73' };
+    }
+
+    function filteredLigandGroups() {
+      const groups = allHeterogenGroups();
+      if (state.ligandFilter === 'all') return groups;
+      return groups.filter(group => classifyLigandGroup(group).category === state.ligandFilter);
+    }
+
+    function selectedLigandGroup() {
+      const groups = filteredLigandGroups();
+      return groups[Math.min(state.selectedLigandIndex, Math.max(0, groups.length - 1))] || null;
+    }
+
+    function ligandGroupLabel(group) {
+      return `${group.resn} ${group.chain || '(blank)'}:${group.resi}`;
+    }
+
+    function nearbyResiduesForLigand(group, cutoff = 4.5) {
+      if (!group) return [];
+      return state.residues
+        .map(residue => {
+          const pair = closestPair(residue.atoms.filter(atom => atom.elem !== 'H'), group.atoms.filter(atom => atom.elem !== 'H'), cutoff);
+          if (!pair) return null;
+          return { residue, atomA: pair.a, atomB: pair.b, distance: pair.distance, contactLabel: ligandContactLabel(pair.a, pair.b, pair.distance, group) };
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.distance - b.distance);
+    }
+
+    function ligandContactLabel(residueAtom, ligandAtom, distance, group) {
+      const classification = classifyLigandGroup(group);
+      if (classification.category === 'ion' || metalElements.has(ligandAtom.elem)) return distance <= 3.0 ? 'coordination / ionic contact candidate' : 'near ion; inspect geometry';
+      if (['N', 'O', 'S'].includes(residueAtom.elem) && ['N', 'O', 'S'].includes(ligandAtom.elem) && distance <= 3.5) return 'polar contact / H-bond candidate';
+      if (residueAtom.elem === 'C' && ligandAtom.elem === 'C' && distance <= 4.2) return 'hydrophobic proximity';
+      if (distance <= 3.0) return 'close contact; inspect chemistry';
+      return 'nearby atom pair';
+    }
+
+    function populateLigandList() {
+      const list = document.getElementById('ligandList');
+      if (!list) return;
+      const groups = filteredLigandGroups();
+      list.innerHTML = '';
+      groups.slice(0, state.ligandFilter === 'water' ? 80 : 60).forEach((group, index) => {
+        const classification = classifyLigandGroup(group);
+        const item = document.createElement('div');
+        item.className = `item${index === state.selectedLigandIndex ? ' selected' : ''}`;
+        item.innerHTML = `<strong>${ligandGroupLabel(group)}</strong><span>${classification.label}; ${group.atoms.length} observed atom(s)</span>`;
+        item.addEventListener('click', () => {
+          state.selectedLigandIndex = index;
+          state.stabilityEvidenceRevealed = false;
+          applyMode();
+          populateLigandList();
+        });
+        list.appendChild(item);
+      });
+    }
+
+    function renderLigandContactTable(group) {
+      const tbody = document.querySelector('#ligandContactTable tbody');
+      if (!tbody) return;
+      const nearby = nearbyResiduesForLigand(group);
+      tbody.innerHTML = nearby.slice(0, 24).map(item => `
+        <tr>
+          <th scope="row">${escapeHtml(item.residue.label)}</th>
+          <td>${escapeHtml(item.residue.label)} ${escapeHtml(item.atomA.name)} to ${escapeHtml(ligandGroupLabel(group))} ${escapeHtml(item.atomB.name)}</td>
+          <td>${item.distance.toFixed(2)} Å</td>
+          <td>${escapeHtml(item.contactLabel)}</td>
+        </tr>
+      `).join('');
+      document.getElementById('nearbyLigandResidues').textContent = nearby.length;
+    }
+
+    function drawLigandExplorer() {
+      const groups = filteredLigandGroups();
+      if (state.selectedLigandIndex >= groups.length) state.selectedLigandIndex = 0;
+      const group = selectedLigandGroup();
+      populateLigandList();
+      document.getElementById('ligandFilter').value = state.ligandFilter;
+      document.getElementById('ligandCount').textContent = groups.length;
+      if (!group) {
+        document.getElementById('selectedLigandCategory').textContent = 'none';
+        document.getElementById('nearbyLigandResidues').textContent = '0';
+        renderLigandContactTable(null);
+        document.getElementById('ligandNote').innerHTML = `<strong>No matching observed ligand groups</strong>${state.structureId} may not contain this heterogen category, or the selected filter may be too narrow.`;
+        return;
+      }
+      const classification = classifyLigandGroup(group);
+      const nearby = nearbyResiduesForLigand(group);
+      document.getElementById('selectedLigandCategory').textContent = classification.label;
+      renderLigandContactTable(group);
+      if (hasViewer()) {
+        state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.35 } });
+        state.viewer.setStyle({ resn: group.resn, chain: group.chain, resi: group.resi }, { stick: { colorscheme: 'Jmol', radius: 0.24 }, sphere: { scale: 0.28 } });
+        group.atoms.forEach(atom => addSphere(atom, classification.color, 0.22, 0.35));
+        nearby.slice(0, 10).forEach(item => {
+          state.viewer.setStyle(residueSpec(item.residue), { stick: { colorscheme: 'Jmol', radius: 0.17 } });
+          addLine(item.atomA, item.atomB, classification.color, true, interactionRadius(item.distance, 4.5, 2.7));
+        });
+        if (nearby[0]) addResidueLabel(nearby[0].residue, classification.color);
+        zoomViewerSafely({ or: [{ resn: group.resn, chain: group.chain, resi: group.resi }, ...nearby.slice(0, 8).map(item => residueSpec(item.residue))] });
+      }
+      const context = classification.category === 'cofactor'
+        ? 'This group is a recognized cofactor/prosthetic group name, but the atlas still reports observed contacts rather than assuming a complete mechanism.'
+        : classification.category === 'additive'
+          ? 'This may be a crystallization or buffer additive; do not interpret nearby contacts as biological binding without outside evidence.'
+          : classification.category === 'ion'
+            ? 'Ions and metals can be structural or catalytic, but classification requires annotation or experimental context.'
+            : 'This is a likely ligand-like heterogen; nearby contacts describe geometry, not affinity or biological significance.';
+      document.getElementById('ligandNote').innerHTML = `<strong>${ligandGroupLabel(group)}: ${classification.label}</strong>${context}<br><strong>Observed context</strong>${nearby.length} residue(s) have a heavy atom within 4.5 Å. Closest contact: ${nearby[0] ? `${nearby[0].residue.label} ${nearby[0].atomA.name} to ${group.resn} ${nearby[0].atomB.name}, ${nearby[0].distance.toFixed(2)} Å (${nearby[0].contactLabel})` : 'none within cutoff'}.`;
+      renderMolecularEvidenceCard();
+    }
+
+    const activeSiteAnnotations = {
+      '1MBN': {
+        label: 'Myoglobin heme pocket',
+        source: 'Curated CHEM214 teaching annotation from PDB 1MBN heme-pocket residues; primary structure record from Protein Data Bank entry 1MBN.',
+        citation: 'Watson, H. C. (1969) myoglobin structure coordinates; PDB 1MBN.',
+        notes: 'Myoglobin is an oxygen-storage protein rather than an enzyme. These residues are annotated as heme-pocket and gas-access context, not catalytic residues.',
+        residues: [
+          { chain: 'A', resi: 93, resn: 'HIS', role: 'binding', evidence: 'Proximal histidine coordinates the heme iron in the observed structure.' },
+          { chain: 'A', resi: 64, resn: 'HIS', role: 'binding', evidence: 'Distal histidine shapes the ligand pocket and can hydrogen-bond with bound O2 in oxygenated myoglobin structures.' },
+          { chain: 'A', resi: 68, resn: 'VAL', role: 'structural', evidence: 'Hydrophobic pocket residue near the heme group; supports nonpolar packing around the cofactor.' },
+          { chain: 'A', resi: 43, resn: 'PHE', role: 'structural', evidence: 'Aromatic hydrophobic pocket residue contacting the heme environment.' },
+          { chain: 'A', resi: 45, resn: 'PHE', role: 'uncertain', evidence: 'Pocket-adjacent residue in this structure; functional effect depends on the comparison or mutation being considered.' }
+        ]
+      },
+      '1YPH': {
+        label: 'Chymotrypsin catalytic triad and substrate-binding region',
+        source: 'Curated CHEM214 teaching annotation based on the canonical chymotrypsin catalytic triad and substrate pocket.',
+        citation: 'Blow, D. M. and colleagues, classic serine protease structural studies; PDB 1YPH teaching case.',
+        notes: 'Residue numbering follows the loaded PDB coordinate record when present. Catalytic roles are curated from serine-protease literature, not inferred from distance alone.',
+        residues: [
+          { chain: 'E', resi: 57, resn: 'HIS', role: 'catalytic', evidence: 'Histidine of the serine-protease charge-relay/catalytic triad.' },
+          { chain: 'E', resi: 102, resn: 'ASP', role: 'catalytic', evidence: 'Aspartate stabilizes and orients catalytic histidine in the triad.' },
+          { chain: 'E', resi: 195, resn: 'SER', role: 'catalytic', evidence: 'Nucleophilic serine in the catalytic triad.' },
+          { chain: 'E', resi: 189, resn: 'SER', role: 'binding', evidence: 'Specificity-pocket residue influencing substrate recognition in chymotrypsin-like proteases.' },
+          { chain: 'E', resi: 193, resn: 'GLY', role: 'binding', evidence: 'Backbone NH contributes to the oxyanion-hole region in serine proteases.' }
+        ]
+      },
+      '1CA2': {
+        label: 'Carbonic anhydrase zinc active site',
+        source: 'Curated CHEM214 teaching annotation for the carbonic anhydrase zinc center.',
+        citation: 'PDB 1CA2 and carbonic anhydrase zinc-enzyme teaching literature.',
+        notes: 'Zinc coordination is structural and catalytic context; proton-transfer residues and waters may vary with structure and preparation.',
+        residues: [
+          { chain: 'A', resi: 94, resn: 'HIS', role: 'binding', evidence: 'Histidine ligand to the catalytic zinc ion.' },
+          { chain: 'A', resi: 96, resn: 'HIS', role: 'binding', evidence: 'Histidine ligand to the catalytic zinc ion.' },
+          { chain: 'A', resi: 119, resn: 'HIS', role: 'binding', evidence: 'Histidine ligand to the catalytic zinc ion.' },
+          { chain: 'A', resi: 64, resn: 'HIS', role: 'catalytic', evidence: 'Commonly discussed proton-shuttle residue in carbonic anhydrase.' },
+          { chain: 'A', resi: 199, resn: 'THR', role: 'structural', evidence: 'Helps organize the zinc-bound water/hydroxide environment in teaching models.' }
+        ]
+      },
+      '1LYZ': {
+        label: 'Lysozyme catalytic cleft',
+        source: 'Curated CHEM214 teaching annotation for hen egg-white lysozyme catalytic residues.',
+        citation: 'Phillips, D. C. and colleagues, lysozyme mechanism structural studies; PDB 1LYZ teaching case.',
+        notes: 'Catalytic assignments are curated from lysozyme mechanism literature; substrate binding depends on structures with carbohydrate ligands.',
+        residues: [
+          { chain: 'A', resi: 35, resn: 'GLU', role: 'catalytic', evidence: 'General acid/base residue in the classic lysozyme mechanism model.' },
+          { chain: 'A', resi: 52, resn: 'ASP', role: 'catalytic', evidence: 'Stabilizes oxocarbenium-like transition-state character in the classic mechanism model.' },
+          { chain: 'A', resi: 62, resn: 'TRP', role: 'binding', evidence: 'Aromatic residue contributing to carbohydrate-binding subsites in lysozyme complexes.' },
+          { chain: 'A', resi: 63, resn: 'TRP', role: 'binding', evidence: 'Aromatic residue commonly near carbohydrate-binding subsites.' }
+        ]
+      }
+    };
+
+    const activeSiteRoleInfo = {
+      catalytic: { label: 'catalytic', color: '#d55e00' },
+      binding: { label: 'binding', color: '#009e73' },
+      structural: { label: 'structural', color: '#0072b2' },
+      uncertain: { label: 'uncertain / context-dependent', color: '#8b5cf6' }
+    };
+
+    function activeSiteCaseForCurrentStructure() {
+      return activeSiteAnnotations[state.structureId?.toUpperCase()] || null;
+    }
+
+    function activeSiteRole(annotation) {
+      return activeSiteRoleInfo[annotation?.role] || activeSiteRoleInfo.uncertain;
+    }
+
+    function curatedActiveSiteResidues() {
+      const activeCase = activeSiteCaseForCurrentStructure();
+      if (!activeCase) return [];
+      const filtered = state.activeSiteFilter === 'all'
+        ? activeCase.residues
+        : activeCase.residues.filter(annotation => annotation.role === state.activeSiteFilter);
+      return filtered.map(annotation => ({ ...annotation, mappedResidue: findAnnotatedResidue(annotation) }));
+    }
+
+    function selectedActiveSiteAnnotation() {
+      const annotations = curatedActiveSiteResidues();
+      return annotations[Math.min(state.selectedActiveSiteIndex, Math.max(0, annotations.length - 1))] || null;
+    }
+
+    function findAnnotatedResidue(annotation) {
+      return state.residues.find(residue =>
+        residue.resi === annotation.resi &&
+        (!annotation.chain || residue.chain === annotation.chain) &&
+        (!annotation.resn || residue.resn === annotation.resn)
+      ) || state.residues.find(residue =>
+        residue.resi === annotation.resi &&
+        (!annotation.chain || residue.chain === annotation.chain)
+      ) || null;
+    }
+
+    function activeSiteGeometryContext(annotation) {
+      const residue = annotation.mappedResidue || findAnnotatedResidue(annotation);
+      if (!residue) return 'Not mapped to the currently parsed coordinates.';
+      const heterogens = allHeterogenGroups().filter(group => classifyLigandGroup(group).category !== 'water');
+      const closestLigand = heterogens
+        .map(group => {
+          const pair = closestPair(residue.atoms.filter(atom => atom.elem !== 'H'), group.atoms.filter(atom => atom.elem !== 'H'), 6.0);
+          return pair ? { group, pair } : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.pair.distance - b.pair.distance)[0];
+      const neighboringAnnotations = curatedActiveSiteResidues()
+        .filter(item => item.mappedResidue && item.mappedResidue !== residue)
+        .map(item => {
+          const pair = closestPair(residue.atoms.filter(atom => atom.elem !== 'H'), item.mappedResidue.atoms.filter(atom => atom.elem !== 'H'), 6.0);
+          return pair ? `${item.mappedResidue.label} ${pair.distance.toFixed(2)} Å` : null;
+        })
+        .filter(Boolean)
+        .slice(0, 2);
+      const parts = [];
+      if (closestLigand) parts.push(`nearest heterogen ${ligandGroupLabel(closestLigand.group)} at ${closestLigand.pair.distance.toFixed(2)} Å`);
+      if (neighboringAnnotations.length) parts.push(`near curated residue(s): ${neighboringAnnotations.join('; ')}`);
+      return parts.length ? parts.join('. ') + '.' : 'Mapped to coordinates; no non-water heterogen or curated site residue within 6.0 Å.';
+    }
+
+    function populateActiveSiteList() {
+      const list = document.getElementById('activeSiteList');
+      if (!list) return;
+      const annotations = curatedActiveSiteResidues();
+      list.innerHTML = '';
+      if (!annotations.length) {
+        const item = document.createElement('div');
+        item.className = 'item';
+        item.innerHTML = '<strong>No curated residues shown</strong><span>Choose another role filter or load a curated teaching case.</span>';
+        list.appendChild(item);
+        return;
+      }
+      annotations.forEach((annotation, index) => {
+        const role = activeSiteRole(annotation);
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = `item${index === state.selectedActiveSiteIndex ? ' selected' : ''}`;
+        item.innerHTML = `<strong>${annotation.mappedResidue?.label || `${annotation.resn} ${annotation.chain}:${annotation.resi}`}</strong><span>${role.label}; ${annotation.mappedResidue ? 'mapped to coordinates' : 'not present in parsed coordinates'}</span>`;
+        item.addEventListener('click', () => {
+          state.selectedActiveSiteIndex = index;
+          const residue = annotation.mappedResidue || findAnnotatedResidue(annotation);
+          if (residue) state.selectedResidueIndex = state.residues.indexOf(residue);
+          applyMode();
+        });
+        list.appendChild(item);
+      });
+    }
+
+    function renderActiveSiteEvidenceTable() {
+      const tbody = document.querySelector('#activeSiteEvidenceTable tbody');
+      if (!tbody) return;
+      const annotations = curatedActiveSiteResidues();
+      tbody.innerHTML = annotations.map(annotation => {
+        const role = activeSiteRole(annotation);
+        return `
+          <tr>
+            <th scope="row">${escapeHtml(annotation.mappedResidue?.label || `${annotation.resn} ${annotation.chain}:${annotation.resi}`)}</th>
+            <td>${escapeHtml(role.label)}</td>
+            <td>${escapeHtml(annotation.evidence)}</td>
+            <td>${escapeHtml(activeSiteGeometryContext(annotation))}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function drawActiveSiteExplorer() {
+      const activeCase = activeSiteCaseForCurrentStructure();
+      const annotations = curatedActiveSiteResidues();
+      if (state.selectedActiveSiteIndex >= annotations.length) state.selectedActiveSiteIndex = 0;
+      const selected = selectedActiveSiteAnnotation();
+      const mappedCount = annotations.filter(annotation => annotation.mappedResidue).length;
+      document.getElementById('activeSiteFilter').value = state.activeSiteFilter;
+      document.getElementById('activeSiteAnnotationCount').textContent = annotations.length;
+      document.getElementById('activeSiteMappedCount').textContent = mappedCount;
+      document.getElementById('activeSiteCategory').textContent = selected ? activeSiteRole(selected).label : 'none';
+      populateActiveSiteList();
+      renderActiveSiteEvidenceTable();
+      if (!activeCase) {
+        document.getElementById('activeSiteNote').innerHTML = `<strong>No curated active-site annotation for ${escapeHtml(state.structureId)}.</strong> The atlas can still show ligands and nearby contacts, but it will not label an active site from geometric proximity alone. Load a curated teaching case such as 1MBN, 1YPH, 1CA2, or 1LYZ for annotated roles.`;
+        renderMolecularEvidenceCard();
+        return;
+      }
+      if (hasViewer()) {
+        state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.38 } });
+        allHeterogenGroups().filter(group => classifyLigandGroup(group).category !== 'water').slice(0, 8).forEach(group => {
+          state.viewer.setStyle({ resn: group.resn, chain: group.chain, resi: group.resi }, { stick: { colorscheme: 'Jmol', radius: 0.18 }, sphere: { scale: 0.22 } });
+        });
+        annotations.forEach(annotation => {
+          if (!annotation.mappedResidue) return;
+          const role = activeSiteRole(annotation);
+          state.viewer.setStyle(residueSpec(annotation.mappedResidue), { stick: { colorscheme: 'Jmol', radius: 0.2 } });
+          const ca = annotation.mappedResidue.byName.get('CA') || annotation.mappedResidue.atoms[0];
+          if (ca) addSphere(ca, role.color, annotation === selected ? 0.36 : 0.24, 0.65);
+          addResidueLabel(annotation.mappedResidue, role.color);
+        });
+        if (selected?.mappedResidue) {
+          const heterogens = allHeterogenGroups().filter(group => classifyLigandGroup(group).category !== 'water');
+          heterogens.forEach(group => {
+            const pair = closestPair(selected.mappedResidue.atoms.filter(atom => atom.elem !== 'H'), group.atoms.filter(atom => atom.elem !== 'H'), 4.5);
+            if (pair) addLine(pair.a, pair.b, activeSiteRole(selected).color, true, interactionRadius(pair.distance, 4.5, 2.5));
+          });
+          zoomViewerSafely({ or: [residueSpec(selected.mappedResidue), ...heterogens.slice(0, 8).map(group => ({ resn: group.resn, chain: group.chain, resi: group.resi }))] });
+        } else {
+          zoomViewerSafely({ hetflag: false });
+        }
+      }
+      const selectedText = selected
+        ? `<br><strong>Selected annotation:</strong> ${escapeHtml(selected.mappedResidue?.label || `${selected.resn} ${selected.chain}:${selected.resi}`)} is curated as ${escapeHtml(activeSiteRole(selected).label)}. ${escapeHtml(selected.evidence)} <strong>Coordinate context:</strong> ${escapeHtml(activeSiteGeometryContext(selected))}`
+        : '';
+      document.getElementById('activeSiteNote').innerHTML = `<strong>${escapeHtml(activeCase.label)}</strong>${escapeHtml(activeCase.notes)}<br><strong>Source:</strong> ${escapeHtml(activeCase.source)}<br><strong>Citation:</strong> ${escapeHtml(activeCase.citation)}${selectedText}`;
+      renderMolecularEvidenceCard();
+    }
+
+    const structureComparisonCases = {
+      '1MBN': {
+        label: 'Myoglobin: experimental homologs and predicted fold model',
+        selectedDefault: 'mbn_horse',
+        entries: [
+          {
+            id: 'mbn_horse',
+            label: 'Horse myoglobin experimental structure',
+            type: 'related experimental structure',
+            target: '3VM9',
+            chainMap: 'A -> A, sequence-aligned globin fold',
+            coverage: 0.93,
+            rmsd: 1.2,
+            confidence: 'not applicable; experimentally determined comparison',
+            residueMapping: 'Most helices map cleanly; terminal residues and species substitutions require sequence-position checking.',
+            missing: 'Experimental coordinate gaps or alternate numbering can make terminal residue mapping uncertain.',
+            interpretation: 'Useful for asking which fold features are conserved despite sequence substitutions. RMSD does not by itself identify functionally important residues.'
+          },
+          {
+            id: 'mbn_predicted',
+            label: 'Predicted sperm-whale myoglobin teaching model',
+            type: 'predicted model',
+            target: 'AlphaFold-style model summary',
+            chainMap: 'A -> predicted monomer, sequence-position mapping',
+            coverage: 0.98,
+            rmsd: 0.9,
+            confidence: 'high confidence in globin helices; lower confidence expected at termini and flexible surface loops',
+            residueMapping: 'Residues map by sequence position; predicted models may include residues missing from crystallographic coordinates.',
+            missing: 'Missing experimental coordinates are not the same as predicted disorder or low confidence.',
+            interpretation: 'Good for contrasting solved coordinates with a prediction. Treat the RMSD as a global shape descriptor, not proof of local mechanistic accuracy.'
+          }
+        ]
+      },
+      '1LYZ': {
+        label: 'Lysozyme: experimental enzyme structures and predicted fold',
+        selectedDefault: 'lyz_predicted',
+        entries: [
+          {
+            id: 'lyz_predicted',
+            label: 'Predicted lysozyme fold model',
+            type: 'predicted model',
+            target: 'AlphaFold-style model summary',
+            chainMap: 'A -> predicted monomer, sequence-position mapping',
+            coverage: 0.96,
+            rmsd: 1.1,
+            confidence: 'high confidence in compact domain; active-site side-chain rotamers require caution',
+            residueMapping: 'Catalytic residues map by sequence number when present, but ligand-bound conformations are not guaranteed.',
+            missing: 'Predicted disorder and unresolved experimental loops should be interpreted separately.',
+            interpretation: 'Useful for showing that an accurate fold prediction does not automatically include substrate, waters, or catalytic-state chemistry.'
+          }
+        ]
+      },
+      '1CA2': {
+        label: 'Carbonic anhydrase: zinc-site experimental versus predicted context',
+        selectedDefault: 'ca2_predicted',
+        entries: [
+          {
+            id: 'ca2_predicted',
+            label: 'Predicted carbonic anhydrase fold model',
+            type: 'predicted model',
+            target: 'AlphaFold-style model summary',
+            chainMap: 'A -> predicted monomer, sequence-position mapping',
+            coverage: 0.95,
+            rmsd: 1.4,
+            confidence: 'high confidence in beta-sheet core; metal, ordered waters, and proton-transfer states require external evidence',
+            residueMapping: 'Zinc-liganding histidines can be mapped by residue number, but predicted models may omit the metal ion.',
+            missing: 'Missing metal/water coordinates differ from low-confidence protein coordinates.',
+            interpretation: 'Good for discussing why active-site chemistry often needs experimental ligand, ion, and water context.'
+          }
+        ]
+      }
+    };
+
+    function comparisonCaseForCurrentStructure() {
+      return structureComparisonCases[state.structureId?.toUpperCase()] || null;
+    }
+
+    function selectedComparisonEntry() {
+      const activeCase = comparisonCaseForCurrentStructure();
+      if (!activeCase) return null;
+      const id = state.comparisonCase || activeCase.selectedDefault || activeCase.entries[0]?.id;
+      return activeCase.entries.find(entry => entry.id === id) || activeCase.entries[0] || null;
+    }
+
+    function populateComparisonCases() {
+      const select = document.getElementById('comparisonCaseSelect');
+      if (!select) return;
+      const activeCase = comparisonCaseForCurrentStructure();
+      if (!activeCase) {
+        select.innerHTML = '<option value="">No curated comparison for this structure</option>';
+        select.value = '';
+        return;
+      }
+      if (!state.comparisonCase || !activeCase.entries.some(entry => entry.id === state.comparisonCase)) {
+        state.comparisonCase = activeCase.selectedDefault || activeCase.entries[0]?.id || '';
+      }
+      select.innerHTML = activeCase.entries.map(entry => `<option value="${escapeHtml(entry.id)}">${escapeHtml(entry.label)}</option>`).join('');
+      select.value = state.comparisonCase;
+    }
+
+    function comparisonResidueMappingSummary(entry = selectedComparisonEntry()) {
+      const residue = currentResidue();
+      if (!entry) return 'No curated mapping is available for this loaded structure.';
+      if (!residue) return 'No residue is selected; choose a residue to inspect mapping uncertainty.';
+      const covered = entry.coverage >= 0.9;
+      return `${residue.label} chain ${residue.chain} is interpreted through ${entry.chainMap}. ${covered ? 'The curated case has broad alignment coverage, but local numbering and gaps still need checking.' : 'Coverage is partial, so residue-level mapping is uncertain.'} ${entry.residueMapping}`;
+    }
+
+    function drawStructureComparison() {
+      const activeCase = comparisonCaseForCurrentStructure();
+      populateComparisonCases();
+      const entry = selectedComparisonEntry();
+      const tbody = document.querySelector('#comparisonTable tbody');
+      if (tbody) {
+        const rows = activeCase ? activeCase.entries : [];
+        tbody.innerHTML = rows.length ? rows.map(item => `
+          <tr>
+            <th scope="row">${escapeHtml(item.label)}<br><span class="viewer-note">${escapeHtml(item.target)}</span></th>
+            <td>${escapeHtml(item.type)}</td>
+            <td>${Math.round(item.coverage * 100)}% coverage; ${escapeHtml(item.chainMap)}<br>${escapeHtml(item.residueMapping)}</td>
+            <td>${Number.isFinite(item.rmsd) ? `${item.rmsd.toFixed(1)} Å RMSD` : 'RMSD not reported'}<br>${escapeHtml(item.confidence)}</td>
+            <td>${escapeHtml(item.interpretation)}<br>${escapeHtml(item.missing)}</td>
+          </tr>
+        `).join('') : '<tr><td colspan="5">No curated structure-comparison case is available for this PDB ID. Remote comparison data were not requested, so the module avoids inventing an alignment.</td></tr>';
+      }
+      document.getElementById('comparisonCoverage').textContent = entry ? `${Math.round(entry.coverage * 100)}%` : 'none';
+      document.getElementById('comparisonRmsd').textContent = entry && Number.isFinite(entry.rmsd) ? `${entry.rmsd.toFixed(1)} Å` : 'n/a';
+      document.getElementById('comparisonConfidence').textContent = entry ? (entry.type.includes('predicted') ? 'reported' : 'n/a') : 'none';
+      document.getElementById('comparisonResidueNote').innerHTML = `<strong>Residue mapping:</strong> ${escapeHtml(comparisonResidueMappingSummary(entry))}`;
+      document.getElementById('comparisonNote').innerHTML = activeCase
+        ? `<strong>${escapeHtml(activeCase.label)}</strong> The selected comparison is ${escapeHtml(entry.label)}. RMSD is shown with limitations; confidence text distinguishes prediction confidence from experimentally missing coordinates.`
+        : `<strong>No curated comparison for ${escapeHtml(state.structureId)}.</strong> Use this as a prompt to ask what reference, chain mapping, residue mapping, alignment coverage, RMSD method, and prediction-confidence evidence would be needed.`;
+      if (hasViewer()) {
+        const residue = currentResidue();
+        state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.5 } });
+        if (residue) {
+          state.viewer.setStyle(residueSpec(residue), { stick: { colorscheme: 'Jmol', radius: 0.24 }, sphere: { scale: 0.25 } });
+          addResidueLabel(residue, colors().selected);
+          zoomViewerSafely(residueSpec(residue));
+        } else {
+          zoomViewerSafely({ hetflag: false });
+        }
+      }
+      renderMolecularEvidenceCard();
+    }
+
     function residueSasaEntry(residue) {
       return state.sasa.find(entry => entry.residue === residue);
     }
@@ -11512,10 +12737,166 @@ END
       panel.innerHTML = `<strong>CER generator</strong><strong>Claim</strong>In ${state.structureId}, ${best.entry.residue.label} may be important because it is conserved in the ${layer.label.toLowerCase()} layer.<br><strong>Evidence</strong>${best.entry.residue.label} has a conservation score of ${Math.round(best.entry.score * 100)}% (${best.entry.same}/${best.entry.total} comparison sequences) and is annotated as: ${best.annotation}.<br><strong>Reasoning</strong>If evolution preserves a residue that also has a structural or biochemical role, mutation may disrupt ${best.role}. ${best.prompt}`;
     }
 
+    function mutationPresetSpec(code = state.mutation) {
+      const match = /^([A-Z])(\d+)([A-Z])$/.exec(code || '');
+      if (!match) return null;
+      const oneToThree = {
+        A: 'ALA', R: 'ARG', N: 'ASN', D: 'ASP', C: 'CYS', Q: 'GLN', E: 'GLU', G: 'GLY', H: 'HIS',
+        I: 'ILE', L: 'LEU', K: 'LYS', M: 'MET', F: 'PHE', P: 'PRO', S: 'SER', T: 'THR', W: 'TRP', Y: 'TYR', V: 'VAL'
+      };
+      return { from: oneToThree[match[1]], resi: Number(match[2]), to: oneToThree[match[3]] };
+    }
+
+    function mutationResidueOptions() {
+      return state.residues.filter(residue => residue.byName.get('CA'));
+    }
+
+    function selectedMutationResidue() {
+      if (state.mutationResidueKey) {
+        const direct = state.residues.find(residue => residue.key === state.mutationResidueKey);
+        if (direct) return direct;
+      }
+      const preset = mutationPresetSpec();
+      const presetResidue = preset ? residueByNumber(preset.resi) : null;
+      return presetResidue || currentResidue() || state.residues[0] || null;
+    }
+
+    function syncMutationPresetToControls(force = false) {
+      const preset = mutationPresetSpec();
+      if (!preset) return;
+      const residue = residueByNumber(preset.resi);
+      if (residue && (force || !state.mutationResidueKey)) state.mutationResidueKey = residue.key;
+      if (force || !state.mutationSubstitution) state.mutationSubstitution = preset.to;
+    }
+
+    function populateMutationControls() {
+      syncMutationPresetToControls();
+      const residueSelect = document.getElementById('mutationResidueSelect');
+      const substitutionSelect = document.getElementById('mutationSubstitutionSelect');
+      if (residueSelect) {
+        const options = mutationResidueOptions();
+        residueSelect.innerHTML = options.map(residue => `<option value="${escapeHtml(residue.key)}">${escapeHtml(residue.label)} chain ${escapeHtml(residue.chain)}</option>`).join('');
+        const residue = selectedMutationResidue();
+        if (residue) residueSelect.value = residue.key;
+      }
+      if (substitutionSelect) {
+        substitutionSelect.innerHTML = Object.keys(mutationPropertyData)
+          .map(resn => `<option value="${resn}">${escapeHtml(aminoAcidChargeData[resn].label)} (${resn})</option>`)
+          .join('');
+        substitutionSelect.value = state.mutationSubstitution || 'ALA';
+      }
+      const prediction = document.getElementById('mutationPredictionInput');
+      const revision = document.getElementById('mutationRevisionInput');
+      if (prediction && document.activeElement !== prediction) prediction.value = state.mutationPrediction;
+      if (revision && document.activeElement !== revision) revision.value = state.mutationRevision;
+    }
+
+    function mutationPropertyComparison(residue = selectedMutationResidue(), substitution = state.mutationSubstitution) {
+      if (!residue || !mutationPropertyData[substitution]) return [];
+      const original = mutationPropertyData[residue.resn] || mutationPropertyData.ALA;
+      const replacement = mutationPropertyData[substitution];
+      return [
+        { feature: 'Approximate size', original: original.size, replacement: replacement.size, cue: replacement.sizeScore > original.sizeScore ? 'larger side chain may crowd packed spaces' : replacement.sizeScore < original.sizeScore ? 'smaller side chain may leave a packing gap' : 'similar size is not the same as identical shape' },
+        { feature: 'Polarity', original: original.polarity, replacement: replacement.polarity, cue: original.polarity === replacement.polarity ? 'similar polarity, check local contacts' : 'changed polarity can alter burial or solvent preference' },
+        { feature: 'Charge near pH 7', original: original.charge, replacement: replacement.charge, cue: original.charge === replacement.charge ? 'no formal charge class change expected' : 'charge change can alter salt bridges and pH reasoning' },
+        { feature: 'Hydrogen bonding', original: original.hbond, replacement: replacement.hbond, cue: original.hbond === replacement.hbond ? 'similar H-bond category; atom placement still matters' : 'donor/acceptor capacity changes possible contacts' },
+        { feature: 'Hydrophobicity', original: original.hydrophobicity, replacement: replacement.hydrophobicity, cue: original.hydrophobicity === replacement.hydrophobicity ? 'similar water preference; packing still needs inspection' : 'changed water preference can matter most when buried' }
+      ];
+    }
+
+    function renderMutationPropertyTable() {
+      const tbody = document.querySelector('#mutationPropertyTable tbody');
+      if (!tbody) return;
+      const rows = mutationPropertyComparison();
+      tbody.innerHTML = rows.map(row => `
+        <tr>
+          <th scope="row">${escapeHtml(row.feature)}</th>
+          <td>${escapeHtml(row.original)}</td>
+          <td>${escapeHtml(row.replacement)}</td>
+          <td>${escapeHtml(row.cue)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function mutationNearbyContacts(residue = selectedMutationResidue()) {
+      if (!residue) return [];
+      const residueContacts = residueContactList(residue).map(contact => ({
+        label: contactLabel(contact),
+        distance: contact.distance,
+        type: contact.type
+      }));
+      const ligandContacts = allHeterogenGroups()
+        .filter(group => classifyLigandGroup(group).category !== 'water')
+        .map(group => {
+          const pair = closestPair(residue.atoms.filter(atom => atom.elem !== 'H'), group.atoms.filter(atom => atom.elem !== 'H'), 4.5);
+          return pair ? { label: `${ligandGroupLabel(group)} ${ligandContactLabel(pair.a, pair.b, pair.distance, group)}`, distance: pair.distance, type: 'heterogen' } : null;
+        })
+        .filter(Boolean);
+      return [...residueContacts, ...ligandContacts].sort((a, b) => a.distance - b.distance);
+    }
+
+    function mutationPotentialClashes(residue = selectedMutationResidue(), substitution = state.mutationSubstitution) {
+      if (!residue || !mutationPropertyData[substitution]) return [];
+      const original = mutationPropertyData[residue.resn] || mutationPropertyData.ALA;
+      const replacement = mutationPropertyData[substitution];
+      if (replacement.sizeScore <= original.sizeScore + 1) return [];
+      const side = sideAtoms(residue).filter(atom => atom.elem !== 'H');
+      const others = state.atoms.filter(atom =>
+        atom.record === 'ATOM' &&
+        atom.elem !== 'H' &&
+        !(atom.chain === residue.chain && atom.resi === residue.resi) &&
+        !backboneNames.has(atom.name)
+      );
+      return side
+        .map(atom => {
+          const nearest = others.map(other => ({ other, distance: dist(atom, other) })).sort((a, b) => a.distance - b.distance)[0];
+          return nearest && nearest.distance < 3.4 ? { atom, other: nearest.other, distance: nearest.distance } : null;
+        })
+        .filter(Boolean)
+        .slice(0, 6);
+    }
+
+    function mutationReasoningSummary() {
+      const residue = selectedMutationResidue();
+      const substitution = state.mutationSubstitution;
+      if (!residue || !mutationPropertyData[substitution]) return 'Choose a residue and substitution to compare chemical properties.';
+      const contacts = mutationNearbyContacts(residue);
+      const clashes = mutationPotentialClashes(residue, substitution);
+      const changed = mutationPropertyComparison(residue, substitution)
+        .filter(row => row.original !== row.replacement)
+        .map(row => row.feature.toLowerCase());
+      return `<strong>${residue.label} -> ${aminoAcidChargeData[substitution].label}</strong>This qualitative model flags changed features: ${changed.length ? changed.join(', ') : 'none of the coarse classes changed'}. Nearby observed contacts: ${contacts.length}. Possible size conflicts from the simple distance screen: ${clashes.length}. Use this as evidence for a prediction, not as a quantitative stability result.`;
+    }
+
+    function renderMutationEvidence() {
+      const residue = selectedMutationResidue();
+      const substitution = state.mutationSubstitution;
+      const contacts = mutationNearbyContacts(residue).slice(0, 5);
+      const clashes = mutationPotentialClashes(residue, substitution);
+      document.getElementById('mutationNearbyContacts').textContent = contacts.length;
+      document.getElementById('mutationPotentialClashes').textContent = clashes.length;
+      const contactText = contacts.length
+        ? contacts.map(item => `${item.label} (${item.distance.toFixed(2)} Å)`).join('; ')
+        : 'No side-chain, salt-bridge, or non-water heterogen contact within the current teaching thresholds.';
+      const clashText = clashes.length
+        ? clashes.map(item => `${item.atom.name} near ${item.other.resn} ${item.other.resi} ${item.other.name} (${item.distance.toFixed(2)} Å)`).join('; ')
+        : 'No simple size-conflict flags. A real mutation could still change rotamers, waters, dynamics, or folding energetics.';
+      document.getElementById('mutationEvidenceNote').innerHTML = `${mutationReasoningSummary()}<br><strong>Observed contact evidence:</strong> ${escapeHtml(contactText)}<br><strong>Size-conflict screen:</strong> ${escapeHtml(clashText)}`;
+      renderMutationPropertyTable();
+      renderMolecularEvidenceCard();
+    }
+
     function drawMutation() {
+      populateMutationControls();
       const c = colors();
+      if (!hasViewer()) {
+        renderMutationEvidence();
+        document.getElementById('mutationNote').innerHTML = `<strong>3D highlighting unavailable</strong>The mutation property comparison, contact counts, student prediction, and evidence export still work from parsed ${escapeHtml(state.structureId)} coordinates. Retry Viewer to restore atom-level highlighting.`;
+        return;
+      }
       if (state.structureId !== '1MBN') {
         drawGenericMutationScan();
+        renderMutationEvidence();
         return;
       }
       const lys78 = residueByNumber(78);
@@ -11535,7 +12916,10 @@ END
       const selected = (targets[state.mutation] || [lys78, glu85]).filter(Boolean);
       const pairA = selected[0];
       const pairB = selected[1] || selected[0];
-      if (!pairA || !pairB) return;
+      if (!pairA || !pairB) {
+        renderMutationEvidence();
+        return;
+      }
       state.viewer.setStyle({ or: selected.map(residueSpec) }, { stick: { colorscheme: 'Jmol', radius: 0.24 }, sphere: { scale: 0.26 } });
       selected.forEach(residue => addResidueLabel(residue, c.selected));
       if (state.mutation === 'E85Q') {
@@ -11563,6 +12947,7 @@ END
         document.getElementById('mutationNote').innerHTML = '<strong>Leu 104 -> Asp</strong>This introduces a charged/polar acidic group into a hydrophobic region near the heme environment. It is a good “hydrophobic core disruption” prediction exercise.';
       }
       zoomViewerSafely({ or: selected.map(residueSpec) });
+      renderMutationEvidence();
     }
 
     function drawGenericMutationScan() {
@@ -11871,6 +13256,9 @@ END
         chargeSurface: 'pH-colored acidic/basic surface',
         conservation: 'Conservation overlay / comparison readiness',
         mutation: 'Mutation sandbox',
+        ligands: 'Ligand explorer',
+        activeSite: 'Active-site explorer',
+        comparison: 'Structure comparison',
         lesson: 'Guided lesson mode',
         gallery: 'Protein gallery builder',
         betaTopology: 'Beta sheet and topology transfer'
@@ -12169,13 +13557,18 @@ END
       state.selectedResidueIndex = 0;
       state.selectedIonIndex = 0;
       state.lessonIndex = 0;
+      state.selectedLigandIndex = 0;
+      state.selectedActiveSiteIndex = 0;
+      state.mutationResidueKey = '';
+      state.comparisonCase = '';
       state.conservationComparisons = '';
     }
 
-    function applyParsedStructure(pdb, id = '1MBN', label = 'Myoglobin') {
+    function applyParsedStructure(pdb, id = '1MBN', label = 'Myoglobin', source = 'unknown coordinate source') {
       state.pdb = pdb;
       state.structureId = id.toUpperCase();
       state.structureLabel = label;
+      state.structureSource = source;
       try {
         const parsed = parsePdb(state.pdb);
         if (!parsed.residues.length) throw new Error('No standard amino-acid residues were found in this coordinate file.');
@@ -12263,6 +13656,16 @@ END
     }
 
     async function loadInitialStructure() {
+      const activity = state.pendingActivityState;
+      const requestedId = safePdbId(activity?.pdbId) || '1MBN';
+      if (requestedId !== '1MBN') {
+        await loadStructureById(requestedId, requestedId);
+        restoreSessionState(activity);
+        renderStudentModeControls();
+        renderPathwayPanel();
+        applyMode();
+        return;
+      }
       state.structureId = '1MBN';
       state.structureLabel = 'Myoglobin';
       state.structureStatus = APP_STATES.COORDINATES_LOADING;
@@ -12273,7 +13676,8 @@ END
         if (!response.ok) throw new Error(`Local myoglobin file returned ${response.status}`);
         return response.text();
       });
-      applyParsedStructure(pdb, '1MBN', 'Myoglobin');
+      applyParsedStructure(pdb, '1MBN', 'Myoglobin', embeddedPdb ? 'embedded teaching PDB' : 'local bundled PDB');
+      if (activity) restoreSessionState(activity);
       state.appStatus = hasViewer() ? APP_STATES.VIEWER_READY : APP_STATES.COORDINATES_WITHOUT_3D;
       renderCurrentModel();
     }
@@ -12292,7 +13696,7 @@ END
       document.getElementById('galleryNote').innerHTML = `<strong>Loading ${code}</strong>Fetching coordinates from RCSB PDB and recomputing structural features.`;
       try {
         const result = await fetchStructureCoordinates(code);
-        applyParsedStructure(result.pdb, code, label || selectedPresetLabel(code));
+        applyParsedStructure(result.pdb, code, label || selectedPresetLabel(code), result.source);
         state.mode = 'overview';
         renderCurrentModel();
         const fallbackText = result.source === 'local fallback' ? ' RCSB was unavailable, so the bundled local myoglobin file was used.' : '';
@@ -12426,9 +13830,27 @@ END
 
     document.getElementById('retryViewer').addEventListener('click', retryViewer);
     document.getElementById('retryStructure').addEventListener('click', retryStructure);
+    document.getElementById('createActivityLink').addEventListener('click', createActivityLink);
     document.getElementById('exportStructureSummary').addEventListener('click', downloadStructureSummary);
     document.getElementById('downloadViewerImage').addEventListener('click', downloadViewerImage);
+    document.getElementById('downloadPlotSvg').addEventListener('click', downloadCurrentPlotSvg);
+    document.getElementById('downloadMeasurementsCsv').addEventListener('click', downloadMeasurementsCsv);
+    document.getElementById('downloadMarkdownSummary').addEventListener('click', downloadMarkdownSummary);
+    document.getElementById('downloadCerReport').addEventListener('click', downloadCerReport);
     document.getElementById('copyLearningSummary').addEventListener('click', copyLearningSummary);
+    [
+      ['studentClaimInput', 'studentObservations', 'claim'],
+      ['studentEvidenceInput', 'studentObservations', 'evidence'],
+      ['studentReasoningInput', 'studentObservations', 'reasoning'],
+      ['instructorPromptInput', 'instructorSupport', 'prompt'],
+      ['instructorObjectivesInput', 'instructorSupport', 'objectives'],
+      ['completionChecklistInput', 'instructorSupport', 'checklist']
+    ].forEach(([id, group, key]) => {
+      document.getElementById(id).addEventListener('input', event => {
+        state[group][key] = event.target.value;
+        renderMolecularEvidenceCard();
+      });
+    });
     document.getElementById('fitWholeStructure').addEventListener('click', fitWholeStructure);
     document.getElementById('focusSelectedResidue').addEventListener('click', focusSelectedResidue);
     document.getElementById('focusFunctionalSite').addEventListener('click', focusFunctionalSite);
@@ -12918,6 +14340,23 @@ END
       applyMode();
     });
 
+    document.getElementById('ligandFilter').addEventListener('change', event => {
+      state.ligandFilter = event.target.value;
+      state.selectedLigandIndex = 0;
+      applyMode();
+    });
+
+    document.getElementById('activeSiteFilter').addEventListener('change', event => {
+      state.activeSiteFilter = event.target.value;
+      state.selectedActiveSiteIndex = 0;
+      applyMode();
+    });
+
+    document.getElementById('comparisonCaseSelect').addEventListener('change', event => {
+      state.comparisonCase = event.target.value;
+      applyMode();
+    });
+
     document.getElementById('stabilityResidueSelect').addEventListener('change', event => {
       state.selectedStabilityResidueIndex = Number(event.target.value);
       state.selectedResidueIndex = state.selectedStabilityResidueIndex;
@@ -13102,7 +14541,30 @@ END
 
     document.getElementById('mutationSelect').addEventListener('change', event => {
       state.mutation = event.target.value;
+      syncMutationPresetToControls(true);
       applyMode();
+    });
+
+    document.getElementById('mutationResidueSelect').addEventListener('change', event => {
+      state.mutationResidueKey = event.target.value;
+      const residue = selectedMutationResidue();
+      if (residue) state.selectedResidueIndex = state.residues.indexOf(residue);
+      applyMode();
+    });
+
+    document.getElementById('mutationSubstitutionSelect').addEventListener('change', event => {
+      state.mutationSubstitution = event.target.value;
+      applyMode();
+    });
+
+    document.getElementById('mutationPredictionInput').addEventListener('input', event => {
+      state.mutationPrediction = event.target.value;
+      renderMolecularEvidenceCard();
+    });
+
+    document.getElementById('mutationRevisionInput').addEventListener('input', event => {
+      state.mutationRevision = event.target.value;
+      renderMolecularEvidenceCard();
     });
 
     document.getElementById('conservationClassification').addEventListener('change', event => {

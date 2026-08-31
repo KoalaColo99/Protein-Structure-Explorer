@@ -129,7 +129,7 @@ test('unfinished modules are moved out of primary Learn and Explore navigation',
   const roadmapStart = html.indexOf('<h2>Development Roadmap</h2>');
   assert(roadmapStart > 0, 'Development Roadmap is missing');
   const roadmap = html.slice(roadmapStart, html.indexOf('</div>', roadmapStart + 300));
-  ['Ligands', 'Active Sites', 'AlphaFold', 'Comparative Structures'].forEach(label => {
+  ['AlphaFold'].forEach(label => {
     assert(roadmap.includes(label), `${label} should be in the roadmap area`);
   });
 });
