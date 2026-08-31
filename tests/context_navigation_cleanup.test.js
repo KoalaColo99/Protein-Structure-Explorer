@@ -86,14 +86,15 @@ test('Evolutionary Analysis exposes source-labeled readiness stages', () => {
   assert(html.includes('NCBI CDD/CD-Search'));
 });
 
-test('conservation mapping is disabled until current-protein prerequisites are ready', () => {
+test('conservation mapping is active only for validated current-protein prerequisites', () => {
   const render = bodyOf('renderCurrentProteinEvolution');
-  assert(render.includes("computeButton.disabled = true"));
+  assert(render.includes("computeButton.disabled = !teachingDataset"));
+  assert(render.includes('Refresh Conservation Colors'));
   assert(render.includes('Conservation Mapping Disabled'));
   assert(render.includes('validated homolog set, MSA, and residue mapping'));
   const draw = bodyOf('drawConservation');
   assert(draw.includes('It will not substitute any unrelated curated dataset'));
-  assert(draw.includes('renderConservationTable([])'));
+  assert(draw.includes('applyCurrentProteinStructureColoring(teachingDataset)'));
 });
 
 test('initial selected residue remains visibly None', () => {

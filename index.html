@@ -2510,20 +2510,21 @@ rotation axis B—C</div>
 
       <section class="section mode-panel hidden" id="helixPatternsPanel">
         <h2>Helix Pattern Explorer</h2>
-        <p>Compare backbone hydrogen-bond spacing and local geometry for 3-10, alpha, and pi helix patterns. Candidate calls use H-bond spacing, minimum length, phi/psi ranges, and rise/pitch ranges from the loaded structure.</p>
+        <p>Compare backbone hydrogen-bond spacing and local geometry for helix-like candidate patterns. These are geometry-based candidate assignments, not definitive secondary-structure calls.</p>
         <div class="row">
           <label for="helixType">Pattern</label>
           <select id="helixType">
-            <option value="alpha">Alpha helix, i to i+4</option>
-            <option value="310">3-10 helix, i to i+3</option>
-            <option value="pi">Pi helix, i to i+5</option>
+            <option value="all">Compare all candidate patterns</option>
+            <option value="alpha">α-like candidates, i to i+4</option>
+            <option value="310">3₁₀-like candidates, i to i+3</option>
+            <option value="pi">π-like candidates, i to i+5</option>
           </select>
         </div>
         <div class="row">
           <label for="helixView">View</label>
           <select id="helixView">
-            <option value="local">Local measured examples</option>
-            <option value="whole">Whole-molecule overlay</option>
+            <option value="whole">Candidate segments on whole structure</option>
+            <option value="local">Individual measured contacts</option>
           </select>
         </div>
         <div class="stats">
@@ -2533,9 +2534,9 @@ rotation axis B—C</div>
           <div class="stat"><strong id="helixPhiPsi">-</strong><span>mean phi / psi</span></div>
         </div>
         <div class="legend">
-          <div class="key"><span class="swatch" style="background:#009e73"></span> alpha-like i to i+4</div>
-          <div class="key"><span class="swatch" style="background:#0072b2"></span> 3-10-like i to i+3</div>
-          <div class="key"><span class="swatch" style="background:#cc79a7"></span> pi-like i to i+5</div>
+          <div class="key"><span class="swatch" style="background:#009e73"></span> α-like candidate, i to i+4</div>
+          <div class="key"><span class="swatch" style="background:#0072b2"></span> 3₁₀-like candidate, i to i+3</div>
+          <div class="key"><span class="swatch" style="background:#cc79a7"></span> π-like candidate, i to i+5</div>
         </div>
         <div class="list" id="helixPatternList"></div>
         <div class="chem-note" id="helixPatternNote"></div>
@@ -2994,6 +2995,42 @@ rotation axis B—C</div>
         <div class="mini-card" id="currentProteinAlignmentPanel">
           <h3>Validated Precomputed Alignment</h3>
           <p>The alignment appears here for the 1MBN/P02185 checkpoint dataset.</p>
+        </div>
+        <div class="mini-card" id="currentProteinConservationControls">
+          <h3>Conservation Coloring</h3>
+          <div class="row">
+            <label for="currentProteinColorBy">Color structure by</label>
+            <select id="currentProteinColorBy">
+              <option value="conservation">Conservation score</option>
+              <option value="identity">Exact identity</option>
+              <option value="property">Amino-acid properties</option>
+              <option value="secondary">Secondary structure</option>
+              <option value="uniform">Uniform structure color</option>
+            </select>
+          </div>
+          <div class="button-row">
+            <button type="button" id="showCurrentConservationMap">Show whole conservation map</button>
+            <button type="button" id="showCurrentHighConservation">Show highly conserved positions</button>
+            <button type="button" id="showCurrentVariableConservation">Show variable positions</button>
+            <button type="button" id="focusCurrentConservationSelection">Focus selected position</button>
+            <button type="button" id="resetCurrentConservationView">Reset conservation view</button>
+          </div>
+          <label class="check-row"><input id="toggleCurrentConservationSurface" type="checkbox"> Toggle molecular surface</label>
+          <label class="check-row"><input id="disableCurrentConservationBackgrounds" type="checkbox"> Disable alignment background colors</label>
+          <div id="currentProteinConservationLegend" class="legend" role="group" aria-label="Conservation coloring legend"></div>
+        </div>
+        <div class="mini-card" id="currentProteinResidueInfo">
+          <h3>Selected Position Evidence</h3>
+          <p>Select a reference alignment residue to inspect conservation and structure mapping.</p>
+        </div>
+        <div class="mini-card" id="currentProteinConservationExports">
+          <h3>Conservation Exports</h3>
+          <div class="button-row">
+            <button type="button" id="downloadCurrentConservationCsv">Download per-position CSV</button>
+            <button type="button" id="downloadCurrentConservationJson">Download method and provenance JSON</button>
+            <button type="button" id="copyCurrentAlignmentText">Copy uncolored alignment</button>
+          </div>
+          <div class="warning-text" id="currentConservationExportMessage"></div>
         </div>
         <div class="mini-card" id="evolutionHomologReadinessPanel">
           <h3>Homolog-Set Readiness</h3>
@@ -5388,8 +5425,8 @@ END
       lessonIndex: 0,
       hydrophobicType: 'buried',
       galleryClass: 'oxygen',
-      helixType: 'alpha',
-      helixView: 'local',
+      helixType: 'all',
+      helixView: 'whole',
       selectedHelixBond: null,
       betaType: 'all',
       selectedSheetKey: null,
@@ -5416,6 +5453,10 @@ END
       },
       selectedCurrentEvolutionColumnIndex: null,
       selectedMyoglobinEvolutionAccessions: [],
+      currentProteinColorBy: 'conservation',
+      currentProteinConservationFilter: 'all',
+      currentProteinShowSurface: false,
+      currentProteinDisableBackgrounds: false,
       conservationResult: {
         status: 'Not computed yet',
         reference: '1MBN',
@@ -5991,7 +6032,8 @@ END
     const vdwRadii = { H: 1.2, C: 1.7, N: 1.55, O: 1.52, S: 1.8, FE: 1.8 };
     const helixTypes = {
       '310': {
-        label: '3-10 helix',
+        label: '3₁₀-like candidate',
+        accessibleLabel: 'three-ten-like candidate',
         gap: 3,
         color: '#0072b2',
         ringAtoms: 10,
@@ -6006,10 +6048,11 @@ END
         phiRange: [-69, -29],
         psiRange: [-46, -6],
         phiPsi: '-49 / -26',
-        note: '3-10 helices are tighter and narrower. Their backbone H-bonds usually close 10-membered rings using an i to i+3 pattern.'
+        note: '3₁₀-like candidates are tighter and narrower. Their backbone H-bonds usually close 10-membered rings using an i to i+3 pattern.'
       },
       alpha: {
-        label: 'alpha helix',
+        label: 'Alpha-like candidate',
+        accessibleLabel: 'alpha-like candidate',
         gap: 4,
         color: '#009e73',
         ringAtoms: 13,
@@ -6024,10 +6067,11 @@ END
         phiRange: [-77, -37],
         psiRange: [-67, -27],
         phiPsi: '-57 / -47',
-        note: 'Alpha helices are the most common regular helix in proteins. Their backbone H-bonds usually follow an i to i+4 pattern.'
+        note: 'Alpha-like candidates match the common regular-helix spacing pattern. Their backbone H-bonds usually follow an i to i+4 pattern.'
       },
       pi: {
-        label: 'pi helix',
+        label: 'π-like candidate',
+        accessibleLabel: 'pi-like candidate',
         gap: 5,
         color: '#cc79a7',
         ringAtoms: 16,
@@ -6042,7 +6086,7 @@ END
         phiRange: [-77, -37],
         psiRange: [-90, -50],
         phiPsi: '-57 / -70',
-        note: 'Pi helices are wider and less common. Their backbone H-bonds usually follow an i to i+5 pattern and can create local bulges or functional distortions.'
+        note: 'π-like candidates are wider and less common. Their backbone H-bonds usually follow an i to i+5 pattern and can create local bulges or functional distortions.'
       }
     };
 
@@ -7524,6 +7568,124 @@ END
         return `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="340" role="img" aria-label="Text equivalent pH titration export"><rect width="100%" height="100%" fill="#fbfdff"/><text x="24" y="42" font-family="Arial" font-size="22">pH and charge evidence export</text><text x="24" y="82" font-family="Arial" font-size="16">pH: ${escapeHtml(obs.pH)}</text><text x="24" y="112" font-family="Arial" font-size="16">Selected ionizable residue: ${escapeHtml(obs.selectedIonizableResidue)}</text><text x="24" y="150" font-family="Arial" font-size="14">Use the in-page canvas/table for the full titration curve; this SVG provides an accessible static summary.</text></svg>`;
       }
       return null;
+    }
+
+    function currentProteinConservationRows() {
+      const dataset = currentProteinMyoglobinDataset();
+      if (!dataset) return [];
+      return Array.from({ length: dataset.alignment.alignmentLength }, (_, columnIndex) => {
+        const metric = currentProteinColumnMetric(dataset, columnIndex);
+        const value = metricValueForColumnMetric(metric);
+        const visual = conservationVisualModel(value);
+        return {
+          alignmentColumn: metric.alignmentColumn,
+          referenceResidue: metric.referenceResidue,
+          uniprotPosition: metric.uniprotPosition,
+          pdbResidue: metric.pdbResidue || '',
+          contributing: metric.contributing,
+          total: metric.total,
+          exactIdentity: metric.exactIdentity === null ? 'insufficient evidence' : metric.exactIdentity.toFixed(3),
+          conservationScore: metric.conservationScore === null ? 'insufficient evidence' : metric.conservationScore.toFixed(3),
+          gapFraction: metric.gapFraction.toFixed(3),
+          classification: visual.classification,
+          hexColor: visual.color,
+          mappingStatus: metric.mappingStatus
+        };
+      });
+    }
+
+    function currentProteinConservationCsv() {
+      const rows = [[
+        'alignment column',
+        'reference residue',
+        'UniProt position',
+        'PDB residue number',
+        'contributing sequence count',
+        'total sequence count',
+        'exact identity',
+        'conservation score',
+        'gap fraction',
+        'classification',
+        'hex color',
+        'mapping status'
+      ]];
+      currentProteinConservationRows().forEach(row => rows.push([
+        row.alignmentColumn,
+        row.referenceResidue,
+        row.uniprotPosition,
+        row.pdbResidue,
+        row.contributing,
+        row.total,
+        row.exactIdentity,
+        row.conservationScore,
+        row.gapFraction,
+        row.classification,
+        row.hexColor,
+        row.mappingStatus
+      ]));
+      return rows.map(row => row.map(csvEscape).join(',')).join('\n');
+    }
+
+    function currentProteinConservationProvenance() {
+      const dataset = currentProteinMyoglobinDataset();
+      return {
+        atlasVersion: ATLAS_VERSION,
+        generatedAt: new Date().toISOString(),
+        structure: {
+          proteinName: state.structureLabel,
+          pdbId: state.structureId,
+          chain: currentEvolutionChain(),
+          selectedResidue: currentResidue()?.label || 'None selected'
+        },
+        reference: dataset?.reference || null,
+        selectedMetric: currentProteinMetricLabel(),
+        alignedSequenceCount: dataset ? currentProteinSelectedRecords(dataset).length : 0,
+        legend: {
+          title: currentProteinMetricLabel(),
+          direction: state.currentProteinColorBy === 'identity' ? 'Exact identity with the reference residue' : 'More variable in this alignment -> More conserved in this alignment',
+          palette: ['#B8B8B8', '#FDE725', '#90D743', '#35B779', '#21918C', '#3B528B', '#440154']
+        },
+        datasetSource: dataset?.source || null,
+        alignment: dataset?.alignment ? {
+          method: dataset.alignment.method,
+          software: dataset.alignment.software,
+          softwareVersion: dataset.alignment.softwareVersion,
+          parameters: dataset.alignment.parameters,
+          alignmentDate: dataset.alignment.alignmentDate,
+          alignmentLength: dataset.alignment.alignmentLength
+        } : null,
+        scoring: {
+          conservation: 'Normalized Shannon conservation C_i = 1 - H_i / ln(20); gaps excluded from amino-acid frequencies.',
+          exactIdentity: 'Reference-residue matches divided by non-gap contributing sequences.',
+          insufficientEvidence: 'N < 3 non-gap contributing sequences.'
+        }
+      };
+    }
+
+    function downloadCurrentProteinConservationCsv() {
+      downloadTextFile(`${state.structureId || 'structure'}-${state.currentProteinColorBy}-conservation.csv`, currentProteinConservationCsv(), 'text/csv');
+      const message = document.getElementById('currentConservationExportMessage');
+      if (message) message.textContent = 'Per-position conservation CSV downloaded.';
+    }
+
+    function downloadCurrentProteinConservationJson() {
+      downloadTextFile(`${state.structureId || 'structure'}-conservation-provenance.json`, JSON.stringify(currentProteinConservationProvenance(), null, 2), 'application/json');
+      const message = document.getElementById('currentConservationExportMessage');
+      if (message) message.textContent = 'Method and provenance JSON downloaded.';
+    }
+
+    async function copyCurrentProteinAlignmentText() {
+      const dataset = currentProteinMyoglobinDataset();
+      if (!dataset) return;
+      const text = dataset.alignment.records.map(record => `>${record.accession} ${record.organism}\n${record.alignedSequence}`).join('\n');
+      const message = document.getElementById('currentConservationExportMessage');
+      try {
+        await navigator.clipboard.writeText(text);
+        if (message) message.textContent = 'Uncolored aligned FASTA copied.';
+      } catch (error) {
+        downloadTextFile(`${state.structureId || 'structure'}-uncolored-alignment.fasta`, text, 'text/plain');
+        if (message) message.textContent = 'Clipboard was unavailable, so the uncolored alignment was downloaded.';
+      }
     }
 
     function createActivityLink() {
@@ -9431,12 +9593,12 @@ END
     }
 
     function drawHelixPatterns() {
-      const info = helixTypes[state.helixType];
-      const metrics = helixLocalMetrics(state.helixType);
-      if (state.helixView === 'whole') {
+      if (state.helixType === 'all' || state.helixView === 'whole') {
         drawWholeHelixOverlay();
         return;
       }
+      const info = helixTypes[state.helixType];
+      const metrics = helixLocalMetrics(state.helixType);
       const selected = state.selectedHelixBond || metrics.bonds[0];
       metrics.bonds.forEach(hbond => {
         addLine(hbond.from.byName.get('O'), hbond.to.byName.get('N'), info.color, true, hbond === selected ? 0.18 : interactionRadius(hbond.distance, 3.35, 2.75));
@@ -9459,7 +9621,7 @@ END
       document.getElementById('helixRise').textContent = metrics.rise ? `${metrics.rise.toFixed(2)} Å/res` : 'n/a';
       document.getElementById('helixPitch').textContent = metrics.pitch ? `${metrics.pitch.toFixed(2)} Å` : 'n/a';
       document.getElementById('helixPhiPsi').textContent = metrics.phi && metrics.psi ? `${Math.round(metrics.phi)} / ${Math.round(metrics.psi)}` : 'n/a';
-      document.getElementById('helixPatternNote').innerHTML = `<strong>${info.label}</strong>${info.note}<br><br><strong>Identification ranges used here</strong>H-bond spacing C=O(i) to H-N(i+${info.gap}); at least ${info.minResidues} residues; about ${info.residuesPerTurn} residues/turn; rise ${info.riseRange[0]}-${info.riseRange[1]} Å/residue; pitch ${info.pitchRange[0]}-${info.pitchRange[1]} Å; typical phi/psi about ${info.phiPsi}; approximate radius ${info.radius} Å; ${info.ringAtoms}-atom H-bond ring. Measured values are local estimates from ${state.structureId}, not a full DSSP assignment.`;
+      document.getElementById('helixPatternNote').innerHTML = `<strong>${info.label}</strong>${info.note}<br><br><strong>Method statement</strong>These are geometry-based candidate assignments derived from hydrogen-bond spacing, local backbone geometry, minimum segment length, and the loaded coordinates. A single contact does not establish an entire helix type.<br><br><strong>Identification ranges used here</strong>H-bond spacing C=O(i) to H-N(i+${info.gap}); at least ${info.minResidues} residues; about ${info.residuesPerTurn} residues/turn; rise ${info.riseRange[0]}-${info.riseRange[1]} Å/residue; pitch ${info.pitchRange[0]}-${info.pitchRange[1]} Å; typical phi/psi about ${info.phiPsi}; approximate radius ${info.radius} Å; ${info.ringAtoms}-atom H-bond ring. Measured values are local estimates from ${state.structureId}, not a full DSSP assignment.`;
     }
 
     function drawWholeHelixOverlay() {
@@ -9478,14 +9640,15 @@ END
         });
         const selection = [...residues].map(residueSpec);
         if (selection.length) state.viewer.setStyle({ or: selection }, { cartoon: { color: info.color }, stick: { colorscheme: 'Jmol', radius: 0.08 } });
-        return `${info.label}: ${countWithPercent(residues.size, total)} residues, ${segments.length} segment(s), ${bonds.length} filtered H-bonds`;
+        const segmentText = segments.length ? segments.map(segment => `${segment.residues[0].label}-${segment.residues[segment.residues.length - 1].label}`).join(', ') : 'none';
+        return `${info.label}: ${countWithPercent(residues.size, total)} residues, ${segments.length} segment(s), ${bonds.length} filtered H-bonds; segments: ${segmentText}`;
       });
-      const current = helixLocalMetrics(state.helixType);
+      const current = state.helixType === 'all' ? helixLocalMetrics('alpha') : helixLocalMetrics(state.helixType);
       document.getElementById('helixPatternCount').textContent = `${helixPatternBonds('alpha').length} / ${helixPatternBonds('310').length} / ${helixPatternBonds('pi').length}`;
       document.getElementById('helixRise').textContent = current.rise ? `${current.rise.toFixed(2)} Å/res` : 'n/a';
       document.getElementById('helixPitch').textContent = current.pitch ? `${current.pitch.toFixed(2)} Å` : 'n/a';
       document.getElementById('helixPhiPsi').textContent = current.phi && current.psi ? `${Math.round(current.phi)} / ${Math.round(current.psi)}` : 'n/a';
-      document.getElementById('helixPatternNote').innerHTML = `<strong>Whole-molecule candidate overlay for ${state.structureId}</strong>${summaries.join('<br>')}<br><br>Colors show helix candidates that pass spacing, minimum-length, phi/psi, and rise/pitch filters: blue = 3-10-like i to i+3, green = alpha-like i to i+4, pink = pi-like i to i+5. This is a classroom geometry filter, not a full DSSP assignment.`;
+      document.getElementById('helixPatternNote').innerHTML = `<strong>Contiguous candidate segments for ${state.structureId}</strong>${summaries.join('<br>')}<br><br><strong>Method statement</strong>These are geometry-based candidate assignments derived from hydrogen-bond spacing, local backbone geometry, minimum segment length, and the loaded coordinates. A single contact does not establish an entire helix type.<br><br>Colors show candidates that pass spacing, minimum-length, phi/psi, and rise/pitch filters: blue = 3₁₀-like i to i+3, green = α-like i to i+4, pink = π-like i to i+5. This is a classroom geometry filter, not a full DSSP assignment.`;
       zoomViewerSafely({ hetflag: false });
     }
 
@@ -12486,6 +12649,240 @@ END
       return `${Math.round(value * 100)}%`;
     }
 
+    function currentProteinSelectedRecords(dataset) {
+      if (!dataset) return [];
+      ensureMyoglobinCandidateSelection(dataset);
+      const selected = new Set(state.selectedMyoglobinEvolutionAccessions);
+      return dataset.alignment.records.filter(record => selected.has(record.accession));
+    }
+
+    function shannonConservationScore(counts, contributingCount) {
+      if (contributingCount < 3) return null;
+      let entropy = 0;
+      counts.forEach(count => {
+        const p = count / contributingCount;
+        if (p > 0) entropy -= p * Math.log(p);
+      });
+      return Math.max(0, Math.min(1, 1 - entropy / Math.log(20)));
+    }
+
+    function currentProteinColumnMetric(dataset, columnIndex) {
+      if (!dataset || !Number.isInteger(columnIndex)) return null;
+      const records = currentProteinSelectedRecords(dataset);
+      const referenceRecord = dataset.alignment.records.find(record => record.accession === dataset.reference.accession);
+      const referenceResidue = referenceRecord?.alignedSequence[columnIndex] || '-';
+      const residues = records.map(record => record.alignedSequence[columnIndex] || '-');
+      const aminoAcids = residues.filter(char => /^[ACDEFGHIKLMNPQRSTVWY]$/.test(char));
+      const counts = new Map();
+      aminoAcids.forEach(char => counts.set(char, (counts.get(char) || 0) + 1));
+      const contributing = aminoAcids.length;
+      const total = records.length;
+      const gapCount = residues.filter(char => char === '-').length;
+      const consensus = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] || '-';
+      const exactMatches = referenceResidue === '-' ? 0 : aminoAcids.filter(char => char === referenceResidue).length;
+      const exactIdentity = contributing >= 3 && referenceResidue !== '-' ? exactMatches / contributing : null;
+      const conservationScore = shannonConservationScore(counts, contributing);
+      const uniprotPosition = referencePositionForAlignmentColumn(dataset.alignment, columnIndex);
+      const pdbResidue = pdbResidueForP02185CanonicalPosition(uniprotPosition);
+      return {
+        columnIndex,
+        alignmentColumn: columnIndex + 1,
+        referenceResidue,
+        uniprotPosition,
+        pdbResidue,
+        consensus,
+        contributing,
+        total,
+        gapCount,
+        gapFraction: total ? gapCount / total : 0,
+        exactIdentity,
+        conservationScore,
+        frequencies: [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([residue, count]) => ({ residue, count, fraction: contributing ? count / contributing : 0 })),
+        mappingStatus: pdbResidue ? `Mapped to 1MBN residue ${pdbResidue}` : 'This canonical position is represented in the alignment but is not modeled in the current experimental structure.'
+      };
+    }
+
+    function metricValueForColumnMetric(metric, mode = state.currentProteinColorBy) {
+      if (!metric) return null;
+      if (mode === 'identity') return metric.exactIdentity;
+      if (mode === 'conservation') return metric.conservationScore;
+      return null;
+    }
+
+    function conservationVisualModel(value, options = {}) {
+      const insufficient = value === null || value === undefined || !Number.isFinite(value) || options.insufficient;
+      if (insufficient) {
+        return { classification: 'Insufficient evidence', color: '#B8B8B8', foreground: '#111827', accessibleLabel: 'Insufficient evidence; neutral gray with patterned marker', symbol: '!' };
+      }
+      const score = Math.max(0, Math.min(1, value));
+      if (score === 1) return { classification: 'Invariant in this alignment', color: '#440154', foreground: '#ffffff', accessibleLabel: 'Invariant in this alignment; score 1.00', symbol: 'I' };
+      if (score < 0.2) return { classification: 'Highly variable', color: '#FDE725', foreground: '#111827', accessibleLabel: 'Highly variable; score 0.00 to 0.19', symbol: 'V-' };
+      if (score < 0.4) return { classification: 'Variable', color: '#90D743', foreground: '#111827', accessibleLabel: 'Variable; score 0.20 to 0.39', symbol: 'V' };
+      if (score < 0.6) return { classification: 'Moderately conserved', color: '#35B779', foreground: '#111827', accessibleLabel: 'Moderately conserved; score 0.40 to 0.59', symbol: 'M' };
+      if (score < 0.8) return { classification: 'Conserved', color: '#21918C', foreground: '#ffffff', accessibleLabel: 'Conserved; score 0.60 to 0.79', symbol: 'C' };
+      return { classification: 'Highly conserved', color: '#3B528B', foreground: '#ffffff', accessibleLabel: 'Highly conserved; score 0.80 to 0.99', symbol: 'C+' };
+    }
+
+    function aminoAcidPropertyModel(residue) {
+      const aa = String(residue || '').toUpperCase();
+      const groups = {
+        aromatic: { set: new Set(['F', 'W', 'Y']), color: '#7c3aed', foreground: '#ffffff', label: 'Aromatic' },
+        positive: { set: new Set(['K', 'R', 'H']), color: '#0072b2', foreground: '#ffffff', label: 'Positively charged' },
+        negative: { set: new Set(['D', 'E']), color: '#d55e00', foreground: '#ffffff', label: 'Negatively charged' },
+        polar: { set: new Set(['S', 'T', 'N', 'Q']), color: '#009e73', foreground: '#111827', label: 'Polar uncharged' },
+        nonpolar: { set: new Set(['A', 'V', 'L', 'I', 'M']), color: '#f0e442', foreground: '#111827', label: 'Nonpolar' },
+        glycine: { set: new Set(['G']), color: '#999999', foreground: '#111827', label: 'Glycine' },
+        proline: { set: new Set(['P']), color: '#cc79a7', foreground: '#111827', label: 'Proline' },
+        cysteine: { set: new Set(['C']), color: '#e69f00', foreground: '#111827', label: 'Cysteine' }
+      };
+      return Object.values(groups).find(group => group.set.has(aa)) || { color: '#e5e7eb', foreground: '#111827', label: 'Other or gap' };
+    }
+
+    function currentProteinMetricLabel() {
+      if (state.currentProteinColorBy === 'identity') return 'Exact identity with the reference residue';
+      if (state.currentProteinColorBy === 'property') return 'Amino-acid properties';
+      if (state.currentProteinColorBy === 'secondary') return 'Secondary structure';
+      if (state.currentProteinColorBy === 'uniform') return 'Uniform structure color';
+      return 'Conservation among the selected homologs';
+    }
+
+    function currentProteinMetricsByPdbResidue(dataset) {
+      const map = new Map();
+      if (!dataset) return map;
+      for (let columnIndex = 0; columnIndex < dataset.alignment.alignmentLength; columnIndex++) {
+        const metric = currentProteinColumnMetric(dataset, columnIndex);
+        if (metric?.pdbResidue) map.set(metric.pdbResidue, metric);
+      }
+      return map;
+    }
+
+    function renderCurrentProteinConservationLegend(dataset) {
+      const legend = document.getElementById('currentProteinConservationLegend');
+      if (!legend) return;
+      const metricLabel = currentProteinMetricLabel();
+      if (state.currentProteinColorBy === 'property') {
+        const groups = ['A', 'F', 'S', 'K', 'D', 'G', 'P', 'C'].map(aminoAcidPropertyModel);
+        legend.innerHTML = `<strong>Amino-acid properties</strong>${groups.map(group => `<div class="key"><span class="swatch" style="background:${group.color}"></span>${group.label}</div>`).join('')}`;
+        return;
+      }
+      if (state.currentProteinColorBy === 'secondary') {
+        legend.innerHTML = '<strong>Secondary structure</strong><div class="key"><span class="swatch" style="background:#009e73"></span>candidate helix-like regions</div><div class="key"><span class="swatch" style="background:#0072b2"></span>PDB beta-sheet records</div><div class="key"><span class="swatch" style="background:#d1d5db"></span>loop or unassigned</div>';
+        return;
+      }
+      if (state.currentProteinColorBy === 'uniform') {
+        legend.innerHTML = '<strong>Uniform structure color</strong><div class="key"><span class="swatch" style="background:#cbd5e1"></span>all protein residues</div>';
+        return;
+      }
+      const bins = [
+        { label: 'Insufficient evidence', range: 'N < 3', value: null },
+        { label: 'Highly variable', range: '0.00-0.19', value: 0 },
+        { label: 'Variable', range: '0.20-0.39', value: 0.2 },
+        { label: 'Moderately conserved', range: '0.40-0.59', value: 0.4 },
+        { label: 'Conserved', range: '0.60-0.79', value: 0.6 },
+        { label: 'Highly conserved', range: '0.80-0.99', value: 0.8 },
+        { label: 'Invariant in this alignment', range: '1.00', value: 1 }
+      ];
+      legend.innerHTML = `
+        <strong>${escapeHtml(metricLabel)}</strong>
+        <div class="chem-note"><strong>More variable in this alignment</strong> → <strong>More conserved in this alignment</strong></div>
+        ${bins.map(bin => {
+          const visual = conservationVisualModel(bin.value);
+          return `<button type="button" class="key" style="color:${visual.foreground};background:${visual.color}" aria-label="${escapeHtml(bin.label)}, ${escapeHtml(bin.range)}"><span>${escapeHtml(visual.symbol)}</span> ${escapeHtml(bin.label)} (${escapeHtml(bin.range)})</button>`;
+        }).join('')}
+      `;
+    }
+
+    function secondaryStructureLabelForResidue(residue) {
+      const inHelix = ['alpha', '310', 'pi'].some(type => helixSegments(type).some(segment => segment.residues.some(item => item.key === residue.key)));
+      if (inHelix) return 'candidate helix-like region';
+      const inSheet = state.sheets.some(sheet => residue.chain === sheet.startChain && residue.resi >= sheet.startResi && residue.resi <= sheet.endResi);
+      if (inSheet) return 'PDB beta-sheet record';
+      return 'loop or unassigned';
+    }
+
+    function structureColorForResidue(residue, metric) {
+      if (state.currentProteinColorBy === 'identity') return conservationVisualModel(metric?.exactIdentity).color;
+      if (state.currentProteinColorBy === 'conservation') return conservationVisualModel(metric?.conservationScore).color;
+      if (state.currentProteinColorBy === 'property') return aminoAcidPropertyModel(sequenceFromResidues([residue])).color;
+      if (state.currentProteinColorBy === 'secondary') {
+        const label = secondaryStructureLabelForResidue(residue);
+        if (label.includes('helix')) return '#009e73';
+        if (label.includes('sheet')) return '#0072b2';
+        return '#d1d5db';
+      }
+      return '#cbd5e1';
+    }
+
+    function selectedCurrentProteinMetric(dataset) {
+      if (!dataset || !Number.isInteger(state.selectedCurrentEvolutionColumnIndex)) return null;
+      return currentProteinColumnMetric(dataset, state.selectedCurrentEvolutionColumnIndex);
+    }
+
+    function renderCurrentProteinResidueInfo(dataset) {
+      const panel = document.getElementById('currentProteinResidueInfo');
+      if (!panel) return;
+      const metric = selectedCurrentProteinMetric(dataset);
+      if (!dataset || !metric) {
+        panel.innerHTML = '<h3>Selected Position Evidence</h3><p>Select a reference alignment residue to inspect conservation and structure mapping.</p>';
+        return;
+      }
+      const residue = metric.pdbResidue ? state.residues.find(item => item.chain === 'A' && item.resi === metric.pdbResidue) : null;
+      const sasa = residue ? state.sasa.find(entry => entry.residue.key === residue.key)?.area : null;
+      const hemeAtoms = state.atoms.filter(atom => atom.resn === 'HEM' && atom.elem !== 'H');
+      const residueAtoms = residue?.atoms?.filter(atom => atom.elem !== 'H') || [];
+      const hemeDistance = residueAtoms.length && hemeAtoms.length
+        ? Math.min(...residueAtoms.flatMap(atom => hemeAtoms.map(heme => dist(atom, heme))))
+        : null;
+      const value = metricValueForColumnMetric(metric);
+      const visual = conservationVisualModel(value);
+      const frequencyText = metric.frequencies.map(item => `${item.residue}: ${item.count}/${metric.contributing}`).join(', ') || 'none';
+      panel.innerHTML = `
+        <h3>Selected Position Evidence</h3>
+        <p><strong>Selected position:</strong> alignment column ${metric.alignmentColumn}</p>
+        <p><strong>Reference residue:</strong> ${escapeHtml(metric.referenceResidue)}; <strong>UniProt position:</strong> ${metric.uniprotPosition || 'gap'}; <strong>PDB residue number:</strong> ${metric.pdbResidue || 'not modeled'}</p>
+        <p><strong>Consensus residue:</strong> ${escapeHtml(metric.consensus)}; <strong>Number contributing:</strong> ${metric.contributing}/${metric.total}; <strong>Exact identity:</strong> ${metric.exactIdentity === null ? 'insufficient evidence' : percentText(metric.exactIdentity)}</p>
+        <p><strong>Conservation score:</strong> ${metric.conservationScore === null ? 'insufficient evidence' : metric.conservationScore.toFixed(2)}; <strong>Gap fraction:</strong> ${percentText(metric.gapFraction)}; <strong>Classification:</strong> ${escapeHtml(visual.classification)}</p>
+        <p><strong>Residue-frequency distribution:</strong> ${escapeHtml(frequencyText)}</p>
+        <p><strong>Structure-mapping status:</strong> ${escapeHtml(metric.mappingStatus)}</p>
+        <p><strong>Secondary structure:</strong> ${escapeHtml(residue ? secondaryStructureLabelForResidue(residue) : 'not modeled')}</p>
+        <p><strong>Solvent exposure:</strong> ${sasa ? `${sasa.toFixed(1)} Å² estimated SASA` : 'not available'}</p>
+        <p><strong>Distance to heme or ligand:</strong> ${hemeDistance ? `${hemeDistance.toFixed(2)} Å to nearest heme atom` : 'not available'}</p>
+        <div class="chem-note"><strong>Interpretation boundary</strong>This score describes the selected homolog set and alignment. It is not an absolute property of the residue.</div>
+      `;
+    }
+
+    function applyCurrentProteinStructureColoring(dataset) {
+      if (!dataset || !canRenderStructure()) return;
+      const metricsByResidue = currentProteinMetricsByPdbResidue(dataset);
+      const selectedMetric = selectedCurrentProteinMetric(dataset);
+      const selectedResidueNumber = selectedMetric?.pdbResidue;
+      state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#d1d5db', opacity: 0.86 } });
+      state.residues.forEach(residue => {
+        const metric = metricsByResidue.get(residue.resi);
+        if (!metric && ['conservation', 'identity'].includes(state.currentProteinColorBy)) return;
+        const color = structureColorForResidue(residue, metric);
+        const value = state.currentProteinColorBy === 'identity' ? metric?.exactIdentity : metric?.conservationScore;
+        const visual = ['conservation', 'identity'].includes(state.currentProteinColorBy) ? conservationVisualModel(value) : null;
+        const filter = state.currentProteinConservationFilter;
+        if (filter === 'high' && (!visual || !['Highly conserved', 'Invariant in this alignment'].includes(visual.classification))) return;
+        if (filter === 'variable' && (!visual || !['Highly variable', 'Variable'].includes(visual.classification))) return;
+        state.viewer.setStyle(residueSpec(residue), { cartoon: { color, opacity: 0.95 } });
+      });
+      state.viewer.setStyle({ resn: 'HEM' }, { stick: { colorscheme: 'Jmol', radius: 0.25 }, sphere: { scale: 0.36 } });
+      if (state.currentProteinShowSurface && state.viewer.addSurface && window.$3Dmol?.SurfaceType?.VDW) {
+        state.viewer.addSurface($3Dmol.SurfaceType.VDW, { opacity: 0.42, color: '#d1d5db' }, { hetflag: false });
+      }
+      if (selectedResidueNumber) {
+        const selectedResidue = state.residues.find(residue => residue.chain === 'A' && residue.resi === selectedResidueNumber);
+        if (selectedResidue) {
+          const color = structureColorForResidue(selectedResidue, metricsByResidue.get(selectedResidueNumber));
+          state.viewer.setStyle(residueSpec(selectedResidue), { cartoon: { color }, stick: { colorscheme: 'Jmol', radius: 0.24 }, sphere: { scale: 0.26 } });
+          addResidueLabel(selectedResidue, '#00ffff');
+        }
+      }
+      zoomViewerSafely({ hetflag: false });
+    }
+
     function ensureMyoglobinCandidateSelection(dataset) {
       if (!dataset) return;
       const accessions = dataset.records.map(record => record.accession);
@@ -12603,21 +13000,31 @@ END
         }).join('');
         const consensusCells = block.sequence.split('').map((_, offset) => {
           const columnIndex = block.start + offset - 1;
-          return `<span class="alignment-cell">${escapeHtml(consensusCharacterForColumn(alignment.records, columnIndex))}</span>`;
+          const metric = currentProteinColumnMetric(dataset, columnIndex);
+          const visual = conservationVisualModel(metricValueForColumnMetric(metric));
+          return `<span class="alignment-cell" style="font-weight:700;background:${visual.color};color:${visual.foreground}" aria-label="Consensus ${escapeHtml(metric?.consensus || '-')}; ${escapeHtml(visual.accessibleLabel)}">${escapeHtml(consensusCharacterForColumn(alignment.records, columnIndex))}</span>`;
         }).join('');
         const rows = alignment.records.map(record => {
           const cells = record.alignedSequence.slice(block.start - 1, block.end).split('').map((char, offset) => {
             const columnIndex = block.start + offset - 1;
             const isSelected = selected === columnIndex;
-            if (record.accession === dataset.reference.accession) {
-              const canonicalPosition = referencePositionForAlignmentColumn(alignment, columnIndex);
-              const pdbResidue = pdbResidueForP02185CanonicalPosition(canonicalPosition);
-              const label = pdbResidue
-                ? `Select P02185 canonical residue ${canonicalPosition}, PDB 1MBN residue ${pdbResidue}, ${char}`
-                : `P02185 canonical residue ${canonicalPosition}, ${char}, present in the canonical sequence but absent from this experimental structure.`;
-              return `<button type="button" class="alignment-cell${isSelected ? ' selected' : ''}" data-current-reference-column="${columnIndex}" aria-pressed="${isSelected ? 'true' : 'false'}" aria-label="${escapeHtml(label)}">${escapeHtml(char)}</button>`;
-            }
-            return `<span class="alignment-cell${isSelected ? ' selected' : ''}">${escapeHtml(char)}</span>`;
+            const metric = currentProteinColumnMetric(dataset, columnIndex);
+            const value = metricValueForColumnMetric(metric);
+            const visual = conservationVisualModel(value);
+            const canonicalPosition = referencePositionForAlignmentColumn(alignment, columnIndex);
+            const pdbResidue = pdbResidueForP02185CanonicalPosition(canonicalPosition);
+            const isGap = char === '-';
+            const isReference = record.accession === dataset.reference.accession;
+            const property = aminoAcidPropertyModel(char);
+            const useProperty = state.currentProteinColorBy === 'property';
+            const isColorless = state.currentProteinDisableBackgrounds || state.currentProteinColorBy === 'uniform' || state.currentProteinColorBy === 'secondary';
+            const background = isGap ? '#f8fafc' : useProperty ? property.color : isColorless ? '#ffffff' : visual.color;
+            const foreground = isGap ? '#475569' : useProperty ? property.foreground : isColorless ? '#111827' : visual.foreground;
+            const border = isSelected ? '3px solid #00ffff' : isReference ? '2px solid rgba(17,24,39,0.55)' : '1px solid rgba(15,23,42,0.12)';
+            const marker = isReference && !pdbResidue ? '○' : '';
+            const metricText = state.currentProteinColorBy === 'identity' ? 'exact identity' : state.currentProteinColorBy === 'property' ? property.label : 'conservation score';
+            const label = `${record.accession} alignment column ${columnIndex + 1}; residue ${char}; reference ${metric?.referenceResidue || '-'}; UniProt position ${canonicalPosition || 'gap'}; ${pdbResidue ? `PDB 1MBN residue ${pdbResidue}` : 'This canonical position is represented in the alignment but is not modeled in the current experimental structure.'}; consensus ${metric?.consensus || '-'}; N ${metric?.contributing || 0} of ${metric?.total || 0}; exact identity ${metric?.exactIdentity === null ? 'insufficient evidence' : percentText(metric.exactIdentity)}; conservation score ${metric?.conservationScore === null ? 'insufficient evidence' : metric.conservationScore.toFixed(2)}; gap fraction ${metric ? percentText(metric.gapFraction) : 'n/a'}; ${useProperty ? property.label : visual.classification}; ${metricText}.`;
+            return `<button type="button" class="alignment-cell${isSelected ? ' selected' : ''}${isGap ? ' disabled' : ''}" data-current-reference-column="${columnIndex}" aria-pressed="${isSelected ? 'true' : 'false'}" style="background:${background};color:${foreground};border:${border};${isGap ? 'background-image:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 3px,#e2e8f0 3px,#e2e8f0 6px);' : ''}" aria-label="${escapeHtml(label)}" title="${escapeHtml(label)}">${escapeHtml(char)}${marker ? `<span aria-label="not modeled in 1MBN"> ${marker}</span>` : ''}</button>`;
           }).join('');
           return `
             <div class="alignment-row">
@@ -12948,6 +13355,14 @@ END
       `;
       renderCurrentProteinCandidateTable(teachingDataset);
       renderCurrentProteinAlignment(teachingDataset);
+      renderCurrentProteinConservationLegend(teachingDataset);
+      renderCurrentProteinResidueInfo(teachingDataset);
+      const colorSelect = document.getElementById('currentProteinColorBy');
+      if (colorSelect) colorSelect.value = state.currentProteinColorBy;
+      const surfaceToggle = document.getElementById('toggleCurrentConservationSurface');
+      if (surfaceToggle) surfaceToggle.checked = state.currentProteinShowSurface;
+      const backgroundToggle = document.getElementById('disableCurrentConservationBackgrounds');
+      if (backgroundToggle) backgroundToggle.checked = state.currentProteinDisableBackgrounds;
       stageList.innerHTML = state.evolutionIdentity.stages.map(stage => `
         <div class="structure-pill ${evolutionStatusClass(stage.status)}">
           <span><strong>${escapeHtml(stage.label)}</strong><br>${escapeHtml(stage.source)}<br>${escapeHtml(stage.status)}${stage.message ? `: ${escapeHtml(stage.message)}` : ''}</span>
@@ -12976,8 +13391,8 @@ END
       `;
       const computeButton = document.getElementById('computeConservation');
       if (computeButton) {
-        computeButton.disabled = true;
-        computeButton.textContent = 'Conservation Mapping Disabled';
+        computeButton.disabled = !teachingDataset;
+        computeButton.textContent = teachingDataset ? 'Refresh Conservation Colors' : 'Conservation Mapping Disabled';
       }
       const note = document.getElementById('computeReadinessNote');
       if (note) note.textContent = teachingDataset
@@ -13191,10 +13606,7 @@ END
     }
 
     function conservationColor(score) {
-      if (score >= 0.9) return '#d73027';
-      if (score >= 0.7) return '#f97316';
-      if (score >= 0.5) return '#fde047';
-      return '#2563eb';
+      return conservationVisualModel(score).color;
     }
 
     function conservationRowsByResidueKey() {
@@ -13329,6 +13741,7 @@ END
 
     function drawConservation() {
       ensureEvolutionStateFresh();
+      const teachingDataset = currentProteinMyoglobinDataset();
       renderCurrentProteinEvolution();
       if (state.evolutionIdentity.status === 'not started') {
         resolveCurrentProteinEvolutionIdentity().catch(error => {
@@ -13343,12 +13756,24 @@ END
       document.getElementById('homologCount').textContent = 'not ready';
       document.getElementById('layerResidueCount').textContent = 'not computed';
       document.getElementById('layerConservedCount').textContent = 'not computed';
-      document.getElementById('conservationNote').innerHTML = `<strong>Current-protein conservation not computed</strong>Evolutionary Analysis is currently resolving identity, family/domain evidence, and readiness for ${escapeHtml(state.structureLabel)} (${escapeHtml(state.structureId)}) chain ${escapeHtml(currentEvolutionChain() || 'not selected')}. It will not substitute any unrelated curated dataset.`;
+      if (teachingDataset) {
+        const metrics = Array.from({ length: teachingDataset.alignment.alignmentLength }, (_, index) => currentProteinColumnMetric(teachingDataset, index));
+        const mapped = metrics.filter(metric => metric?.pdbResidue).length;
+        document.getElementById('homologCount').textContent = currentProteinSelectedRecords(teachingDataset).length;
+        document.getElementById('layerResidueCount').textContent = `${mapped} / ${state.residues.length}`;
+        document.getElementById('conservedCount').textContent = metrics.filter(metric => conservationVisualModel(metricValueForColumnMetric(metric)).classification === 'Invariant in this alignment').length;
+        document.getElementById('conservationNote').innerHTML = `<strong>${escapeHtml(currentProteinMetricLabel())}</strong>Colors come from the validated 1MBN/P02185 myoglobin alignment. Gaps are excluded from amino-acid frequencies, gap fraction is reported separately, and N < 3 gives insufficient evidence.`;
+      } else {
+        document.getElementById('conservationNote').innerHTML = `<strong>Current-protein conservation not computed</strong>Evolutionary Analysis is currently resolving identity, family/domain evidence, and readiness for ${escapeHtml(state.structureLabel)} (${escapeHtml(state.structureId)}) chain ${escapeHtml(currentEvolutionChain() || 'not selected')}. It will not substitute any unrelated curated dataset.`;
+      }
       renderConservationTable([]);
       renderCerGenerator([]);
       if (canRenderStructure()) {
-        state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
-        zoomViewerSafely({ hetflag: false });
+        if (teachingDataset) applyCurrentProteinStructureColoring(teachingDataset);
+        else {
+          state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
+          zoomViewerSafely({ hetflag: false });
+        }
       }
       return;
       const c = colors();
@@ -14011,6 +14436,18 @@ END
     function populateHelixPatternList() {
       const list = document.getElementById('helixPatternList');
       if (!list) return;
+      if (state.helixType === 'all') {
+        list.innerHTML = '';
+        ['alpha', '310', 'pi'].forEach(key => {
+          const info = helixTypes[key];
+          const segments = helixSegments(key);
+          const summary = document.createElement('div');
+          summary.className = 'item';
+          summary.innerHTML = `<strong>${info.label}</strong><span aria-label="${info.accessibleLabel}">${segments.length ? segments.map(segment => `${segment.residues[0].label} to ${segment.residues[segment.residues.length - 1].label} (${segment.residues.length} residues, ${segment.bonds.length} contacts)`).join('; ') : 'No contiguous candidate segments passed the current geometry filters.'}</span>`;
+          list.appendChild(summary);
+        });
+        return;
+      }
       const info = helixTypes[state.helixType];
       const bonds = helixPatternBonds(state.helixType);
       list.innerHTML = '';
@@ -14247,6 +14684,8 @@ END
       state.mutationResidueKey = '';
       state.comparisonCase = '';
       state.conservationComparisons = '';
+      state.selectedCurrentEvolutionColumnIndex = null;
+      state.currentProteinConservationFilter = 'all';
       resetCurrentProteinEvolution('Loaded structure changed; previous evolution state was cleared.');
     }
 
@@ -15320,7 +15759,7 @@ END
     });
 
     document.getElementById('computeConservation').addEventListener('click', () => {
-      renderCurrentProteinEvolution();
+      applyMode();
     });
 
     document.getElementById('refreshEvolutionIdentity').addEventListener('click', () => {
@@ -15355,7 +15794,61 @@ END
       const button = event.target.closest('button[data-current-reference-column]');
       if (!button) return;
       selectCurrentProteinAlignmentColumn(Number(button.dataset.currentReferenceColumn));
+      applyMode();
     });
+
+    document.getElementById('currentProteinColorBy').addEventListener('change', event => {
+      state.currentProteinColorBy = event.target.value;
+      applyMode();
+    });
+
+    document.getElementById('showCurrentConservationMap').addEventListener('click', () => {
+      state.currentProteinConservationFilter = 'all';
+      applyMode();
+    });
+
+    document.getElementById('showCurrentHighConservation').addEventListener('click', () => {
+      state.currentProteinConservationFilter = 'high';
+      applyMode();
+    });
+
+    document.getElementById('showCurrentVariableConservation').addEventListener('click', () => {
+      state.currentProteinConservationFilter = 'variable';
+      applyMode();
+    });
+
+    document.getElementById('focusCurrentConservationSelection').addEventListener('click', () => {
+      const dataset = currentProteinMyoglobinDataset();
+      const metric = selectedCurrentProteinMetric(dataset);
+      if (metric?.pdbResidue) {
+        const residue = state.residues.find(item => item.chain === 'A' && item.resi === metric.pdbResidue);
+        if (residue) {
+          zoomViewerSafely(residueSpec(residue));
+          renderViewerSafely();
+        }
+      }
+    });
+
+    document.getElementById('resetCurrentConservationView').addEventListener('click', () => {
+      state.currentProteinConservationFilter = 'all';
+      state.currentProteinShowSurface = false;
+      state.currentProteinColorBy = 'conservation';
+      applyMode();
+    });
+
+    document.getElementById('toggleCurrentConservationSurface').addEventListener('change', event => {
+      state.currentProteinShowSurface = event.target.checked;
+      applyMode();
+    });
+
+    document.getElementById('disableCurrentConservationBackgrounds').addEventListener('change', event => {
+      state.currentProteinDisableBackgrounds = event.target.checked;
+      applyMode();
+    });
+
+    document.getElementById('downloadCurrentConservationCsv').addEventListener('click', downloadCurrentProteinConservationCsv);
+    document.getElementById('downloadCurrentConservationJson').addEventListener('click', downloadCurrentProteinConservationJson);
+    document.getElementById('copyCurrentAlignmentText').addEventListener('click', copyCurrentProteinAlignmentText);
 
     document.getElementById('mapConservation').addEventListener('click', () => {
       setConservationMapMode('all');
