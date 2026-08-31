@@ -8,7 +8,9 @@
   <script src="./curated_sequence_validation.js"></script>
   <script src="./curated_alignment_validation.js"></script>
   <script src="./atlas_dataset_registry_validation.js"></script>
+  <script src="./myoglobin_evolution_validation.js"></script>
   <script src="./sequence_display_helpers.js"></script>
+  <script src="./data/myoglobin_current_protein_evolution.js"></script>
   <script src="./data/curated_sequence_alignments.js"></script>
   <script src="./data/curated_sequence_sets.js"></script>
   <script src="./data/atlas_dataset_registry.js"></script>
@@ -2985,6 +2987,14 @@ rotation axis B—C</div>
           <h3>Family and Domain Evidence</h3>
           <p>Family, domain, and site annotations appear here when public browser-accessible services return data for the loaded chain.</p>
         </div>
+        <div class="mini-card" id="evolutionCandidatePanel">
+          <h3>Candidate Myoglobin Sequence Set</h3>
+          <p>Candidate sequences appear here after the current protein identity resolves.</p>
+        </div>
+        <div class="mini-card" id="currentProteinAlignmentPanel">
+          <h3>Validated Precomputed Alignment</h3>
+          <p>The alignment appears here for the 1MBN/P02185 checkpoint dataset.</p>
+        </div>
         <div class="mini-card" id="evolutionHomologReadinessPanel">
           <h3>Homolog-Set Readiness</h3>
           <p>Residue conservation mapping is disabled until a homolog set, sequence alignment, residue mapping, and interpretation model are all available for the current protein and chain.</p>
@@ -5404,6 +5414,8 @@ END
         stages: [],
         errors: []
       },
+      selectedCurrentEvolutionColumnIndex: null,
+      selectedMyoglobinEvolutionAccessions: [],
       conservationResult: {
         status: 'Not computed yet',
         reference: '1MBN',
@@ -7012,6 +7024,10 @@ END
         const pathwaySteps = LEARNING_PATHWAYS[pathway].steps;
         state.activePathwayStep = Number.isInteger(step) ? Math.max(0, Math.min(pathwaySteps.length - 1, step)) : 0;
         state.mode = pathwaySteps[state.activePathwayStep].mode;
+      } else if (state.studentMode === 'learn' && mode === 'conservation') {
+        state.activePathway = 'protein_evolution';
+        state.activePathwayStep = 0;
+        state.mode = 'conservation';
       } else {
         state.activePathway = null;
       }
@@ -12437,6 +12453,233 @@ END
       renderFunctionalFeaturePanel();
     }
 
+    function currentProteinMyoglobinDataset() {
+      const dataset = window.BVA_CURRENT_MYOGLOBIN_EVOLUTION;
+      const identityAccession = state.evolutionIdentity.identity?.uniprotAccession;
+      if (!dataset) return null;
+      if (state.structureId !== dataset.reference.pdbId) return null;
+      if (currentEvolutionChain() !== dataset.reference.chain) return null;
+      if (identityAccession && identityAccession !== dataset.reference.accession) return null;
+      return dataset;
+    }
+
+    function validateCurrentProteinMyoglobinDataset(dataset) {
+      if (!dataset || !window.BVAMyoglobinEvolutionValidation) return { valid: false, errors: ['Validated myoglobin dataset or validator is unavailable.'], warnings: [] };
+      return window.BVAMyoglobinEvolutionValidation.validateMyoglobinEvolutionDataset(dataset);
+    }
+
+    function pairwiseIdentity(referenceSequence, comparisonSequence) {
+      const length = Math.min(referenceSequence.length, comparisonSequence.length);
+      let same = 0;
+      for (let index = 0; index < length; index++) {
+        if (referenceSequence[index] === comparisonSequence[index]) same++;
+      }
+      return length ? same / length : 0;
+    }
+
+    function referenceCoverage(referenceSequence, comparisonSequence) {
+      const usable = [...comparisonSequence].filter(char => /[ACDEFGHIKLMNPQRSTVWY]/.test(char)).length;
+      return referenceSequence.length ? Math.min(1, usable / referenceSequence.length) : 0;
+    }
+
+    function percentText(value) {
+      return `${Math.round(value * 100)}%`;
+    }
+
+    function ensureMyoglobinCandidateSelection(dataset) {
+      if (!dataset) return;
+      const accessions = dataset.records.map(record => record.accession);
+      const validCurrent = state.selectedMyoglobinEvolutionAccessions.filter(accession => accessions.includes(accession));
+      state.selectedMyoglobinEvolutionAccessions = validCurrent.length ? validCurrent : accessions;
+    }
+
+    function renderCurrentProteinCandidateTable(dataset) {
+      const panel = document.getElementById('evolutionCandidatePanel');
+      if (!panel) return;
+      if (!dataset) {
+        panel.innerHTML = '<h3>Candidate Homolog Set</h3><p>No validated candidate table is bundled for this current protein yet. The workflow will not substitute unrelated sequences.</p>';
+        return;
+      }
+      ensureMyoglobinCandidateSelection(dataset);
+      const validation = validateCurrentProteinMyoglobinDataset(dataset);
+      const reference = dataset.records.find(record => record.accession === dataset.reference.accession);
+      const rows = dataset.records.map(record => {
+        const selected = state.selectedMyoglobinEvolutionAccessions.includes(record.accession);
+        const pdbText = record.pdbStructures?.length ? record.pdbStructures.join(', ') : 'none listed';
+        const identity = reference ? percentText(pairwiseIdentity(reference.sequence, record.sequence)) : 'n/a';
+        const coverage = reference ? percentText(referenceCoverage(reference.sequence, record.sequence)) : 'n/a';
+        return `
+          <tr>
+            <td><label><input type="checkbox" data-myoglobin-candidate="${escapeHtml(record.accession)}" ${selected ? 'checked' : ''}> include</label></td>
+            <td><strong>${escapeHtml(record.accession)}</strong></td>
+            <td>${escapeHtml(record.proteinName)}</td>
+            <td><em>${escapeHtml(record.organism)}</em><br>${escapeHtml(record.broadTaxonomicGroup)}</td>
+            <td>${record.sequence.length}</td>
+            <td>${record.reviewed ? 'reviewed' : 'unreviewed'}</td>
+            <td>${identity}</td>
+            <td>${coverage}</td>
+            <td>${escapeHtml(record.familyEvidence.join('; '))}</td>
+            <td>${escapeHtml(pdbText)}</td>
+            <td>${escapeHtml(record.inclusionRationale)}</td>
+          </tr>
+        `;
+      }).join('');
+      panel.innerHTML = `
+        <h3>Candidate Myoglobin Sequence Set</h3>
+        <div class="chem-note"><strong>Using validated teaching dataset</strong>Using the validated teaching dataset because live homolog retrieval is unavailable. Records were retrieved from UniProtKB REST on ${escapeHtml(dataset.retrievalDate)} and filtered to full-length myoglobin orthologs.</div>
+        ${validation.valid ? '<div class="chem-note"><strong>Validation passed</strong>Eight verified myoglobin sequences are available for inspection.</div>' : `<div class="warning-text"><strong>Validation problem</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`}
+        <div class="table-wrap">
+          <table>
+            <caption>Candidate homolog set for current-protein myoglobin evolution checkpoint</caption>
+            <thead>
+              <tr>
+                <th>Use</th>
+                <th>UniProt accession</th>
+                <th>Protein name</th>
+                <th>Organism and group</th>
+                <th>Length</th>
+                <th>Status</th>
+                <th>Identity to P02185</th>
+                <th>Reference coverage</th>
+                <th>Family evidence</th>
+                <th>PDB structure</th>
+                <th>Inclusion reason</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function pdbResidueForP02185CanonicalPosition(canonicalPosition) {
+      if (state.structureId !== '1MBN' || currentEvolutionChain() !== 'A') return null;
+      if (canonicalPosition < 2 || canonicalPosition > 154) return null;
+      return canonicalPosition - 1;
+    }
+
+    function referencePositionForAlignmentColumn(alignment, columnIndex) {
+      const reference = alignment?.records?.find(record => record.accession === 'P02185') || alignment?.records?.[0];
+      if (!reference) return null;
+      let position = 0;
+      for (let index = 0; index <= columnIndex; index++) {
+        if (reference.alignedSequence[index] !== '-') position++;
+      }
+      return position || null;
+    }
+
+    function consensusCharacterForColumn(records, columnIndex) {
+      const counts = new Map();
+      records.forEach(record => {
+        const char = record.alignedSequence[columnIndex];
+        if (!char || char === '-') return;
+        counts.set(char, (counts.get(char) || 0) + 1);
+      });
+      return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || '-';
+    }
+
+    function renderCurrentProteinAlignment(dataset) {
+      const panel = document.getElementById('currentProteinAlignmentPanel');
+      if (!panel) return;
+      if (!dataset) {
+        panel.innerHTML = '<h3>Validated Precomputed Alignment</h3><p>No validated current-protein alignment is bundled for this structure yet.</p>';
+        return;
+      }
+      const alignment = dataset.alignment;
+      const selected = state.selectedCurrentEvolutionColumnIndex;
+      const blocks = alignmentColumnRows(alignment.records[0].alignedSequence, 60);
+      const blockHtml = blocks.map(block => {
+        const markerCells = [...alignmentMarkerLine(block.start, block.sequence)].map(marker => `<span class="alignment-marker-cell">${escapeHtml(marker)}</span>`).join('');
+        const referenceNumberCells = block.sequence.split('').map((_, offset) => {
+          const columnIndex = block.start + offset - 1;
+          const canonicalPosition = referencePositionForAlignmentColumn(alignment, columnIndex);
+          return `<span class="alignment-marker-cell">${canonicalPosition && canonicalPosition % 10 === 0 ? canonicalPosition : ''}</span>`;
+        }).join('');
+        const pdbNumberCells = block.sequence.split('').map((_, offset) => {
+          const columnIndex = block.start + offset - 1;
+          const canonicalPosition = referencePositionForAlignmentColumn(alignment, columnIndex);
+          const pdbResidue = pdbResidueForP02185CanonicalPosition(canonicalPosition);
+          return `<span class="alignment-marker-cell">${pdbResidue && pdbResidue % 10 === 0 ? pdbResidue : ''}</span>`;
+        }).join('');
+        const consensusCells = block.sequence.split('').map((_, offset) => {
+          const columnIndex = block.start + offset - 1;
+          return `<span class="alignment-cell">${escapeHtml(consensusCharacterForColumn(alignment.records, columnIndex))}</span>`;
+        }).join('');
+        const rows = alignment.records.map(record => {
+          const cells = record.alignedSequence.slice(block.start - 1, block.end).split('').map((char, offset) => {
+            const columnIndex = block.start + offset - 1;
+            const isSelected = selected === columnIndex;
+            if (record.accession === dataset.reference.accession) {
+              const canonicalPosition = referencePositionForAlignmentColumn(alignment, columnIndex);
+              const pdbResidue = pdbResidueForP02185CanonicalPosition(canonicalPosition);
+              const label = pdbResidue
+                ? `Select P02185 canonical residue ${canonicalPosition}, PDB 1MBN residue ${pdbResidue}, ${char}`
+                : `P02185 canonical residue ${canonicalPosition}, ${char}, present in the canonical sequence but absent from this experimental structure.`;
+              return `<button type="button" class="alignment-cell${isSelected ? ' selected' : ''}" data-current-reference-column="${columnIndex}" aria-pressed="${isSelected ? 'true' : 'false'}" aria-label="${escapeHtml(label)}">${escapeHtml(char)}</button>`;
+            }
+            return `<span class="alignment-cell${isSelected ? ' selected' : ''}">${escapeHtml(char)}</span>`;
+          }).join('');
+          return `
+            <div class="alignment-row">
+              <div class="alignment-row-label"><strong>${escapeHtml(record.accession)}</strong><br><span>${escapeHtml(record.organism)}</span></div>
+              <div class="alignment-sequence" role="group" aria-label="Aligned sequence columns ${block.start} to ${block.end} for ${escapeHtml(record.accession)}">${cells}</div>
+            </div>
+          `;
+        }).join('');
+        return `
+          <div class="alignment-block" style="--alignment-block-column-count:${block.sequence.length}">
+            <div class="alignment-row"><div class="alignment-row-label">Alignment column</div><div class="alignment-sequence alignment-marker">${markerCells}</div></div>
+            <div class="alignment-row"><div class="alignment-row-label">P02185 canonical position</div><div class="alignment-sequence alignment-marker">${referenceNumberCells}</div></div>
+            <div class="alignment-row"><div class="alignment-row-label">1MBN PDB residue</div><div class="alignment-sequence alignment-marker">${pdbNumberCells}</div></div>
+            <div class="alignment-row"><div class="alignment-row-label">Consensus</div><div class="alignment-sequence">${consensusCells}</div></div>
+            ${rows}
+          </div>
+        `;
+      }).join('');
+      const selectedPosition = Number.isInteger(selected) ? referencePositionForAlignmentColumn(alignment, selected) : null;
+      const selectedPdbResidue = pdbResidueForP02185CanonicalPosition(selectedPosition);
+      panel.innerHTML = `
+        <h3>Validated Precomputed Alignment</h3>
+        <div class="chem-note"><strong>${escapeHtml(alignment.method)}</strong> ${escapeHtml(alignment.software)}; ${escapeHtml(alignment.parameters)} Alignment date: ${escapeHtml(alignment.alignmentDate)}.</div>
+        <div class="chem-note"><strong>Mapping rule</strong>${escapeHtml(dataset.reference.mappingNote)}</div>
+        <div class="chem-note" id="currentProteinAlignmentSelection"><strong>Selected alignment position</strong>${selectedPosition ? `P02185 canonical position ${selectedPosition}; ${selectedPdbResidue ? `1MBN residue ${selectedPdbResidue} is selected.` : 'Present in the canonical sequence but absent from this experimental structure.'}` : 'None selected.'}</div>
+        <div class="alignment-scroll" tabindex="0" aria-label="Scrollable current-protein myoglobin alignment">${blockHtml}</div>
+        <details>
+          <summary>Text alternative for alignment</summary>
+          <table class="alignment-column-table">
+            <caption>Aligned FASTA sequences for the validated myoglobin checkpoint dataset</caption>
+            <thead><tr><th>Accession</th><th>Organism</th><th>Aligned sequence</th></tr></thead>
+            <tbody>${alignment.records.map(record => `<tr><td>${escapeHtml(record.accession)}</td><td>${escapeHtml(record.organism)}</td><td><code>${escapeHtml(record.alignedSequence)}</code></td></tr>`).join('')}</tbody>
+          </table>
+        </details>
+      `;
+    }
+
+    function selectCurrentProteinAlignmentColumn(columnIndex) {
+      const dataset = currentProteinMyoglobinDataset();
+      if (!dataset) return;
+      const alignment = dataset.alignment;
+      if (!Number.isInteger(columnIndex) || columnIndex < 0 || columnIndex >= alignment.alignmentLength) return;
+      state.selectedCurrentEvolutionColumnIndex = columnIndex;
+      const canonicalPosition = referencePositionForAlignmentColumn(alignment, columnIndex);
+      const pdbResidue = pdbResidueForP02185CanonicalPosition(canonicalPosition);
+      if (!pdbResidue) {
+        renderCurrentProteinAlignment(dataset);
+        document.getElementById('conservationNote').innerHTML = '<strong>No 1MBN coordinate</strong>Present in the canonical sequence but absent from this experimental structure.';
+        return;
+      }
+      const residueIndex = state.residues.findIndex(residue => residue.chain === 'A' && residue.resi === pdbResidue);
+      if (residueIndex >= 0) {
+        state.selectedResidueIndex = residueIndex;
+        document.getElementById('residueSelect').value = residueIndex;
+        document.getElementById('residueSlider').value = residueIndex;
+        document.getElementById('conservationNote').innerHTML = `<strong>Mapped residue selected</strong>P02185 canonical position ${canonicalPosition} maps to 1MBN residue ${pdbResidue}.`;
+        updateLearningContext();
+        renderMolecularEvidenceCard();
+        renderCurrentProteinAlignment(dataset);
+      }
+    }
+
     const EVOLUTION_STAGE_TEMPLATE = [
       { id: 'identity', label: 'Current protein identity', source: 'RCSB PDB Data API' },
       { id: 'mapping', label: 'PDB-chain to sequence mapping', source: 'RCSB Sequence Coordinates API' },
@@ -12661,8 +12904,15 @@ END
       }
 
       setEvolutionStage('cdd', 'unavailable', 'CDD is listed as a conserved-domain reference, but this static page does not run a live whole-protein CD-Search.');
-      setEvolutionStage('homologs', 'unavailable', 'A current-protein homolog set has not been assembled or validated.');
-      setEvolutionStage('alignment', 'unavailable', 'No multiple sequence alignment is loaded for this protein and chain.');
+      const teachingDataset = currentProteinMyoglobinDataset();
+      const teachingValidation = validateCurrentProteinMyoglobinDataset(teachingDataset);
+      if (teachingDataset && teachingValidation.valid) {
+        setEvolutionStage('homologs', 'success', 'Eight verified myoglobin sequences are available in the candidate table.');
+        setEvolutionStage('alignment', 'success', 'A validated precomputed 154-column alignment is available for the 1MBN/P02185 checkpoint.');
+      } else {
+        setEvolutionStage('homologs', 'unavailable', 'A current-protein homolog set has not been assembled or validated.');
+        setEvolutionStage('alignment', 'unavailable', 'No multiple sequence alignment is loaded for this protein and chain.');
+      }
       setEvolutionStage('conservation', 'disabled', 'Residue conservation mapping is disabled until homolog discovery, MSA, and residue mapping are all ready for the current protein.');
       state.evolutionIdentity.status = state.evolutionIdentity.errors.length ? 'partial' : 'complete';
       renderCurrentProteinEvolution();
@@ -12685,6 +12935,7 @@ END
       if (!context || !stageList || !familyPanel || !readinessPanel) return;
       const identity = state.evolutionIdentity.identity;
       const uniprot = state.evolutionIdentity.uniprot;
+      const teachingDataset = currentProteinMyoglobinDataset();
       const chain = currentEvolutionChain() || 'not selected';
       const modeledResidues = identity?.modeledResidues ?? (state.residues.filter(residue => residue.chain === chain).length || state.residues.length || 'not parsed');
       context.innerHTML = `
@@ -12695,6 +12946,8 @@ END
         <p><strong>Source organism:</strong> ${escapeHtml(identity?.sourceOrganism || uniprot?.organism || 'not available yet')}</p>
         <p><strong>Mapped UniProt accession:</strong> ${escapeHtml(identity?.uniprotAccession || 'not available')}</p>
       `;
+      renderCurrentProteinCandidateTable(teachingDataset);
+      renderCurrentProteinAlignment(teachingDataset);
       stageList.innerHTML = state.evolutionIdentity.stages.map(stage => `
         <div class="structure-pill ${evolutionStatusClass(stage.status)}">
           <span><strong>${escapeHtml(stage.label)}</strong><br>${escapeHtml(stage.source)}<br>${escapeHtml(stage.status)}${stage.message ? `: ${escapeHtml(stage.message)}` : ''}</span>
@@ -12713,12 +12966,12 @@ END
       `;
       readinessPanel.innerHTML = `
         <h3>Homolog-Set Readiness</h3>
-        <p><strong>Status:</strong> Not ready for residue conservation mapping.</p>
+        <p><strong>Status:</strong> ${teachingDataset ? 'Checkpoint ready through alignment; conservation colors intentionally not added yet.' : 'Not ready for residue conservation mapping.'}</p>
         <ul>
-          <li>Related-protein discovery: not implemented for the current protein in this static build.</li>
-          <li>Multiple sequence alignment: no current-protein MSA loaded.</li>
-          <li>Residue mapping: no displayed PDB-to-canonical sequence coordinate map yet.</li>
-          <li>Conservation coloring: disabled so unrelated datasets are never substituted.</li>
+          <li>Related-protein discovery: ${teachingDataset ? 'validated local 1MBN myoglobin teaching set available.' : 'not implemented for the current protein in this static build.'}</li>
+          <li>Multiple sequence alignment: ${teachingDataset ? 'validated precomputed alignment rendered below.' : 'no current-protein MSA loaded.'}</li>
+          <li>Residue mapping: ${teachingDataset ? 'P02185 canonical positions 2-154 map to 1MBN residues 1-153; position 1 is absent from coordinates.' : 'no displayed PDB-to-canonical sequence coordinate map yet.'}</li>
+          <li>Conservation coloring: disabled for this checkpoint until identity, homologs, alignment, and numbering have been reviewed.</li>
         </ul>
       `;
       const computeButton = document.getElementById('computeConservation');
@@ -12727,7 +12980,9 @@ END
         computeButton.textContent = 'Conservation Mapping Disabled';
       }
       const note = document.getElementById('computeReadinessNote');
-      if (note) note.textContent = 'Current-protein residue conservation needs a validated homolog set, MSA, and residue mapping before scores can be calculated.';
+      if (note) note.textContent = teachingDataset
+        ? 'Checkpoint reached: identity, candidate table, alignment, and P02185-to-1MBN selection mapping are available. Conservation colors are intentionally disabled.'
+        : 'Current-protein residue conservation needs a validated homolog set, MSA, and residue mapping before scores can be calculated.';
       renderConservationResultSummary();
     }
 
@@ -15083,6 +15338,23 @@ END
         state.evolutionIdentity.errors.push(error.message);
         renderCurrentProteinEvolution();
       });
+    });
+
+    document.getElementById('evolutionCandidatePanel').addEventListener('change', event => {
+      const checkbox = event.target.closest('input[data-myoglobin-candidate]');
+      if (!checkbox) return;
+      const accession = checkbox.dataset.myoglobinCandidate;
+      if (checkbox.checked && !state.selectedMyoglobinEvolutionAccessions.includes(accession)) {
+        state.selectedMyoglobinEvolutionAccessions.push(accession);
+      } else if (!checkbox.checked) {
+        state.selectedMyoglobinEvolutionAccessions = state.selectedMyoglobinEvolutionAccessions.filter(item => item !== accession);
+      }
+    });
+
+    document.getElementById('currentProteinAlignmentPanel').addEventListener('click', event => {
+      const button = event.target.closest('button[data-current-reference-column]');
+      if (!button) return;
+      selectCurrentProteinAlignmentColumn(Number(button.dataset.currentReferenceColumn));
     });
 
     document.getElementById('mapConservation').addEventListener('click', () => {
