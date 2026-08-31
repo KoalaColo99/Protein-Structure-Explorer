@@ -1790,6 +1790,106 @@
       padding: 10px;
     }
 
+    .flagship-cycle {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfdff;
+      display: grid;
+      gap: 10px;
+      margin: 12px 0;
+      padding: 11px;
+    }
+
+    .cycle-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 7px;
+    }
+
+    .cycle-step {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 8px;
+    }
+
+    .cycle-step.active {
+      border-color: var(--blue);
+      background: #eff6ff;
+      color: #1742a0;
+      font-weight: 800;
+    }
+
+    .guided-controls {
+      display: grid;
+      gap: 9px;
+    }
+
+    .guided-controls textarea,
+    .guided-controls input[type="text"],
+    .guided-controls input[type="number"] {
+      min-height: 54px;
+      resize: vertical;
+      width: 100%;
+    }
+
+    .guided-controls input[type="number"] {
+      min-height: 0;
+      max-width: 160px;
+      resize: none;
+    }
+
+    .rama-data-table {
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+      width: 100%;
+    }
+
+    .rama-data-table th,
+    .rama-data-table td {
+      border-bottom: 1px solid #edf1f5;
+      padding: 6px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .conflict-list {
+      display: grid;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .conflict-card {
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .titration-canvas {
+      background: #ffffff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .ph-accounting-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: minmax(0, 1.2fr) minmax(220px, .8fr);
+    }
+
+    .ph-compare-card {
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 9px;
+    }
+
     .ph-scale {
       position: relative;
       height: 66px;
@@ -1867,6 +1967,7 @@
       .rama-layout { grid-template-columns: 1fr; }
       .alignment-block { --alignment-label-width: 150px; }
       .peptide-playground { grid-template-columns: 1fr; }
+      .ph-accounting-grid { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 520px) {
@@ -2136,7 +2237,43 @@
 
       <section class="section mode-panel hidden" id="torsionsPanel">
         <h2>Backbone Rotation</h2>
-        <p>Phi and psi are dihedral angles around the protein backbone.</p>
+        <p>Phi, psi, and omega describe rotation around protein backbone bonds. The plot regions shown here are empirical teaching regions, not universal energetic laws.</p>
+        <div class="flagship-cycle" id="dihedralGuidedCycle">
+          <h3>CHEM214 10-minute pathway: Predict -> Manipulate -> Observe -> Explain -> Feedback</h3>
+          <div class="cycle-steps" aria-label="Backbone rotation learning cycle">
+            <div class="cycle-step active">1. Predict</div>
+            <div class="cycle-step">2. Manipulate</div>
+            <div class="cycle-step">3. Observe</div>
+            <div class="cycle-step">4. Explain</div>
+            <div class="cycle-step">5. Feedback</div>
+          </div>
+          <div class="guided-controls">
+            <label for="dihedralPrediction">Predict before rotating φ or ψ</label>
+            <textarea id="dihedralPrediction" rows="2" placeholder="Example: I predict rotating ψ toward +135° will make this residue more beta-strand-like, unless atoms clash."></textarea>
+            <div class="button-row">
+              <button type="button" data-guided-dihedral="phi:-10" aria-label="Guided rotation: decrease phi by 10 degrees">φ -10°</button>
+              <button type="button" data-guided-dihedral="phi:10" aria-label="Guided rotation: increase phi by 10 degrees">φ +10°</button>
+              <button type="button" data-guided-dihedral="phi:60" aria-label="Guided rotation: increase phi by 60 degrees">φ +60°</button>
+              <button type="button" data-guided-dihedral="psi:-10" aria-label="Guided rotation: decrease psi by 10 degrees">ψ -10°</button>
+              <button type="button" data-guided-dihedral="psi:10" aria-label="Guided rotation: increase psi by 10 degrees">ψ +10°</button>
+              <button type="button" data-guided-dihedral="psi:60" aria-label="Guided rotation: increase psi by 60 degrees">ψ +60°</button>
+            </div>
+            <label for="dihedralExplanation">Explain what changed</label>
+            <textarea id="dihedralExplanation" rows="3" placeholder="Use evidence: angle values, plot region, steric contacts, secondary-structure region, or peptide-bond rigidity."></textarea>
+            <div class="button-row">
+              <button type="button" id="checkDihedralExplanation">Get targeted feedback</button>
+              <button type="button" id="resetGuidedDihedral">Reset guided rotation</button>
+              <button type="button" id="undoGuidedDihedral">Undo last rotation</button>
+              <button type="button" id="enableUnrestrictedDihedral">Unrestricted Explore mode</button>
+            </div>
+            <div class="chem-note" id="dihedralCycleFeedback" aria-live="polite"><strong>Start with a prediction</strong>Pick φ or ψ, then compare the new plot position with steric evidence.</div>
+          </div>
+          <details>
+            <summary>Definitions, plot method, and scientific cautions</summary>
+            <p><strong>φ phi</strong> is the C′(i-1)-N(i)-Cα(i)-C′(i) dihedral around the N-Cα bond. <strong>ψ psi</strong> is N(i)-Cα(i)-C′(i)-N(i+1) around the Cα-C′ bond. <strong>ω omega</strong> is Cα(i)-C′(i)-N(i+1)-Cα(i+1) around the peptide C′-N bond.</p>
+            <p>The shaded Ramachandran regions are classroom approximations based on common empirical distributions for L-amino-acid protein backbones. They show favored or allowed tendencies, not absolute prohibitions. Glycine is less sterically restricted; proline is more restricted near φ because its side chain bonds back to the backbone nitrogen.</p>
+          </details>
+        </div>
         <div class="chem-note"><strong>Connect scan to plot</strong>Select a residue to connect its φ/ψ backbone angles to its position on the Ramachandran plot.</div>
         <div class="rama-layout">
           <div class="rama-scan">
@@ -2159,6 +2296,14 @@
           <div class="rama-plot">
             <h3>Ramachandran Plot</h3>
             <canvas id="ramaCanvas" width="720" height="640" aria-label="Phi psi angle plot"></canvas>
+            <table class="rama-data-table" id="ramaDataTable">
+              <caption>Accessible Ramachandran data for selected and manipulated conformations</caption>
+              <thead>
+                <tr><th>State</th><th>φ</th><th>ψ</th><th>ω</th><th>Region</th><th>Notes</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+            <div class="conflict-list" id="stericConflictList" aria-live="polite"></div>
           </div>
         </div>
         <div class="dihedral-manipulator" id="backboneManipulatorPanel">
@@ -2179,9 +2324,9 @@
             <div class="dihedral-primary-row">
               <span>Selected joint</span>
               <div class="segmented-control" aria-label="Select peptide backbone dihedral">
-                <button type="button" data-select-dihedral="phi" aria-pressed="true">φ</button>
-                <button type="button" data-select-dihedral="psi" aria-pressed="false">ψ</button>
-                <button type="button" data-select-dihedral="omega" aria-pressed="false">ω</button>
+                <button type="button" data-select-dihedral="phi" aria-label="Select phi rotation around N to alpha carbon" aria-pressed="true">φ</button>
+                <button type="button" data-select-dihedral="psi" aria-label="Select psi rotation around alpha carbon to carbonyl carbon" aria-pressed="false">ψ</button>
+                <button type="button" data-select-dihedral="omega" aria-label="Select omega peptide bond rotation" aria-pressed="false">ω</button>
               </div>
               <div class="segmented-control" aria-label="Choose interaction mode">
                 <button id="bondRotationMode" type="button" data-dihedral-interaction="rotateBond" aria-pressed="true">Bond rotation</button>
@@ -2227,9 +2372,9 @@
                 <small id="selectedJointHelp">Rotates around N-Cα.</small>
               </div>
               <div class="peptide-mini-controls">
-                <button type="button" data-select-dihedral="phi">Rotate φ</button>
-                <button type="button" data-select-dihedral="psi">Rotate ψ</button>
-                <button type="button" data-select-dihedral="omega">Inspect ω</button>
+                <button type="button" data-select-dihedral="phi" aria-label="Rotate phi around the N to alpha carbon bond">Rotate φ</button>
+                <button type="button" data-select-dihedral="psi" aria-label="Rotate psi around the alpha carbon to carbonyl carbon bond">Rotate ψ</button>
+                <button type="button" data-select-dihedral="omega" aria-label="Inspect omega peptide bond planarity">Inspect ω</button>
                 <button id="lookDownSelectedBond" type="button">Look down selected bond</button>
                 <button id="toggleDihedralInteraction" type="button">Rotate view</button>
                 <button id="restoreNativeGeometry" type="button">Reset</button>
@@ -2363,6 +2508,65 @@ rotation axis B—C</div>
       <section class="section mode-panel hidden" id="tertiaryPanel">
         <h2>Tertiary Structure Stabilization</h2>
         <p>Side-chain interactions are approximated from atom distances in the model. These overlays help students see how distant residues in sequence can sit close together in the folded protein.</p>
+        <div class="flagship-cycle" id="stabilityGuidedCycle">
+          <h3>Integrated Protein Stabilization Pathway</h3>
+          <div class="cycle-steps" aria-label="protein stabilization learning cycle">
+            <div class="cycle-step active">1. Select</div>
+            <div class="cycle-step">2. Predict</div>
+            <div class="cycle-step">3. Reveal</div>
+            <div class="cycle-step">4. Explain</div>
+            <div class="cycle-step">5. Feedback</div>
+          </div>
+          <div class="guided-controls">
+            <div class="chem-note">
+              <strong>Framing</strong>
+              Folding is not a checklist of independent bonds. A folded protein is favored when the ensemble free-energy difference between folded and unfolded states balances backbone hydrogen bonding, side-chain contacts, conformational entropy, solvation, hydrophobic burial, packing, and functional constraints.
+            </div>
+            <div class="row">
+              <label for="stabilityResidueSelect">Structural feature or residue</label>
+              <select id="stabilityResidueSelect"></select>
+            </div>
+            <div class="row">
+              <label><input type="radio" name="stabilityView" value="whole" checked> Whole-structure context</label>
+              <label><input type="radio" name="stabilityView" value="focus"> Focused atomic view</label>
+            </div>
+            <div class="row" aria-label="Interaction categories to reveal">
+              <label><input id="showStabilityBackbone" type="checkbox" checked> Backbone H-bonds</label>
+              <label><input id="showStabilitySidechain" type="checkbox" checked> Side-chain polar contacts</label>
+              <label><input id="showStabilitySalt" type="checkbox" checked> Salt bridges</label>
+              <label><input id="showStabilityHydrophobic" type="checkbox" checked> Hydrophobic core</label>
+              <label><input id="showStabilitySolvent" type="checkbox" checked> Solvent exposure</label>
+            </div>
+            <div class="button-row" id="stabilityExamples">
+              <button type="button" data-stability-example="buriedHydrophobic">Curated buried nonpolar example</button>
+              <button type="button" data-stability-example="saltBridge">Curated salt-bridge example</button>
+              <button type="button" data-stability-example="helixHbond">Curated backbone H-bond example</button>
+            </div>
+            <label for="stabilityPrediction">Predict before revealing evidence</label>
+            <textarea id="stabilityPrediction" rows="2" placeholder="Example: I predict this residue is buried and locally stabilizing because it is nonpolar and inside the fold."></textarea>
+            <button type="button" id="revealStabilityEvidence">Reveal solvent access and nearby interactions</button>
+            <div class="ph-accounting-grid">
+              <div id="stabilityEvidenceCards" class="conflict-list" aria-live="polite"></div>
+              <table class="rama-data-table" id="stabilityEvidenceTable">
+                <caption>Accessible evidence table for the selected residue</caption>
+                <thead>
+                  <tr><th>Evidence</th><th>Observation</th><th>Interpretation caution</th></tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <label for="stabilityExplanation">Construct an evidence-based explanation</label>
+            <textarea id="stabilityExplanation" rows="3" placeholder="Use evidence from burial, backbone/side-chain contacts, solvent exposure, secondary structure, tertiary packing, and mutation reasoning."></textarea>
+            <button type="button" id="checkStabilityExplanation">Get targeted feedback</button>
+            <div class="chem-note" id="stabilityCycleFeedback" aria-live="polite"><strong>Select and predict</strong>Choose a residue or curated example, then predict whether it is buried, exposed, locally stabilizing, or functionally constrained.</div>
+          </div>
+          <details id="stabilityMethodDisclosure">
+            <summary>Detection criteria and scientific cautions</summary>
+            <p>Backbone hydrogen bonds use the existing C=O oxygen to amide nitrogen distance filter of 3.35 Å, with helix pattern tools adding sequence-spacing and local geometry filters. Side-chain hydrogen-bond candidates use polar heavy atoms within 3.45 Å. Salt bridges use oppositely charged side-chain polar atoms within 4.0 Å. Hydrophobic contacts use nonpolar side-chain carbons within 4.25 Å.</p>
+            <p>Solvent accessibility is estimated with a Shrake-Rupley style rolling-water probe of 1.4 Å where practical, with a neighbor-count approximation for larger structures. Here, “hydrophobic core” means hydrophobic residues with low estimated SASA, operationally below 55 Å² in this teaching model.</p>
+            <p>Detected contacts are geometric evidence, not measured energetic contributions. Water, ligands, metals, alternate conformers, and missing atoms are reported when present in parsed coordinates; missing atoms are not invented, so absence of a detected contact is not proof the interaction cannot exist.</p>
+          </details>
+        </div>
         <div class="row">
           <label for="contactType">Show</label>
           <select id="contactType">
@@ -2415,6 +2619,65 @@ rotation axis B—C</div>
       <section class="section mode-panel hidden" id="phPanel">
         <h2>pH & Charge</h2>
         <p>Use the Henderson-Hasselbalch relationship to connect pH, pKa, protonation state, and expected charge. These are typical teaching pKa values, not protein microenvironment calculations.</p>
+        <div class="flagship-cycle" id="phGuidedCycle">
+          <h3>CHEM214 10-minute pathway: Predict -> Manipulate -> Observe -> Explain -> Feedback</h3>
+          <div class="cycle-steps" aria-label="pH and charge learning cycle">
+            <div class="cycle-step active">1. Predict</div>
+            <div class="cycle-step">2. Manipulate</div>
+            <div class="cycle-step">3. Observe</div>
+            <div class="cycle-step">4. Explain</div>
+            <div class="cycle-step">5. Feedback</div>
+          </div>
+          <div class="guided-controls">
+            <div class="chem-note">
+              <strong>Learning goals</strong>
+              Connect pH and pKa to protonation probability; distinguish residue charge from whole-protein net charge; identify groups responsible for titration transitions; explain why microenvironment can shift pKa; avoid treating pH = pKa as an all-or-none switch.
+            </div>
+            <div class="row" role="radiogroup" aria-label="pH charge reasoning mode">
+              <label><input type="radio" name="phReasoningMode" value="aminoAcid" checked> Amino acid</label>
+              <label><input type="radio" name="phReasoningMode" value="peptide"> Peptide</label>
+              <label><input type="radio" name="phReasoningMode" value="protein"> Loaded protein</label>
+            </div>
+            <label for="phPrediction">Predict before changing pH</label>
+            <textarea id="phPrediction" rows="2" placeholder="Example: I predict histidine will be partly protonated near pH 6, while arginine will stay mostly positive."></textarea>
+            <div class="row">
+              <label for="phNumber">Precise pH</label>
+              <input id="phNumber" type="number" min="0" max="14" step="0.1" value="7.0">
+            </div>
+            <div class="row">
+              <label for="peptideSequenceInput">Peptide sequence</label>
+              <input id="peptideSequenceInput" type="text" value="HDEK" aria-label="Peptide sequence using one-letter amino acid codes">
+            </div>
+            <div class="row">
+              <label for="phCompareInput">Compare with pH</label>
+              <input id="phCompareInput" type="number" min="0" max="14" step="0.1" value="5.0">
+            </div>
+            <label><input id="showHhCalculation" type="checkbox" checked> Show Henderson-Hasselbalch calculation</label>
+            <div class="ph-accounting-grid">
+              <div>
+                <canvas class="titration-canvas" id="phTitrationCanvas" width="720" height="340" aria-label="Titration curve showing net charge from pH 0 to 14"></canvas>
+                <table class="rama-data-table" id="phAccountingTable">
+                  <caption>Accessible pH charge accounting for the selected mode</caption>
+                  <thead>
+                    <tr><th>Group</th><th>pKa</th><th>Type</th><th>Fraction protonated</th><th>Charge at pH</th><th>Charge at comparison pH</th></tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+              <div class="ph-compare-card" id="phComparisonSummary" aria-live="polite"></div>
+            </div>
+            <label for="phExplanation">Explain the charge behavior</label>
+            <textarea id="phExplanation" rows="3" placeholder="Use evidence: pH relative to pKa, fractional charge, net charge, termini, side chains, or microenvironment assumptions."></textarea>
+            <button type="button" id="checkPhExplanation">Get targeted feedback</button>
+            <div class="chem-note" id="phCycleFeedback" aria-live="polite"><strong>Start with a prediction</strong>Choose a mode, predict which group changes most, then move the pH.</div>
+          </div>
+          <details id="phMethodDisclosure">
+            <summary>Method, assumptions, and pKa sources</summary>
+            <p>This teaching model uses intrinsic/model-compound pKa values for standard ionizable groups: Asp 3.9, Glu 4.2, His 6.0, Cys 8.3, Tyr 10.1, Lys 10.5, Arg 12.5, N-terminus 8.5, and C-terminus 2.5. Free amino-acid termini use pKa 9.5 and 2.2 in the amino-acid explorer.</p>
+            <p>Calculations assume independent ionizable groups and preserve fractional charge internally. Formal charge icons and rounded percentages are teaching summaries, not claims that every molecule switches instantly at pH = pKa.</p>
+            <p>Loaded-protein estimates include ionizable side chains plus chain termini when coordinates are available. They do not compute structure-shifted pKa values, precise residue protonation, or a rigorous protein pI. Microenvironments, burial, salt bridges, hydrogen bonds, ligands, and nearby charges can shift pKa.</p>
+          </details>
+        </div>
         <div class="row">
           <label for="hhGroup">Ionizable group</label>
           <select id="hhGroup"></select>
@@ -4846,14 +5109,36 @@ END
         showHydrogenBonds: true,
         cameraMode: 'local',
         tutorialStep: 0,
-        tutorialResponses: {}
+        tutorialResponses: {},
+        ramaAnimation: null,
+        guidedMode: 'chem214',
+        prediction: '',
+        explanation: ''
       },
       selectedHbond: null,
       selectedResidueIndex: 0,
       contactType: 'all',
+      selectedStabilityResidueIndex: 0,
+      stabilityView: 'whole',
+      stabilityPrediction: '',
+      stabilityExplanation: '',
+      stabilityEvidenceRevealed: false,
+      stabilityToggles: {
+        backbone: true,
+        sidechain: true,
+        salt: true,
+        hydrophobic: true,
+        solvent: true
+      },
       chemFeature: 'backbone',
       functionalGroup: 'backbone',
       pH: 7.0,
+      phReasoningMode: 'aminoAcid',
+      phCompare: 5.0,
+      peptideSequence: 'HDEK',
+      showHhCalculation: true,
+      phPrediction: '',
+      phExplanation: '',
       hhGroup: 'ASP',
       selectedAminoAcid: 'ASP',
       bufferPka: 7.4,
@@ -8777,6 +9062,146 @@ END
       return ramaRegionLabel(current).replace('Common alpha-helix region', 'right-handed α-helical region');
     }
 
+    function ramaSpecialResidueNote(residue) {
+      if (!residue) return '';
+      if (residue.resn === 'GLY') return 'Glycine has only hydrogen as its side chain, so it often tolerates conformations that are crowded for other residues.';
+      if (residue.resn === 'PRO') return 'Proline is constrained because its side chain bonds back to the backbone nitrogen, narrowing the accessible phi range.';
+      return 'Most non-glycine, non-proline L-amino acids are interpreted with the common empirical regions shown here.';
+    }
+
+    function ramaRegionCategory(phi, psi, residue = null) {
+      if (!Number.isFinite(phi) || !Number.isFinite(psi)) return { label: 'Unavailable', level: 'missing', shape: 'dash' };
+      if (phi >= -95 && phi <= -35 && psi >= -85 && psi <= -20) return { label: 'Favored alpha-helical region', level: 'favored', shape: 'circle' };
+      if (phi >= -180 && phi <= -60 && psi >= 70 && psi <= 180) return { label: 'Favored beta-strand / extended region', level: 'favored', shape: 'square' };
+      if (phi >= -70 && phi <= -35 && psi >= -45 && psi <= -5) return { label: 'Allowed 3-10 helix-like region', level: 'allowed', shape: 'triangle' };
+      if (phi >= -85 && phi <= -35 && psi >= -95 && psi <= -55) return { label: 'Allowed pi-helix-like region', level: 'allowed', shape: 'diamond' };
+      if (phi >= 30 && phi <= 100 && psi >= 0 && psi <= 90) {
+        return residue?.resn === 'GLY'
+          ? { label: 'Glycine-accessible left-handed region', level: 'allowed', shape: 'triangle' }
+          : { label: 'Less common left-handed / outlier-like region', level: 'disfavored', shape: 'triangle' };
+      }
+      return residue?.resn === 'GLY'
+        ? { label: 'Outside common regions; glycine may still be plausible', level: 'uncommon', shape: 'x' }
+        : { label: 'Outside common teaching regions', level: 'uncommon', shape: 'x' };
+    }
+
+    function setDihedralCycleStage(stageIndex, announcement = '') {
+      document.querySelectorAll('#dihedralGuidedCycle .cycle-step').forEach((step, index) => {
+        const active = index === stageIndex;
+        step.classList.toggle('active', active);
+        step.setAttribute('aria-current', active ? 'step' : 'false');
+      });
+      if (announcement) showBackboneStatus(announcement);
+    }
+
+    function queueRamaAnimation(beforeAngles, afterAngles) {
+      if (!Number.isFinite(beforeAngles?.phi) || !Number.isFinite(beforeAngles?.psi) || !Number.isFinite(afterAngles?.phi) || !Number.isFinite(afterAngles?.psi)) return;
+      state.backboneManipulator.ramaAnimation = {
+        from: { phi: beforeAngles.phi, psi: beforeAngles.psi },
+        to: { phi: afterAngles.phi, psi: afterAngles.psi },
+        startedAt: performance.now(),
+        duration: 650
+      };
+      requestAnimationFrame(stepRamaAnimation);
+    }
+
+    function stepRamaAnimation(now) {
+      const animation = state.backboneManipulator.ramaAnimation;
+      if (!animation) return;
+      const elapsed = now - animation.startedAt;
+      drawRamaPlot();
+      if (elapsed < animation.duration) requestAnimationFrame(stepRamaAnimation);
+      else state.backboneManipulator.ramaAnimation = null;
+    }
+
+    function classifyCurrentDihedralState() {
+      const entry = selectedManipulatorEntry();
+      const residue = entry?.residue;
+      const manipulator = state.backboneManipulator;
+      const category = ramaRegionCategory(manipulator.currentAngles.phi, manipulator.currentAngles.psi, residue);
+      const clashes = localStericClashes(manipulator.manipulatedCoordinates || []);
+      const secondary = residue ? residueSecondaryAssignment(residue) : 'No residue selected';
+      return { entry, residue, category, clashes, secondary };
+    }
+
+    function updateRamaDataTable(entry) {
+      const table = document.querySelector('#ramaDataTable tbody');
+      if (!table || !entry) return;
+      const manipulator = state.backboneManipulator;
+      const nativeCategory = ramaRegionCategory(entry.phi, entry.psi, entry.residue);
+      const currentCategory = ramaRegionCategory(manipulator.currentAngles.phi, manipulator.currentAngles.psi, entry.residue);
+      const rows = [
+        ['Native structure', entry.phi, entry.psi, entry.omega, nativeCategory.label, `${entry.residue.label}; ${ramaSpecialResidueNote(entry.residue)}`],
+        ['Hypothetical manipulated geometry', manipulator.currentAngles.phi, manipulator.currentAngles.psi, manipulator.currentAngles.omega, currentCategory.label, manipulator.mode === 'manipulate' ? 'Temporary teaching geometry; experimental coordinates are unchanged.' : 'Same as native until Manipulate mode changes an angle.']
+      ];
+      table.innerHTML = rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${formatAngle(row[1])}</td><td>${formatAngle(row[2])}</td><td>${formatAngle(row[3])}</td><td>${row[4]}</td><td>${row[5]}</td></tr>`).join('');
+    }
+
+    function updateStericConflictList(entry) {
+      const list = document.getElementById('stericConflictList');
+      if (!list || !entry) return;
+      const clashes = localStericClashes(state.backboneManipulator.manipulatedCoordinates || []).slice(0, 4);
+      if (!clashes.length) {
+        list.innerHTML = '<div class="chem-note"><strong>No major steric conflict detected</strong>This geometric scan did not find severe local atom overlaps. That does not prove the conformation is globally stable.</div>';
+        return;
+      }
+      list.innerHTML = clashes.map(clash => `<div class="conflict-card"><strong>Atoms approaching conflict</strong>${clash.atomA.residueLabel || clash.atomA.residueKey} ${clash.atomA.atomName} and ${clash.atomB.residueLabel || clash.atomB.residueKey} ${clash.atomB.atomName}: ${clash.distance.toFixed(2)} Å apart; teaching threshold ${clash.threshold.toFixed(2)} Å.</div>`).join('');
+    }
+
+    function updateDihedralCycleFeedback(message = '') {
+      const feedback = document.getElementById('dihedralCycleFeedback');
+      if (!feedback) return;
+      if (message) {
+        feedback.innerHTML = message;
+        showBackboneStatus(feedback.textContent);
+        return;
+      }
+      const { entry, residue, category, clashes, secondary } = classifyCurrentDihedralState();
+      if (!entry) return;
+      const special = ramaSpecialResidueNote(residue);
+      feedback.innerHTML = `<strong>Observe</strong>${peptideJoints[state.backboneManipulator.selectedDihedral].label} is selected. Current φ/ψ classification: ${category.label}. ${clashes.length ? `${clashes.length} local steric conflict(s) were detected.` : 'No severe local steric conflict was detected.'} Secondary-structure context: ${secondary}. ${special}`;
+      setDihedralCycleStage(2);
+      showBackboneStatus(`${residue.label}: ${category.label}; ${clashes.length ? 'steric conflict detected' : 'no major local clash'}.`);
+    }
+
+    function evaluateDihedralExplanation() {
+      const text = document.getElementById('dihedralExplanation')?.value.toLowerCase() || '';
+      const prediction = document.getElementById('dihedralPrediction')?.value.trim();
+      const { category, clashes } = classifyCurrentDihedralState();
+      const hits = {
+        angle: /\b(phi|psi|omega|φ|ψ|ω|angle|dihedral)\b/.test(text),
+        steric: /\b(steric|clash|overlap|crowd|too close|allowed|disallowed|favored|unfavored)\b/.test(text),
+        rigidity: /\b(peptide|omega|partial double|rigid|planar|resonance)\b/.test(text),
+        evidence: /\b(evidence|because|therefore|plot|region|value|coordinate|native|hypothetical)\b/.test(text),
+        nuance: /\b(not absolute|preference|tendency|usually|often|model|approximate|not universal)\b/.test(text)
+      };
+      const messages = [];
+      if (!prediction) messages.push('Add a prediction before interpreting the rotation so your observation has something to compare against.');
+      if (!text.trim()) messages.push('Write a short explanation using at least one piece of evidence from the angle values, plot region, or steric conflict list.');
+      if (hits.angle && hits.steric && hits.evidence) messages.push('Strong evidence chain: you connected a backbone angle change to a plot/steric observation.');
+      if (!hits.steric && clashes.length) messages.push('A steric conflict is visible; name which atoms are too close and how that supports a disfavored interpretation.');
+      if (!hits.rigidity && state.backboneManipulator.selectedDihedral === 'omega') messages.push('For omega, mention peptide-bond planarity and partial double-bond character rather than treating it like freely rotating phi or psi.');
+      if (!hits.nuance && category.level !== 'favored') messages.push('Add nuance: outside a favored region means disfavored or uncommon in this model, not chemically impossible in every context.');
+      if (hits.nuance) messages.push('Good nuance: you avoided treating the teaching regions as absolute energetic laws.');
+      setDihedralCycleStage(4);
+      updateDihedralCycleFeedback(`<strong>Feedback</strong>${messages.join(' ') || 'Good start. Strengthen the answer by naming the specific dihedral, the observed region, and one molecular reason.'}`);
+    }
+
+    function applyGuidedDihedralRotation(jointName, delta) {
+      state.backboneManipulator.prediction = document.getElementById('dihedralPrediction')?.value || '';
+      state.backboneManipulator.mode = 'manipulate';
+      state.backboneManipulator.active = true;
+      state.backboneManipulator.selectedDihedral = jointName;
+      const before = { ...state.backboneManipulator.currentAngles };
+      const ok = adjustBackboneAngle(jointName, Number(delta), { preserveView: true });
+      if (ok) {
+        queueRamaAnimation(before, state.backboneManipulator.currentAngles);
+        state.backboneManipulator.showMotionTrail = true;
+        setDihedralCycleStage(1, `${peptideJoints[jointName].label} changed by ${delta} degrees.`);
+        updateDihedralCycleFeedback();
+      }
+    }
+
     function angleAvailabilityMessage(entry) {
       const messages = [];
       if (!Number.isFinite(entry.phi)) messages.push('φ unavailable at this position, commonly because the previous peptide carbonyl C′ is missing at an N-terminus or chain break.');
@@ -9026,6 +9451,8 @@ END
       document.querySelectorAll('[data-dihedral-interaction]').forEach(button => {
         button.setAttribute('aria-pressed', String(button.dataset.dihedralInteraction === manipulator.interactionMode));
       });
+      updateRamaDataTable(entry);
+      updateStericConflictList(entry);
       updateDihedralViewerModeControls();
       ['phi', 'psi'].forEach(angleName => {
         const current = manipulator.currentAngles[angleName];
@@ -9063,6 +9490,7 @@ END
     function drawManipulatorOverlay(entry, options = {}) {
       const manipulator = state.backboneManipulator;
       if (manipulator.mode !== 'manipulate') return;
+      if (!hasViewer()) return;
       const coordinates = rebuildManipulatorCoordinates();
       const c = colors();
       const axis = manipulatorAxis(manipulator.selectedDihedral, coordinates);
@@ -9155,9 +9583,11 @@ END
         state.residues[state.selectedResidueIndex + 1]
       ].filter(Boolean);
       const selection = { or: neighbors.map(residueSpec) };
-      state.viewer.setStyle(selection, { stick: { colorscheme: 'Jmol', radius: 0.2 }, cartoon: { color: '#f59e0b' } });
-      neighbors.forEach(res => addResidueLabel(res, res === residue ? colors().selected : '#475569'));
-      if (!options.preserveView && shouldAutoZoomSelectedResidue()) zoomViewerSafely(selection);
+      if (hasViewer()) {
+        state.viewer.setStyle(selection, { stick: { colorscheme: 'Jmol', radius: 0.2 }, cartoon: { color: '#f59e0b' } });
+        neighbors.forEach(res => addResidueLabel(res, res === residue ? colors().selected : '#475569'));
+        if (!options.preserveView && shouldAutoZoomSelectedResidue()) zoomViewerSafely(selection);
+      }
       document.getElementById('phiValue').textContent = formatAngle(entry.phi);
       document.getElementById('psiValue').textContent = formatAngle(entry.psi);
       renderRamaResidueDetails(entry);
@@ -9183,6 +9613,8 @@ END
 
     function ramaRegionLabel(entry) {
       const { phi, psi } = entry;
+      const category = ramaRegionCategory(phi, psi, entry.residue);
+      if (category.level !== 'uncommon') return category.label;
       if (phi === null || psi === null) return 'Unavailable because phi or psi is missing at this position';
       if (phi >= -180 && phi <= -60 && psi >= 70 && psi <= 180) return 'Beta-sheet / extended region';
       if (phi >= -70 && phi <= -35 && psi >= -45 && psi <= -5) return '3-10 helix-like region';
@@ -9203,7 +9635,8 @@ END
         ψ angle: ${formatAngle(entry.psi)}<br>
         ω angle: ${formatAngle(entry.omega)}<br>
         Secondary structure: ${residueSecondaryAssignment(residue)}<br>
-        Ramachandran region: ${ramaRegionLabel(entry)}
+        Ramachandran region: ${ramaRegionLabel(entry)}<br>
+        Special-residue note: ${ramaSpecialResidueNote(residue)}
       `;
     }
 
@@ -9232,20 +9665,25 @@ END
       const residues = new Set();
       const c = colors();
       contacts.forEach(contact => {
-        const color = c[contact.type];
-        const { weak, strong } = contactThresholds(contact);
-        const selected = state.selectedContact === contact;
-        addLine(contact.atomA, contact.atomB, color, true, interactionRadius(contact.distance, weak, strong));
         residues.add(contact.resA);
         if (contact.resB.label !== 'Heme') residues.add(contact.resB);
-        if (selected) addLine(contact.atomA, contact.atomB, c.selected, true, interactionRadius(contact.distance, weak, strong) + 0.08);
       });
+      if (hasViewer()) {
+        contacts.forEach(contact => {
+          const color = c[contact.type];
+          const { weak, strong } = contactThresholds(contact);
+          const selected = state.selectedContact === contact;
+          addLine(contact.atomA, contact.atomB, color, true, interactionRadius(contact.distance, weak, strong));
+          if (selected) addLine(contact.atomA, contact.atomB, c.selected, true, interactionRadius(contact.distance, weak, strong) + 0.08);
+        });
 
-      const selections = [...residues].map(residueSpec);
-      if (selections.length) {
-        state.viewer.setStyle({ or: selections }, state.showAtoms ? { stick: { colorscheme: 'Jmol', radius: 0.18 }, sphere: { scale: 0.21 } } : { stick: { colorscheme: 'Jmol', radius: 0.16 } });
+        const selections = [...residues].map(residueSpec);
+        if (selections.length) {
+          state.viewer.setStyle({ or: selections }, state.showAtoms ? { stick: { colorscheme: 'Jmol', radius: 0.18 }, sphere: { scale: 0.21 } } : { stick: { colorscheme: 'Jmol', radius: 0.16 } });
+        }
+        if (state.selectedContact) drawSelectedContact(state.selectedContact);
       }
-      if (state.selectedContact) drawSelectedContact(state.selectedContact);
+      renderStabilityPathway();
       document.getElementById('contactCount').textContent = contacts.length;
       document.getElementById('contactResidues').textContent = residues.size;
     }
@@ -9392,6 +9830,223 @@ END
       if (interchain) roles.push('quaternary interface');
       if (Number.isFinite(bfactor)) roles.push(`B-factor ${bfactor.toFixed(1)}`);
       return { sasa, contacts, hbondCount, inSheet, inHelixCandidate, buried, exposed, nearLigand, nearMetal, interchain, distant, bfactor, active, roles };
+    }
+
+    function setStabilityCycleStage(stageIndex, announcement = '') {
+      document.querySelectorAll('#stabilityGuidedCycle .cycle-step').forEach((step, index) => {
+        const active = index === stageIndex;
+        step.classList.toggle('active', active);
+        step.setAttribute('aria-current', active ? 'step' : 'false');
+      });
+      if (announcement) showBackboneStatus(announcement);
+    }
+
+    function selectedStabilityResidue() {
+      return state.residues[state.selectedStabilityResidueIndex] || state.residues[state.selectedResidueIndex] || state.residues[0] || null;
+    }
+
+    function stabilityContactsForResidue(residue, type = null) {
+      return residueContactList(residue).filter(contact => !type || contact.type === type);
+    }
+
+    function watersNearResidue(residue, cutoff = 3.6) {
+      const waters = state.atoms.filter(atom => atom.record === 'HETATM' && atom.resn === 'HOH');
+      return closestPair(residue.atoms, waters, cutoff) ? waters.filter(atom => closestPair(residue.atoms, [atom], cutoff)).length : 0;
+    }
+
+    function ligandCountNearResidue(residue, cutoff = 4.0) {
+      return ligandGroups().filter(group => closestPair(residue.atoms, group.atoms, cutoff)).length;
+    }
+
+    function metalCountNearResidue(residue, cutoff = 3.0) {
+      const metals = state.atoms.filter(atom => atom.record === 'HETATM' && metalElements.has(atom.elem));
+      return metals.filter(atom => closestPair(residue.atoms, [atom], cutoff)).length;
+    }
+
+    function alternateConformerCount(residue) {
+      return residue.atoms.filter(atom => atom.alt || atom.altLoc || atom.altloc).length;
+    }
+
+    function missingBackboneAtoms(residue) {
+      return ['N', 'CA', 'C', 'O'].filter(name => !residue.byName.get(name));
+    }
+
+    function stabilityEvidenceForResidue(residue) {
+      const role = residueRoleInfo(residue);
+      const contacts = stabilityContactsForResidue(residue);
+      const salt = contacts.filter(contact => contact.type === 'salt');
+      const sideHbond = contacts.filter(contact => contact.type === 'sideHbond');
+      const hydrophobicContacts = contacts.filter(contact => contact.type === 'hydrophobic');
+      const backboneHbonds = state.hbonds.filter(hbond => hbond.from === residue || hbond.to === residue);
+      const sasa = role.sasa?.area ?? null;
+      const missing = missingBackboneAtoms(residue);
+      return {
+        residue,
+        role,
+        sasa,
+        exposure: sasa === null ? 'unknown solvent exposure' : sasa < 55 ? 'buried or core-like' : 'solvent-exposed',
+        secondary: residueSecondaryAssignment(residue),
+        backboneHbonds,
+        salt,
+        sideHbond,
+        hydrophobicContacts,
+        waters: watersNearResidue(residue),
+        ligands: ligandCountNearResidue(residue),
+        metals: metalCountNearResidue(residue),
+        alternateConformers: alternateConformerCount(residue),
+        missingBackbone: missing
+      };
+    }
+
+    function populateStabilityResidueSelect() {
+      const select = document.getElementById('stabilityResidueSelect');
+      if (!select) return;
+      if (select.options.length !== state.residues.length) {
+        select.innerHTML = '';
+        state.residues.forEach((residue, index) => {
+          const role = residueRoleInfo(residue);
+          const option = document.createElement('option');
+          option.value = index;
+          option.textContent = `${residue.label} - ${role.roles.slice(0, 3).join(', ') || 'general structure position'}`;
+          select.appendChild(option);
+        });
+      }
+      select.value = String(Math.min(state.selectedStabilityResidueIndex, Math.max(0, state.residues.length - 1)));
+    }
+
+    function stabilityCard(title, text) {
+      return `<div class="conflict-card"><strong>${escapeHtml(title)}</strong>${escapeHtml(text)}</div>`;
+    }
+
+    function renderStabilityEvidenceCards(evidence) {
+      const cards = [];
+      if (state.stabilityToggles.solvent) {
+        cards.push(stabilityCard('Solvent access', evidence.sasa === null
+          ? 'No SASA value is available for this residue.'
+          : `${evidence.residue.label} has about ${Math.round(evidence.sasa)} Å² SASA, classified here as ${evidence.exposure}.`));
+      }
+      if (state.stabilityToggles.backbone) {
+        cards.push(stabilityCard('Backbone hydrogen bonds', `${evidence.backboneHbonds.length} backbone C=O...N candidate(s) involve this residue. Secondary context: ${evidence.secondary}.`));
+      }
+      if (state.stabilityToggles.sidechain) {
+        cards.push(stabilityCard('Side-chain polar contacts', `${evidence.sideHbond.length} side-chain polar heavy-atom contact(s) are within the teaching H-bond cutoff.`));
+      }
+      if (state.stabilityToggles.salt) {
+        cards.push(stabilityCard('Salt bridges', `${evidence.salt.length} opposite-charge side-chain contact(s) are within the salt-bridge cutoff. Treat these as detected contacts, not measured stabilizing energies.`));
+      }
+      if (state.stabilityToggles.hydrophobic) {
+        const hydrophobicLabel = hydrophobic.has(evidence.residue.resn)
+          ? `${evidence.residue.label} is hydrophobic; ${evidence.hydrophobicContacts.length} hydrophobic contact(s) were detected.`
+          : `${evidence.residue.label} is not classified as hydrophobic in this teaching set; ${evidence.hydrophobicContacts.length} hydrophobic contact(s) involve it.`;
+        cards.push(stabilityCard('Hydrophobic core evidence', `${hydrophobicLabel} Core-like means low solvent exposure plus nonpolar packing, not a direct bond.`));
+      }
+      cards.push(stabilityCard('Parsed-coordinate caveats', `Nearby waters: ${evidence.waters}. Nearby ligands/cofactors: ${evidence.ligands}. Nearby metals: ${evidence.metals}. Alternate conformer atoms: ${evidence.alternateConformers}. Missing backbone atoms: ${evidence.missingBackbone.length ? evidence.missingBackbone.join(', ') : 'none detected'}.`));
+      const container = document.getElementById('stabilityEvidenceCards');
+      if (container) container.innerHTML = cards.join('');
+    }
+
+    function renderStabilityEvidenceTable(evidence) {
+      const rows = [
+        ['SASA / burial', evidence.sasa === null ? 'n/a' : `${Math.round(evidence.sasa)} Å²; ${evidence.exposure}`, 'SASA is an operational solvent-accessibility estimate, not a direct free energy.'],
+        ['Backbone H-bonds', `${evidence.backboneHbonds.length} candidate(s); ${evidence.secondary}`, 'Backbone H-bonds stabilize local secondary structure but also compete with water and unfolded-state H-bonding.'],
+        ['Side-chain contacts', `${evidence.sideHbond.length} polar, ${evidence.salt.length} salt, ${evidence.hydrophobicContacts.length} hydrophobic`, 'Contacts are geometric detections, not additive energetic contributions.'],
+        ['Tertiary context', evidence.role.distant ? 'Distant sequence contact detected' : 'No distant side-chain contact detected for this residue', 'Tertiary packing depends on the whole folded ensemble.'],
+        ['Mutation reasoning', hydrophobic.has(evidence.residue.resn) && evidence.sasa !== null && evidence.sasa < 55 ? 'Changing to charged/polar could disrupt burial.' : 'Ask what chemistry, size, H-bonding, charge, and packing would change.', 'Mutation effects depend on local context and cannot be inferred from one contact alone.']
+      ];
+      const tbody = document.querySelector('#stabilityEvidenceTable tbody');
+      if (!tbody) return;
+      tbody.innerHTML = rows.map(row => `<tr><th scope="row">${escapeHtml(row[0])}</th><td>${escapeHtml(row[1])}</td><td>${escapeHtml(row[2])}</td></tr>`).join('');
+    }
+
+    function applyStabilityViewer(evidence) {
+      if (!hasViewer()) return;
+      const residue = evidence.residue;
+      const c = colors();
+      if (state.stabilityView === 'whole') {
+        state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1', opacity: 0.42 } });
+      } else {
+        state.viewer.setStyle(residueSpec(residue), { stick: { colorscheme: 'Jmol', radius: 0.24 }, sphere: { scale: 0.25 } });
+      }
+      if (state.stabilityToggles.backbone) {
+        evidence.backboneHbonds.forEach(hbond => addLine(hbond.from.byName.get('O'), hbond.to.byName.get('N'), c.hbond, true, 0.12));
+      }
+      if (state.stabilityToggles.sidechain || state.stabilityToggles.salt || state.stabilityToggles.hydrophobic) {
+        evidence.role.contacts.forEach(contact => {
+          if (contact.type === 'sideHbond' && !state.stabilityToggles.sidechain) return;
+          if (contact.type === 'salt' && !state.stabilityToggles.salt) return;
+          if (contact.type === 'hydrophobic' && !state.stabilityToggles.hydrophobic) return;
+          if (contact.type === 'heme' && !state.stabilityToggles.sidechain) return;
+          addLine(contact.atomA, contact.atomB, c[contact.type] || c.selected, true, 0.12);
+        });
+      }
+      addResidueLabel(residue, c.selected);
+      if (state.stabilityView === 'focus') zoomViewerSafely(residueSpec(residue));
+      else zoomViewerSafely({ hetflag: false });
+      renderViewerSafely();
+    }
+
+    function renderStabilityPathway() {
+      populateStabilityResidueSelect();
+      const residue = selectedStabilityResidue();
+      if (!residue) return;
+      const evidence = stabilityEvidenceForResidue(residue);
+      document.querySelectorAll('input[name="stabilityView"]').forEach(input => {
+        input.checked = input.value === state.stabilityView;
+      });
+      [
+        ['showStabilityBackbone', 'backbone'],
+        ['showStabilitySidechain', 'sidechain'],
+        ['showStabilitySalt', 'salt'],
+        ['showStabilityHydrophobic', 'hydrophobic'],
+        ['showStabilitySolvent', 'solvent']
+      ].forEach(([id, key]) => {
+        const input = document.getElementById(id);
+        if (input) input.checked = state.stabilityToggles[key];
+      });
+      renderStabilityEvidenceCards(evidence);
+      renderStabilityEvidenceTable(evidence);
+      if (state.stabilityEvidenceRevealed) applyStabilityViewer(evidence);
+    }
+
+    function chooseStabilityExample(kind) {
+      const candidates = state.residues.map((residue, index) => ({ residue, index, evidence: stabilityEvidenceForResidue(residue) }));
+      let match = null;
+      if (kind === 'buriedHydrophobic') match = candidates.find(item => hydrophobic.has(item.residue.resn) && item.evidence.sasa !== null && item.evidence.sasa < 55);
+      if (kind === 'saltBridge') match = candidates.find(item => item.evidence.salt.length);
+      if (kind === 'helixHbond') match = candidates.find(item => item.evidence.backboneHbonds.length && item.evidence.secondary.includes('helix'));
+      if (match) {
+        state.selectedStabilityResidueIndex = match.index;
+        state.selectedResidueIndex = match.index;
+        state.stabilityEvidenceRevealed = true;
+        setStabilityCycleStage(2, `${match.residue.label} selected for ${kind}.`);
+        applyMode();
+      }
+    }
+
+    function evaluateStabilityExplanation() {
+      const text = document.getElementById('stabilityExplanation')?.value.toLowerCase() || '';
+      const prediction = document.getElementById('stabilityPrediction')?.value.trim();
+      const evidence = stabilityEvidenceForResidue(selectedStabilityResidue());
+      const hits = {
+        backbone: /\b(backbone|secondary|helix|sheet|amide|carbonyl)\b/.test(text),
+        sidechain: /\b(side chain|side-chain|salt|polar|hydrogen bond|h-bond|contact)\b/.test(text),
+        hydrophobic: /\b(hydrophobic|nonpolar|buried|core|water|solvent)\b/.test(text),
+        ensemble: /\b(ensemble|free energy|delta g|competing|balance|not additive|not a checklist)\b/.test(text),
+        mutation: /\b(mutation|mutate|substitution|change to|alanine|charged|polar)\b/.test(text),
+        caution: /\b(not measured|geometric|threshold|model|approximation|not proof)\b/.test(text)
+      };
+      const messages = [];
+      if (!prediction) messages.push('Add a prediction before revealing evidence so the observation can revise a claim.');
+      if (!text.trim()) messages.push('Write a short claim with evidence from solvent access, contacts, and structural context.');
+      if (hits.backbone && hits.sidechain) messages.push('Good distinction: you separated backbone secondary-structure evidence from side-chain tertiary contacts.');
+      if (hits.hydrophobic && evidence.sasa !== null) messages.push('Good hydrophobic-effect reasoning: burial is about reducing nonpolar exposure to water, not making a special hydrophobic bond.');
+      if (!hits.ensemble) messages.push('Add the folding frame: stability reflects competing interactions and the folded-vs-unfolded ensemble free-energy difference, not a simple sum of bonds.');
+      if (!hits.mutation) messages.push('Add mutation reasoning: predict what chemistry, size, charge, packing, or H-bonding would change.');
+      if (!hits.caution) messages.push('Add a caution that detected contacts are geometric evidence, not experimentally measured energetic contributions.');
+      if (evidence.ligands || evidence.metals) messages.push('This residue is near a ligand/cofactor or metal, so functional constraint may matter in addition to stability.');
+      setStabilityCycleStage(4);
+      const feedback = document.getElementById('stabilityCycleFeedback');
+      if (feedback) feedback.innerHTML = `<strong>Feedback</strong>${messages.join(' ') || 'Strong explanation: you used multiple evidence types while avoiding an additive-bond model.'}`;
     }
 
     function layerApplies(layer, info) {
@@ -9694,9 +10349,288 @@ END
       return 100 / (1 + Math.pow(10, pH - pKa));
     }
 
+    function clampPh(value) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return state.pH;
+      return Math.max(0, Math.min(14, numeric));
+    }
+
+    function setPhValue(value, options = {}) {
+      state.pH = clampPh(value);
+      if (options.stage !== undefined) setPhCycleStage(options.stage, `pH changed to ${state.pH.toFixed(1)}.`);
+      applyMode();
+    }
+
+    function setPhCycleStage(stageIndex, announcement = '') {
+      document.querySelectorAll('#phGuidedCycle .cycle-step').forEach((step, index) => {
+        const active = index === stageIndex;
+        step.classList.toggle('active', active);
+        step.setAttribute('aria-current', active ? 'step' : 'false');
+      });
+      if (announcement) {
+        const feedback = document.getElementById('phCycleFeedback');
+        if (feedback && stageIndex === 2) feedback.innerHTML = `<strong>Observe</strong>${announcement} Compare the net charge, fractional charge, and curve position.`;
+        showBackboneStatus(announcement);
+      }
+    }
+
+    function protonatedFractionForGroup(group, pH) {
+      return 1 / (1 + Math.pow(10, pH - group.pKa));
+    }
+
+    function chargeForIonizableGroup(group, pH) {
+      const protonated = protonatedFractionForGroup(group, pH);
+      const charge = group.type === 'acid' ? -1 * (1 - protonated) : protonated;
+      return { ...group, protonated, deprotonated: 1 - protonated, charge };
+    }
+
     function hhExpectedCharge(group, protonatedFraction) {
       if (group.type === 'acid') return -1 * (1 - protonatedFraction);
       return protonatedFraction;
+    }
+
+    const oneLetterResidues = {
+      A: 'ALA', R: 'ARG', N: 'ASN', D: 'ASP', C: 'CYS', Q: 'GLN', E: 'GLU', G: 'GLY', H: 'HIS', I: 'ILE',
+      L: 'LEU', K: 'LYS', M: 'MET', F: 'PHE', P: 'PRO', S: 'SER', T: 'THR', W: 'TRP', Y: 'TYR', V: 'VAL'
+    };
+
+    function aminoAcidReasoningGroups() {
+      const aa = aminoAcidChargeData[state.selectedAminoAcid] || aminoAcidChargeData.ASP;
+      return aaIonizableGroups(aa).map(group => ({
+        ...group,
+        label: group.name,
+        source: aa.label
+      }));
+    }
+
+    function peptideReasoningGroups(sequenceText = state.peptideSequence) {
+      const residues = String(sequenceText || '')
+        .toUpperCase()
+        .replace(/[^ARNDCQEGHILKMFPSTWYV]/g, '')
+        .split('')
+        .map(letter => oneLetterResidues[letter])
+        .filter(Boolean);
+      if (!residues.length) return [];
+      const groups = [
+        { label: 'N-terminus', name: 'N-terminus', pKa: hhGroups.NTERM.pKa, type: 'base', source: 'peptide terminus' },
+        { label: 'C-terminus', name: 'C-terminus', pKa: hhGroups.CTERM.pKa, type: 'acid', source: 'peptide terminus' }
+      ];
+      residues.forEach((resn, index) => {
+        const info = ionizableInfo[resn];
+        if (!info) return;
+        groups.push({
+          label: `${residueNames[resn] || resn} ${index + 1} side chain`,
+          name: `${residueNames[resn] || resn} side chain`,
+          pKa: info.pKa,
+          type: info.type,
+          source: `peptide residue ${index + 1}`
+        });
+      });
+      return groups;
+    }
+
+    function proteinReasoningGroups() {
+      const groups = [];
+      const chains = new Map();
+      state.residues.forEach(residue => {
+        if (!chains.has(residue.chain)) chains.set(residue.chain, []);
+        chains.get(residue.chain).push(residue);
+        const info = ionizableInfo[residue.resn];
+        if (!info) return;
+        groups.push({
+          label: `${residue.label} side chain`,
+          name: `${residue.label} side chain`,
+          pKa: info.pKa,
+          type: info.type,
+          source: 'loaded protein side chain',
+          residue
+        });
+      });
+      chains.forEach((residues, chain) => {
+        if (!residues.length) return;
+        groups.push({ label: `Chain ${chain} N-terminus (${residues[0].label})`, name: 'chain N-terminus', pKa: hhGroups.NTERM.pKa, type: 'base', source: 'loaded protein terminus', residue: residues[0] });
+        groups.push({ label: `Chain ${chain} C-terminus (${residues[residues.length - 1].label})`, name: 'chain C-terminus', pKa: hhGroups.CTERM.pKa, type: 'acid', source: 'loaded protein terminus', residue: residues[residues.length - 1] });
+      });
+      return groups;
+    }
+
+    function currentPhReasoningGroups() {
+      if (state.phReasoningMode === 'peptide') return peptideReasoningGroups();
+      if (state.phReasoningMode === 'protein') return proteinReasoningGroups();
+      return aminoAcidReasoningGroups();
+    }
+
+    function netChargeForGroups(groups, pH) {
+      return groups.reduce((sum, group) => sum + chargeForIonizableGroup(group, pH).charge, 0);
+    }
+
+    function estimatePiForGroups(groups) {
+      if (!groups.length) return null;
+      let best = { pH: 0, magnitude: Infinity };
+      for (let pH = 0; pH <= 14.0001; pH += 0.02) {
+        const net = netChargeForGroups(groups, pH);
+        const magnitude = Math.abs(net);
+        if (magnitude < best.magnitude) best = { pH, magnitude };
+      }
+      return best.pH;
+    }
+
+    function modeLabelForPhReasoning() {
+      if (state.phReasoningMode === 'peptide') return `peptide ${state.peptideSequence || '(empty)'}`;
+      if (state.phReasoningMode === 'protein') return `${state.structureLabel || state.structureId || 'loaded protein'}`;
+      return aminoAcidChargeData[state.selectedAminoAcid]?.label || 'amino acid';
+    }
+
+    function drawPhTitrationCurve(groups) {
+      const canvas = document.getElementById('phTitrationCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+      const pad = 46;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      const samples = [];
+      for (let pH = 0; pH <= 14.0001; pH += 0.1) samples.push({ pH, net: netChargeForGroups(groups, pH) });
+      const values = samples.map(sample => sample.net).concat([0]);
+      const minY = Math.floor(Math.min(...values)) - 0.5;
+      const maxY = Math.ceil(Math.max(...values)) + 0.5;
+      const mapX = pH => pad + (pH / 14) * (w - pad * 1.4);
+      const mapY = charge => h - pad - ((charge - minY) / (maxY - minY || 1)) * (h - pad * 1.4);
+      ctx.strokeStyle = '#dce3eb';
+      ctx.lineWidth = 1;
+      for (let pH = 0; pH <= 14; pH += 2) {
+        ctx.beginPath();
+        ctx.moveTo(mapX(pH), pad / 2);
+        ctx.lineTo(mapX(pH), h - pad);
+        ctx.stroke();
+        ctx.fillStyle = '#64748b';
+        ctx.fillText(String(pH), mapX(pH) - 5, h - 16);
+      }
+      ctx.beginPath();
+      ctx.moveTo(pad, mapY(0));
+      ctx.lineTo(w - pad / 2, mapY(0));
+      ctx.strokeStyle = '#94a3b8';
+      ctx.setLineDash([5, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      samples.forEach((sample, index) => {
+        const x = mapX(sample.pH);
+        const y = mapY(sample.net);
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      [
+        { pH: state.pH, label: `pH ${state.pH.toFixed(1)}`, color: '#c2410c', shape: 'circle' },
+        { pH: state.phCompare, label: `compare ${state.phCompare.toFixed(1)}`, color: '#047857', shape: 'square' }
+      ].forEach(marker => {
+        const x = mapX(marker.pH);
+        const y = mapY(netChargeForGroups(groups, marker.pH));
+        ctx.fillStyle = marker.color;
+        if (marker.shape === 'square') ctx.fillRect(x - 6, y - 6, 12, 12);
+        else {
+          ctx.beginPath();
+          ctx.arc(x, y, 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.fillText(marker.label, x + 8, y - 8);
+      });
+      ctx.fillStyle = '#334155';
+      ctx.font = '14px system-ui';
+      ctx.fillText('pH', w / 2, h - 4);
+      ctx.save();
+      ctx.translate(14, h / 2 + 42);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText('net charge (model)', 0, 0);
+      ctx.restore();
+    }
+
+    function renderPhGuidedPathway() {
+      const groups = currentPhReasoningGroups();
+      const accounting = groups.map(group => ({
+        current: chargeForIonizableGroup(group, state.pH),
+        compare: chargeForIonizableGroup(group, state.phCompare)
+      }));
+      const net = accounting.reduce((sum, row) => sum + row.current.charge, 0);
+      const compareNet = accounting.reduce((sum, row) => sum + row.compare.charge, 0);
+      const pi = estimatePiForGroups(groups);
+      const strongest = accounting.slice().sort((a, b) => Math.abs(b.current.charge - b.compare.charge) - Math.abs(a.current.charge - a.compare.charge))[0];
+      document.querySelectorAll('input[name="phReasoningMode"]').forEach(input => {
+        input.checked = input.value === state.phReasoningMode;
+      });
+      const phNumber = document.getElementById('phNumber');
+      const compareInput = document.getElementById('phCompareInput');
+      const peptideInput = document.getElementById('peptideSequenceInput');
+      if (phNumber) phNumber.value = state.pH.toFixed(1);
+      if (compareInput) compareInput.value = state.phCompare.toFixed(1);
+      if (peptideInput) peptideInput.value = state.peptideSequence;
+      const showHh = document.getElementById('showHhCalculation');
+      if (showHh) showHh.checked = state.showHhCalculation;
+      const tbody = document.querySelector('#phAccountingTable tbody');
+      if (tbody) {
+        tbody.innerHTML = accounting.map(row => `
+          <tr>
+            <th scope="row">${escapeHtml(row.current.label || row.current.name)}</th>
+            <td>${row.current.pKa.toFixed(1)}</td>
+            <td>${row.current.type}</td>
+            <td>${(row.current.protonated * 100).toFixed(1)}%</td>
+            <td>${row.current.charge.toFixed(2)}</td>
+            <td>${row.compare.charge.toFixed(2)}</td>
+          </tr>
+        `).join('');
+      }
+      drawPhTitrationCurve(groups);
+      const disclosure = state.showHhCalculation
+        ? 'Henderson-Hasselbalch: fraction protonated = 1 / (1 + 10^(pH - pKa)). Acid groups become more negative as pH rises; base groups lose positive charge as pH rises.'
+        : 'Calculation display is hidden; fractional charge is still used internally.';
+      const selectedResidue = state.ionizable[state.selectedIonIndex] || null;
+      const selectedText = selectedResidue
+        ? `${selectedResidue.label}: ${chargeForIonizableGroup({ label: selectedResidue.label, ...ionizableInfo[selectedResidue.resn] }, state.pH).charge.toFixed(2)} fractional side-chain charge`
+        : 'No ionizable residue is currently available from coordinates.';
+      const summary = document.getElementById('phComparisonSummary');
+      if (summary) {
+        summary.innerHTML = `
+          <strong>${escapeHtml(modeLabelForPhReasoning())}</strong>
+          <p>Model net charge at pH ${state.pH.toFixed(1)}: <strong>${net.toFixed(2)}</strong>. At pH ${state.phCompare.toFixed(1)}: <strong>${compareNet.toFixed(2)}</strong>.</p>
+          <p>Estimated pI from this simplified independent-group model: <strong>${pi === null ? 'n/a' : pi.toFixed(2)}</strong>.</p>
+          <p>Largest transition between compared pH values: <strong>${strongest ? escapeHtml(strongest.current.label || strongest.current.name) : 'n/a'}</strong>.</p>
+          <p>Selected residue contribution: ${escapeHtml(selectedText)}</p>
+          <p>${disclosure}</p>
+        `;
+      }
+    }
+
+    function evaluatePhExplanation() {
+      const text = document.getElementById('phExplanation')?.value.toLowerCase() || '';
+      const prediction = document.getElementById('phPrediction')?.value.trim();
+      const groups = currentPhReasoningGroups();
+      const net = netChargeForGroups(groups, state.pH);
+      const nearPka = groups.some(group => Math.abs(state.pH - group.pKa) <= 0.2);
+      const hits = {
+        pka: /\b(pka|pH|ph|henderson|hasselbalch)\b/i.test(text),
+        fraction: /\b(fraction|percent|probability|population|mixture|partial)\b/i.test(text),
+        net: /\b(net|whole protein|overall|sum|total)\b/i.test(text),
+        termini: /\b(terminus|termini|n-termin|c-termin)\b/i.test(text),
+        microenvironment: /\b(microenvironment|buried|nearby|salt bridge|hydrogen bond|shift|local)\b/i.test(text),
+        switch: /\b(all-or-none|instant|switch|50|half|not immediate|not instantaneous)\b/i.test(text)
+      };
+      const messages = [];
+      if (!prediction) messages.push('Add a prediction before changing pH so the evidence can confirm or revise it.');
+      if (!text.trim()) messages.push('Write a short explanation that names at least one ionizable group and uses pH relative to pKa.');
+      if (hits.pka && hits.fraction) messages.push('Good: you connected pH relative to pKa with a fractional protonation state.');
+      if (!hits.fraction && nearPka) messages.push('At pH close to pKa, emphasize a mixture of protonated and deprotonated molecules rather than one fixed form.');
+      if (!hits.net && state.phReasoningMode === 'protein') messages.push('For proteins, distinguish an individual residue charge from the whole-protein net charge, which is a sum over many groups.');
+      if (!hits.termini && state.phReasoningMode !== 'protein') messages.push('Remember that termini contribute to amino-acid and peptide net charge.');
+      if (!hits.microenvironment && state.phReasoningMode === 'protein') messages.push('Add a microenvironment caveat: the displayed pKa values are intrinsic/model values, and local structure can shift them.');
+      if (hits.switch) messages.push('Strong misconception check: you avoided treating protonation as an instantaneous switch at pH = pKa.');
+      setPhCycleStage(4);
+      const feedback = document.getElementById('phCycleFeedback');
+      if (feedback) feedback.innerHTML = `<strong>Feedback</strong>${messages.join(' ') || `Good start. Net charge in this model is ${net.toFixed(2)} at pH ${state.pH.toFixed(1)}; strengthen the answer by naming the group with the largest transition.`}`;
     }
 
     function hhInterpretationText(group, protonated, deprotonated) {
@@ -9903,6 +10837,7 @@ END
       drawHhExplorer();
       drawAminoAcidChargeExplorer();
       drawBufferExplorer();
+      renderPhGuidedPathway();
       const residue = state.ionizable[state.selectedIonIndex] || state.ionizable[0];
       if (!residue) {
         document.getElementById('chargedFraction').textContent = 'n/a';
@@ -11148,11 +12083,15 @@ END
         ctx.fill();
       }
       const manipulator = state.backboneManipulator;
+      const animation = manipulator.ramaAnimation;
       if (manipulator.mode === 'manipulate' && current && manipulator.currentAngles.phi !== null && manipulator.currentAngles.psi !== null) {
         const nativeX = current.phi !== null ? mapX(current.phi) : null;
         const nativeY = current.psi !== null ? mapY(current.psi) : null;
-        const tempX = mapX(manipulator.currentAngles.phi);
-        const tempY = mapY(manipulator.currentAngles.psi);
+        const fraction = animation ? Math.max(0, Math.min(1, (performance.now() - animation.startedAt) / animation.duration)) : 1;
+        const animatedPhi = animation ? interpolateAngle(animation.from.phi, animation.to.phi, fraction) : manipulator.currentAngles.phi;
+        const animatedPsi = animation ? interpolateAngle(animation.from.psi, animation.to.psi, fraction) : manipulator.currentAngles.psi;
+        const tempX = mapX(animatedPhi);
+        const tempY = mapY(animatedPsi);
         if (nativeX !== null && nativeY !== null) {
           ctx.strokeStyle = '#c2410c';
           ctx.lineWidth = 2;
@@ -11175,7 +12114,10 @@ END
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        ctx.arc(tempX, tempY, 7.5, 0, Math.PI * 2);
+        ctx.moveTo(tempX, tempY - 8);
+        ctx.lineTo(tempX + 8, tempY + 7);
+        ctx.lineTo(tempX - 8, tempY + 7);
+        ctx.closePath();
         ctx.stroke();
         ctx.fill();
         ctx.fillStyle = '#7c2d12';
@@ -11618,6 +12560,27 @@ END
       });
     });
 
+    document.getElementById('dihedralGuidedCycle').addEventListener('click', event => {
+      const guided = event.target.closest('[data-guided-dihedral]');
+      if (guided) {
+        const [jointName, delta] = guided.dataset.guidedDihedral.split(':');
+        applyGuidedDihedralRotation(jointName, Number(delta));
+      }
+    });
+    document.getElementById('dihedralGuidedCycle').addEventListener('keydown', activateButtonFromKeyboard);
+    document.getElementById('checkDihedralExplanation').addEventListener('click', evaluateDihedralExplanation);
+    document.getElementById('resetGuidedDihedral').addEventListener('click', resetAllBackboneAnglesToNative);
+    document.getElementById('undoGuidedDihedral').addEventListener('click', undoManipulatorRotation);
+    document.getElementById('dihedralPrediction').addEventListener('input', () => setDihedralCycleStage(0));
+    document.getElementById('dihedralExplanation').addEventListener('input', () => setDihedralCycleStage(3));
+    document.getElementById('enableUnrestrictedDihedral').addEventListener('click', () => {
+      state.backboneManipulator.guidedMode = 'explore';
+      state.backboneManipulator.mode = 'manipulate';
+      state.backboneManipulator.active = true;
+      document.getElementById('dihedralCycleFeedback').innerHTML = '<strong>Unrestricted Explore mode</strong>Use the full manipulator controls below. The native structure remains unchanged; all rotations are hypothetical teaching geometry.';
+      drawTorsion({ preserveView: true });
+    });
+
     document.getElementById('primaryAngleSlider').addEventListener('input', event => {
       if (state.backboneManipulator.mode !== 'manipulate') return;
       const angleName = state.backboneManipulator.selectedDihedral;
@@ -11955,6 +12918,61 @@ END
       applyMode();
     });
 
+    document.getElementById('stabilityResidueSelect').addEventListener('change', event => {
+      state.selectedStabilityResidueIndex = Number(event.target.value);
+      state.selectedResidueIndex = state.selectedStabilityResidueIndex;
+      state.stabilityEvidenceRevealed = false;
+      setStabilityCycleStage(1, 'Residue selected. Make a prediction before revealing evidence.');
+      applyMode();
+    });
+
+    document.querySelectorAll('input[name="stabilityView"]').forEach(input => {
+      input.addEventListener('change', event => {
+        state.stabilityView = event.target.value;
+        state.stabilityEvidenceRevealed = true;
+        setStabilityCycleStage(2, `Switched to ${state.stabilityView === 'focus' ? 'focused atomic' : 'whole-structure'} view.`);
+        applyMode();
+      });
+    });
+
+    [
+      ['showStabilityBackbone', 'backbone'],
+      ['showStabilitySidechain', 'sidechain'],
+      ['showStabilitySalt', 'salt'],
+      ['showStabilityHydrophobic', 'hydrophobic'],
+      ['showStabilitySolvent', 'solvent']
+    ].forEach(([id, key]) => {
+      document.getElementById(id).addEventListener('change', event => {
+        state.stabilityToggles[key] = event.target.checked;
+        state.stabilityEvidenceRevealed = true;
+        setStabilityCycleStage(2, 'Evidence category toggled.');
+        applyMode();
+      });
+    });
+
+    document.getElementById('stabilityPrediction').addEventListener('input', event => {
+      state.stabilityPrediction = event.target.value;
+      setStabilityCycleStage(1);
+    });
+
+    document.getElementById('stabilityExplanation').addEventListener('input', event => {
+      state.stabilityExplanation = event.target.value;
+      setStabilityCycleStage(3);
+    });
+
+    document.getElementById('revealStabilityEvidence').addEventListener('click', () => {
+      state.stabilityEvidenceRevealed = true;
+      setStabilityCycleStage(2, 'Solvent access and nearby interaction evidence revealed.');
+      applyMode();
+    });
+
+    document.getElementById('checkStabilityExplanation').addEventListener('click', evaluateStabilityExplanation);
+    document.getElementById('stabilityExamples').addEventListener('click', event => {
+      const button = event.target.closest('[data-stability-example]');
+      if (button) chooseStabilityExample(button.dataset.stabilityExample);
+    });
+    document.getElementById('stabilityGuidedCycle').addEventListener('keydown', activateButtonFromKeyboard);
+
     document.getElementById('paletteMode').addEventListener('change', event => {
       state.paletteMode = event.target.value;
       populateControls();
@@ -11980,6 +12998,7 @@ END
 
     document.getElementById('ionResidue').addEventListener('change', event => {
       state.selectedIonIndex = Number(event.target.value);
+      state.phReasoningMode = 'protein';
       applyMode();
     });
 
@@ -11990,8 +13009,64 @@ END
 
     document.getElementById('aminoAcidSelect').addEventListener('change', event => {
       state.selectedAminoAcid = event.target.value;
+      state.phReasoningMode = 'aminoAcid';
       applyMode();
     });
+
+    document.querySelectorAll('input[name="phReasoningMode"]').forEach(input => {
+      input.addEventListener('change', event => {
+        state.phReasoningMode = event.target.value;
+        setPhCycleStage(0);
+        applyMode();
+      });
+    });
+
+    document.getElementById('phPrediction').addEventListener('input', event => {
+      state.phPrediction = event.target.value;
+      setPhCycleStage(0);
+    });
+
+    document.getElementById('phExplanation').addEventListener('input', event => {
+      state.phExplanation = event.target.value;
+      setPhCycleStage(3);
+    });
+
+    document.getElementById('phNumber').addEventListener('change', event => {
+      setPhValue(event.target.value, { stage: 2 });
+    });
+
+    document.getElementById('phNumber').addEventListener('input', event => {
+      if (event.target.value === '') return;
+      setPhValue(event.target.value, { stage: 2 });
+    });
+
+    document.getElementById('peptideSequenceInput').addEventListener('input', event => {
+      state.peptideSequence = event.target.value.toUpperCase().replace(/[^ARNDCQEGHILKMFPSTWYV]/g, '');
+      state.phReasoningMode = 'peptide';
+      setPhCycleStage(0);
+      applyMode();
+    });
+
+    document.getElementById('phCompareInput').addEventListener('change', event => {
+      state.phCompare = clampPh(event.target.value);
+      setPhCycleStage(2, `Comparison pH set to ${state.phCompare.toFixed(1)}.`);
+      applyMode();
+    });
+
+    document.getElementById('phCompareInput').addEventListener('input', event => {
+      if (event.target.value === '') return;
+      state.phCompare = clampPh(event.target.value);
+      setPhCycleStage(2, `Comparison pH set to ${state.phCompare.toFixed(1)}.`);
+      applyMode();
+    });
+
+    document.getElementById('showHhCalculation').addEventListener('change', event => {
+      state.showHhCalculation = event.target.checked;
+      applyMode();
+    });
+
+    document.getElementById('checkPhExplanation').addEventListener('click', evaluatePhExplanation);
+    document.getElementById('phGuidedCycle').addEventListener('keydown', activateButtonFromKeyboard);
 
     document.getElementById('bufferPkaSlider').addEventListener('input', event => {
       state.bufferPka = Number(event.target.value);
@@ -12006,8 +13081,7 @@ END
     });
 
     document.getElementById('phSlider').addEventListener('input', event => {
-      state.pH = Number(event.target.value);
-      applyMode();
+      setPhValue(event.target.value, { stage: 2 });
     });
 
     document.getElementById('solventType').addEventListener('change', event => {
