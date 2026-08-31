@@ -54,7 +54,7 @@ test('each required pathway is represented with objectives and steps', () => {
     'What stabilizes a folded protein?',
     'How does pH affect a protein?',
     'How does structure support function?',
-    'How can protein sequences reveal evolution?'
+    'How has this protein evolved?'
   ].forEach(title => assert(html.includes(title), `${title} missing`));
   const pathwayBlock = html.slice(html.indexOf('const LEARNING_PATHWAYS'), html.indexOf('const state'));
   assert((pathwayBlock.match(/objectives: \[/g) || []).length >= 5);
@@ -87,7 +87,7 @@ test('context shows structure, chain, selected residue, and pathway', () => {
   assert(context.includes('currentResidue()'));
   assert(context.includes('state.structureLabel'));
   assert(context.includes('pathway.title'));
-  assert(context.includes('Rubisco RbcL Evolution'));
+  assert(context.includes('None selected'));
 });
 
 test('browser back and forward behavior is wired through URL state', () => {
@@ -124,13 +124,14 @@ test('direct access to individual expert tools remains available in Explore or A
   ['overview', 'torsions', 'hbonds', 'tertiary', 'ph', 'conservation', 'gallery'].forEach(mode => {
     assert(html.includes(`data-mode="${mode}"`), `${mode} direct tool missing`);
   });
+  assert(!html.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
 });
 
 test('unfinished modules are moved out of primary Learn and Explore navigation', () => {
   const roadmapStart = html.indexOf('<h2>Development Roadmap</h2>');
   assert(roadmapStart > 0, 'Development Roadmap is missing');
   const roadmap = html.slice(roadmapStart, html.indexOf('</div>', roadmapStart + 300));
-  ['AlphaFold'].forEach(label => {
+  ['AlphaFold', 'Rubisco Evolution Case Study'].forEach(label => {
     assert(roadmap.includes(label), `${label} should be in the roadmap area`);
   });
 });

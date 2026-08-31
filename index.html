@@ -2084,12 +2084,6 @@
             <button data-mode="mutation">Mutation Sandbox</button>
           </div>
         </div>
-        <div class="atlas-group case-study-group" data-student-area="explore analyze">
-          <h2>Curated Case Studies</h2>
-          <div class="atlas-tools">
-            <button data-mode="sequence">Open Rubisco Evolution Case Study</button>
-          </div>
-        </div>
         <div class="atlas-group" data-student-area="analyze">
           <h2>Analyze &amp; Advanced Tools</h2>
           <div class="atlas-tools">
@@ -2107,7 +2101,6 @@
         <div class="atlas-group" data-student-area="analyze">
           <h2>Data &amp; Export Readiness</h2>
           <div class="atlas-tools">
-            <button data-mode="sequence">Sequence Data</button>
             <button data-mode="overview">Structure Sequence</button>
             <button data-mode="gallery">Image / Dataset Export Plan</button>
           </div>
@@ -2116,13 +2109,14 @@
           <h2>Development Roadmap</h2>
           <div class="atlas-tools">
             <button disabled>AlphaFold<span class="coming-soon">Coming soon</span></button>
+            <button disabled>Rubisco Evolution Case Study<span class="coming-soon">Future development</span></button>
           </div>
         </div>
       </div>
 
       <section class="section">
         <h2>Atlas Overview</h2>
-        <p>The atlas is organized into Protein Explorer tools for loaded molecular structures, Chemical Properties tools for pH and charge, Structure &amp; Function tools for molecular interpretation, and clearly labeled curated case studies.</p>
+        <p>The atlas is organized into Protein Explorer tools for loaded molecular structures, Chemical Properties tools for pH and charge, and Structure &amp; Function tools for molecular interpretation.</p>
         <details class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
           <summary><strong>Atlas Dataset Registry</strong></summary>
           <p>Loading dataset registry...</p>
@@ -2973,13 +2967,37 @@ rotation axis B—C</div>
       </section>
 
       <section class="section mode-panel hidden" id="conservationPanel">
-        <h2>Structure Conservation</h2>
-        <p>Choose a course protein, prepare a biologically related comparison set, compute a teaching-level sequence conservation score, map results onto the loaded reference structure, and turn the pattern into structure-function reasoning.</p>
+        <h2>Evolutionary Analysis</h2>
+        <p>Identify the currently loaded protein and chain, collect source-labeled family/domain evidence, and show what would be required before residue conservation can be mapped onto this structure.</p>
+        <div class="mini-card" id="currentProteinEvolutionContext" aria-live="polite">
+          <h3>Current Protein Context</h3>
+          <p>Resolving the loaded structure and chain...</p>
+        </div>
+        <div class="mini-card">
+          <h3>Source-Labeled Workflow</h3>
+          <div id="evolutionStageList" class="list" aria-live="polite"></div>
+          <div class="button-row">
+            <button type="button" id="refreshEvolutionIdentity">Refresh Current Protein Identity</button>
+            <button type="button" id="retryEvolutionStage">Retry Unavailable Sources</button>
+          </div>
+        </div>
+        <div class="mini-card" id="evolutionFamilyDomainPanel">
+          <h3>Family and Domain Evidence</h3>
+          <p>Family, domain, and site annotations appear here when public browser-accessible services return data for the loaded chain.</p>
+        </div>
+        <div class="mini-card" id="evolutionHomologReadinessPanel">
+          <h3>Homolog-Set Readiness</h3>
+          <p>Residue conservation mapping is disabled until a homolog set, sequence alignment, residue mapping, and interpretation model are all available for the current protein and chain.</p>
+        </div>
+        <div class="mini-card" id="evolutionMethodDisclosure">
+          <h3>Method Disclosure</h3>
+          <p>This static GitHub Pages workflow queries public browser-accessible services when available: RCSB PDB Data API for structure/entity identity, RCSB Sequence Coordinates for residue mapping when available, UniProt for canonical protein records, InterPro for family and domain annotations, and NCBI CDD/CD-Search only as a conserved-domain reference. It does not infer residue conservation from unrelated curated datasets.</p>
+        </div>
+        <div class="legacy-current-protein-conservation hidden" hidden aria-hidden="true">
         <div class="mini-card">
           <h3>What This Tool Is Based On</h3>
           <p>This in-browser tool fetches selected comparison PDB files from RCSB, extracts the represented amino-acid sequence from each structure, aligns each comparison sequence to the selected reference structure sequence, and scores each reference residue by the fraction of usable comparisons with the same amino acid at that aligned position.</p>
           <p>It is useful for classroom pattern-finding, but it is not ConSurf and not a phylogenetic evolutionary-rate calculation. It does not use homolog search, tree building, Rate4Site, or explicit sequence-to-structure mapping beyond the residues present in the loaded PDB.</p>
-          <p><strong>Separate from Rubisco:</strong> Rubisco sequence conservation lives in the Rubisco Sequence Atlas case study. It is intentionally not colored onto the structure viewer yet because this atlas does not currently include a verified Rubisco structure mapping.</p>
         </div>
         <div class="mini-card">
           <h3>Recommended Student Workflow</h3>
@@ -3149,6 +3167,7 @@ rotation axis B—C</div>
           </table>
         </div>
         <div class="chem-note" id="cerNote"></div>
+        </div>
       </section>
 
       <section class="section mode-panel hidden" id="mutationPanel">
@@ -5199,18 +5218,18 @@ END
       },
       protein_evolution: {
         letter: 'E',
-        title: 'How can protein sequences reveal evolution?',
-        summary: 'Curated example: Rubisco RbcL evolution; optional current-protein conservation remains in Analyze.',
+        title: 'How has this protein evolved?',
+        summary: 'Identify related proteins, compare their sequences, and map conserved positions onto the structure you are currently exploring.',
         objectives: [
-          'Distinguish curated sequence comparison from structure-residue mapping.',
-          'Interpret conservation scores as evidence rather than proof.',
-          'Connect conserved residues or regions to possible structural or functional roles.'
+          'Identify the currently loaded protein, chain, source organism, and mapped sequence record when available.',
+          'Separate related-protein discovery, family/domain annotation, and residue conservation.',
+          'Explain why a homolog set and alignment are required before conservation can be mapped onto a structure.'
         ],
         steps: [
-          { label: 'Explore the Rubisco evolution case study', mode: 'sequence', prompt: 'Compare curated Rubisco RbcL reference sequences without assuming Myoglobin structure numbering.' },
-          { label: 'Investigate conservation in the current protein', mode: 'conservation', prompt: 'Use Analyze mode when you are ready to prepare current-protein comparison structures.' },
-          { label: 'Structural mapping boundaries', mode: 'conservation', prompt: 'Map conservation only when a suitable current-protein comparison set has been prepared.' },
-          { label: 'Functional interpretation', mode: 'mutation', prompt: 'Use structure and chemistry evidence to reason about possible mutation effects.' }
+          { label: 'Resolve current protein identity', mode: 'conservation', prompt: 'Confirm the loaded PDB ID, chain, organism, and sequence mapping for this protein.' },
+          { label: 'Find family and domain evidence', mode: 'conservation', prompt: 'Use source-labeled annotations to describe protein family, domains, regions, and sites.' },
+          { label: 'Check homolog-set readiness', mode: 'conservation', prompt: 'Decide what related sequences and alignment evidence would be needed for conservation.' },
+          { label: 'Interpret mapping boundaries', mode: 'conservation', prompt: 'Distinguish available annotations from residue-level conservation that has not been computed.' }
         ]
       }
     };
@@ -5374,6 +5393,17 @@ END
       customConservationIds: [],
       conservationMapMode: 'none',
       selectedConservationResidueKey: null,
+      evolutionIdentity: {
+        referenceKey: '',
+        status: 'not started',
+        identity: null,
+        mapping: null,
+        uniprot: null,
+        interpro: null,
+        cdd: null,
+        stages: [],
+        errors: []
+      },
       conservationResult: {
         status: 'Not computed yet',
         reference: '1MBN',
@@ -6796,7 +6826,7 @@ END
         lesson: 'Guided lesson',
         gallery: 'Structure gallery',
         betaTopology: 'Beta sheet topology',
-        sequence: 'Rubisco Sequence Atlas'
+        sequence: 'Inactive sequence case study'
       };
       if (state.appStatus === APP_STATES.COORDINATES_LOADING) status.textContent = `Loading ${state.structureId} coordinates...`;
       else if (state.appStatus === APP_STATES.RETRIEVAL_FAILED) status.textContent = `Structure retrieval failed. ${state.lastStructureError || 'Check the PDB ID or network connection.'}`;
@@ -6830,18 +6860,6 @@ END
       const secondaryLabel = document.getElementById('contextSecondaryLabel');
       const tertiaryLabel = document.getElementById('contextTertiaryLabel');
       const modeLabel = document.getElementById('contextModeLabel');
-      if (state.mode === 'sequence') {
-        const reference = rubiscoReferenceSequenceLabel();
-        if (primaryLabel) primaryLabel.textContent = 'Case study';
-        if (secondaryLabel) secondaryLabel.textContent = 'Reference sequence';
-        if (tertiaryLabel) tertiaryLabel.textContent = 'Structure workspace preserved';
-        if (modeLabel) modeLabel.textContent = 'Case study';
-        document.getElementById('contextStructure').textContent = 'Rubisco RbcL Evolution';
-        document.getElementById('contextChain').textContent = reference;
-        document.getElementById('contextResidue').textContent = `${state.structureLabel} (${state.structureId})`;
-        document.getElementById('contextPathway').textContent = 'Rubisco RbcL Evolution';
-        return;
-      }
       if (primaryLabel) primaryLabel.textContent = 'Structure';
       if (secondaryLabel) secondaryLabel.textContent = 'Chain';
       if (tertiaryLabel) tertiaryLabel.textContent = 'Selected residue';
@@ -6997,17 +7015,13 @@ END
       } else {
         state.activePathway = null;
       }
-      if (!hasPathway && mode && document.getElementById(`${mode}Panel`)) {
-        if (mode === 'sequence') preserveProteinWorkspace();
+      if (!hasPathway && mode && mode !== 'sequence' && document.getElementById(`${mode}Panel`)) {
         state.mode = mode;
       }
     }
 
     function setStudentMode(mode, options = {}) {
       if (!['learn', 'explore', 'analyze'].includes(mode)) return;
-      if (state.mode === 'sequence') {
-        returnToProteinWorkspace({ restoreFocus: false, updateUrl: false });
-      }
       state.studentMode = mode;
       if (mode !== 'learn') state.activePathway = null;
       renderStudentModeControls();
@@ -7023,7 +7037,6 @@ END
       state.studentMode = 'learn';
       state.activePathway = pathwayId;
       state.activePathwayStep = Math.max(0, Math.min(pathway.steps.length - 1, Number(stepIndex) || 0));
-      if (pathway.steps[state.activePathwayStep].mode === 'sequence') preserveProteinWorkspace();
       state.mode = pathway.steps[state.activePathwayStep].mode;
       renderStudentModeControls();
       renderPathwayPanel();
@@ -7058,6 +7071,7 @@ END
 
     function safeMode(value) {
       const mode = String(value || '');
+      if (mode === 'sequence') return null;
       return document.getElementById(`${mode}Panel`) ? mode : null;
     }
 
@@ -7764,6 +7778,10 @@ END
     }
 
     function applyMode(options = {}) {
+      if (state.mode === 'sequence' || !document.getElementById(`${state.mode}Panel`)) {
+        state.mode = 'overview';
+        state.activePathway = null;
+      }
       if (state.mode !== 'torsions' && state.backboneManipulator.mode === 'manipulate') {
         state.backboneManipulator.mode = 'inspect';
         state.backboneManipulator.active = false;
@@ -7778,17 +7796,6 @@ END
         if (selected) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
       });
-
-      if (state.mode === 'sequence') drawVisualEvolutionExplorer();
-      if (state.mode === 'sequence') {
-        hideViewerFallback();
-        updateRubiscoCaseContext();
-        updateLearningContext();
-        updateSystemStatus();
-        renderMolecularEvidenceCard();
-        if (options.restoreFocus) focusActivePanel();
-        return;
-      }
 
       if (!hasParsedCoordinates() && modeNeedsViewer(state.mode)) {
         showViewerFallback('No structure coordinates available', viewerUnavailableMessage(), { viewer: false });
@@ -12430,6 +12437,300 @@ END
       renderFunctionalFeaturePanel();
     }
 
+    const EVOLUTION_STAGE_TEMPLATE = [
+      { id: 'identity', label: 'Current protein identity', source: 'RCSB PDB Data API' },
+      { id: 'mapping', label: 'PDB-chain to sequence mapping', source: 'RCSB Sequence Coordinates API' },
+      { id: 'uniprot', label: 'Canonical protein record', source: 'UniProt REST API' },
+      { id: 'interpro', label: 'Family and domain annotation', source: 'InterPro API' },
+      { id: 'cdd', label: 'Conserved-domain cross-check', source: 'NCBI CDD/CD-Search' },
+      { id: 'homologs', label: 'Homolog-set readiness', source: 'Atlas readiness check' },
+      { id: 'alignment', label: 'Multiple sequence alignment readiness', source: 'Atlas readiness check' },
+      { id: 'conservation', label: 'Residue conservation mapping', source: 'Disabled until readiness is met' }
+    ];
+
+    const EVOLUTION_ENDPOINTS = {
+      rcsbData: 'https://data.rcsb.org/rest/v1/core',
+      rcsbSequenceCoordinates: 'https://1d-coordinates.rcsb.org/graphql',
+      uniprot: 'https://rest.uniprot.org/uniprotkb',
+      interpro: 'https://www.ebi.ac.uk/interpro/api/entry/interpro/protein/uniprot',
+      cdd: 'https://www.ncbi.nlm.nih.gov/Structure/cdd/cdd.shtml'
+    };
+
+    function cloneEvolutionStages() {
+      return EVOLUTION_STAGE_TEMPLATE.map(stage => ({ ...stage, status: 'waiting', message: '' }));
+    }
+
+    function currentEvolutionReferenceKey() {
+      return `${state.structureId || 'none'}:${state.activeChain || state.residues[0]?.chain || 'none'}`;
+    }
+
+    function currentEvolutionChain() {
+      return state.activeChain || state.residues[0]?.chain || '';
+    }
+
+    function resetCurrentProteinEvolution(reason = 'Structure or chain changed.') {
+      state.evolutionIdentity = {
+        referenceKey: currentEvolutionReferenceKey(),
+        status: 'not started',
+        identity: null,
+        mapping: null,
+        uniprot: null,
+        interpro: null,
+        cdd: null,
+        stages: cloneEvolutionStages(),
+        errors: reason ? [reason] : []
+      };
+      state.conservation = [];
+      state.conservationSources = [];
+      state.conservationMapMode = 'none';
+      state.selectedConservationResidueKey = null;
+      state.conservationResult = {
+        status: 'Not computed for current protein',
+        reference: state.structureId,
+        attempted: 0,
+        used: 0,
+        skipped: 0,
+        warnings: ['Residue conservation has not been computed for the currently loaded protein and chain.']
+      };
+    }
+
+    function ensureEvolutionStateFresh() {
+      const key = currentEvolutionReferenceKey();
+      if (state.evolutionIdentity.referenceKey !== key || !state.evolutionIdentity.stages?.length) {
+        resetCurrentProteinEvolution('New structure context: previous evolution state was cleared.');
+      }
+    }
+
+    function setEvolutionStage(id, status, message = '') {
+      ensureEvolutionStateFresh();
+      const stage = state.evolutionIdentity.stages.find(item => item.id === id);
+      if (stage) {
+        stage.status = status;
+        stage.message = message;
+      }
+    }
+
+    async function fetchJsonWithTimeout(url, options = {}) {
+      const timeoutMs = options.timeoutMs || 9000;
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+      const fetchOptions = { ...options, signal: controller.signal };
+      delete fetchOptions.timeoutMs;
+      try {
+        const response = await fetch(url, fetchOptions);
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        return await response.json();
+      } finally {
+        window.clearTimeout(timer);
+      }
+    }
+
+    function referenceSequenceIdentifier(polymerEntity) {
+      const identifiers = polymerEntity?.rcsb_polymer_entity_container_identifiers || {};
+      const referenceIds = identifiers.reference_sequence_identifiers || [];
+      const uniprot = referenceIds.find(item => /uniprot/i.test(item.database_name || '')) || referenceIds[0];
+      const direct = identifiers.uniprot_ids?.[0];
+      return uniprot?.database_accession || uniprot?.accession || direct || '';
+    }
+
+    function parseRcsbIdentity(entry, instance, polymerEntity) {
+      const entityId = instance?.rcsb_polymer_entity_instance_container_identifiers?.entity_id
+        || instance?.rcsb_polymer_entity_instance_container_identifiers?.entity_ids?.[0]
+        || polymerEntity?.rcsb_polymer_entity_container_identifiers?.entity_id
+        || '';
+      const sourceOrganism = polymerEntity?.rcsb_entity_source_organism?.[0]?.ncbi_scientific_name
+        || polymerEntity?.entity_src_gen?.[0]?.pdbx_gene_src_scientific_name
+        || polymerEntity?.entity_src_nat?.[0]?.pdbx_organism_scientific
+        || 'not reported';
+      return {
+        pdbId: state.structureId,
+        chain: currentEvolutionChain(),
+        entityId,
+        proteinName: polymerEntity?.rcsb_polymer_entity?.pdbx_description || state.structureLabel || state.structureId,
+        sourceOrganism,
+        method: entry?.rcsb_entry_info?.experimental_method || entry?.exptl?.[0]?.method || 'not reported',
+        modeledResidues: state.residues.filter(residue => residue.chain === currentEvolutionChain()).length || state.residues.length,
+        sequenceLength: polymerEntity?.entity_poly?.pdbx_seq_one_letter_code_can?.replace(/\s/g, '').length || null,
+        uniprotAccession: referenceSequenceIdentifier(polymerEntity)
+      };
+    }
+
+    async function fetchRcsbCurrentProteinIdentity() {
+      const pdbId = state.structureId.toLowerCase();
+      const chain = currentEvolutionChain();
+      const entryUrl = `${EVOLUTION_ENDPOINTS.rcsbData}/entry/${pdbId}`;
+      const instanceUrl = `${EVOLUTION_ENDPOINTS.rcsbData}/polymer_entity_instance/${pdbId}/${encodeURIComponent(chain)}`;
+      const entry = await fetchJsonWithTimeout(entryUrl);
+      const instance = await fetchJsonWithTimeout(instanceUrl);
+      const entityId = instance?.rcsb_polymer_entity_instance_container_identifiers?.entity_id
+        || instance?.rcsb_polymer_entity_instance_container_identifiers?.entity_ids?.[0];
+      if (!entityId) throw new Error(`RCSB did not report a polymer entity for chain ${chain}.`);
+      const polymerEntity = await fetchJsonWithTimeout(`${EVOLUTION_ENDPOINTS.rcsbData}/polymer_entity/${pdbId}/${entityId}`);
+      return parseRcsbIdentity(entry, instance, polymerEntity);
+    }
+
+    function parseUniprotRecord(record, accession) {
+      if (!record) return null;
+      const name = record.proteinDescription?.recommendedName?.fullName?.value
+        || record.proteinDescription?.submissionNames?.[0]?.fullName?.value
+        || record.uniProtkbId
+        || accession;
+      const functionComment = (record.comments || []).find(comment => comment.commentType === 'FUNCTION');
+      const features = (record.features || []).filter(feature => ['Domain', 'Region', 'Active site', 'Binding site', 'Motif', 'Site'].includes(feature.type));
+      return {
+        accession,
+        name,
+        organism: record.organism?.scientificName || 'not reported',
+        reviewed: /reviewed/i.test(record.entryType || ''),
+        functionText: functionComment?.texts?.[0]?.value || '',
+        features: features.slice(0, 12).map(feature => ({
+          type: feature.type,
+          description: feature.description || '',
+          start: feature.location?.start?.value || '',
+          end: feature.location?.end?.value || ''
+        }))
+      };
+    }
+
+    async function fetchUniprotCurrentProtein(accession) {
+      if (!accession) return null;
+      const record = await fetchJsonWithTimeout(`${EVOLUTION_ENDPOINTS.uniprot}/${encodeURIComponent(accession)}.json`);
+      return parseUniprotRecord(record, accession);
+    }
+
+    async function fetchInterproCurrentProtein(accession) {
+      if (!accession) return null;
+      const url = `${EVOLUTION_ENDPOINTS.interpro}/${encodeURIComponent(accession)}/?page_size=20`;
+      const payload = await fetchJsonWithTimeout(url);
+      return (payload.results || []).slice(0, 12).map(result => ({
+        accession: result.metadata?.accession || result.metadata?.entry_protein_locations?.[0]?.fragments?.[0]?.dc_status || 'InterPro entry',
+        name: result.metadata?.name || result.metadata?.source_database || 'InterPro annotation',
+        type: result.metadata?.type || 'annotation',
+        source: result.metadata?.source_database || 'InterPro'
+      }));
+    }
+
+    async function resolveCurrentProteinEvolutionIdentity(force = false) {
+      ensureEvolutionStateFresh();
+      if (!force && ['loading', 'complete', 'partial'].includes(state.evolutionIdentity.status)) return;
+      state.evolutionIdentity.status = 'loading';
+      state.evolutionIdentity.errors = [];
+      state.evolutionIdentity.identity = null;
+      state.evolutionIdentity.mapping = null;
+      state.evolutionIdentity.uniprot = null;
+      state.evolutionIdentity.interpro = null;
+      state.evolutionIdentity.cdd = null;
+      state.evolutionIdentity.stages = cloneEvolutionStages();
+      setEvolutionStage('identity', 'loading', `Resolving ${state.structureId} chain ${currentEvolutionChain()} from RCSB.`);
+      renderCurrentProteinEvolution();
+      try {
+        const identity = await fetchRcsbCurrentProteinIdentity();
+        state.evolutionIdentity.identity = identity;
+        setEvolutionStage('identity', 'success', `${identity.proteinName}; organism ${identity.sourceOrganism}; ${identity.modeledResidues} modeled residues in chain ${identity.chain}.`);
+      } catch (error) {
+        state.evolutionIdentity.errors.push(error.message);
+        setEvolutionStage('identity', 'failed', `RCSB identity lookup failed: ${error.message}`);
+      }
+
+      const accession = state.evolutionIdentity.identity?.uniprotAccession;
+      setEvolutionStage('mapping', 'unavailable', 'Residue-level PDB-UniProt mapping is not displayed yet in this static atlas. Until this stage succeeds, conservation coloring remains disabled.');
+
+      if (accession) {
+        setEvolutionStage('uniprot', 'loading', `Fetching UniProt ${accession}.`);
+        renderCurrentProteinEvolution();
+        try {
+          state.evolutionIdentity.uniprot = await fetchUniprotCurrentProtein(accession);
+          setEvolutionStage('uniprot', state.evolutionIdentity.uniprot ? 'success' : 'unavailable', state.evolutionIdentity.uniprot ? `${state.evolutionIdentity.uniprot.name}; ${state.evolutionIdentity.uniprot.reviewed ? 'reviewed' : 'unreviewed'} record.` : 'No UniProt record was available.');
+        } catch (error) {
+          state.evolutionIdentity.errors.push(error.message);
+          setEvolutionStage('uniprot', 'failed', `UniProt lookup failed: ${error.message}`);
+        }
+
+        setEvolutionStage('interpro', 'loading', `Fetching InterPro annotations for ${accession}.`);
+        renderCurrentProteinEvolution();
+        try {
+          state.evolutionIdentity.interpro = await fetchInterproCurrentProtein(accession);
+          setEvolutionStage('interpro', state.evolutionIdentity.interpro?.length ? 'success' : 'unavailable', state.evolutionIdentity.interpro?.length ? `${state.evolutionIdentity.interpro.length} InterPro annotations returned.` : 'No InterPro family/domain annotations were returned.');
+        } catch (error) {
+          state.evolutionIdentity.errors.push(error.message);
+          setEvolutionStage('interpro', 'failed', `InterPro lookup failed: ${error.message}`);
+        }
+      } else {
+        setEvolutionStage('uniprot', 'unavailable', 'No UniProt accession was reported for the current PDB chain.');
+        setEvolutionStage('interpro', 'unavailable', 'InterPro lookup requires a mapped UniProt accession.');
+      }
+
+      setEvolutionStage('cdd', 'unavailable', 'CDD is listed as a conserved-domain reference, but this static page does not run a live whole-protein CD-Search.');
+      setEvolutionStage('homologs', 'unavailable', 'A current-protein homolog set has not been assembled or validated.');
+      setEvolutionStage('alignment', 'unavailable', 'No multiple sequence alignment is loaded for this protein and chain.');
+      setEvolutionStage('conservation', 'disabled', 'Residue conservation mapping is disabled until homolog discovery, MSA, and residue mapping are all ready for the current protein.');
+      state.evolutionIdentity.status = state.evolutionIdentity.errors.length ? 'partial' : 'complete';
+      renderCurrentProteinEvolution();
+    }
+
+    function evolutionStatusClass(status) {
+      if (status === 'success') return 'status-ok';
+      if (status === 'loading') return 'status-loading';
+      if (status === 'failed') return 'status-bad';
+      if (status === 'disabled' || status === 'unavailable') return 'status-warn';
+      return '';
+    }
+
+    function renderCurrentProteinEvolution() {
+      ensureEvolutionStateFresh();
+      const context = document.getElementById('currentProteinEvolutionContext');
+      const stageList = document.getElementById('evolutionStageList');
+      const familyPanel = document.getElementById('evolutionFamilyDomainPanel');
+      const readinessPanel = document.getElementById('evolutionHomologReadinessPanel');
+      if (!context || !stageList || !familyPanel || !readinessPanel) return;
+      const identity = state.evolutionIdentity.identity;
+      const uniprot = state.evolutionIdentity.uniprot;
+      const chain = currentEvolutionChain() || 'not selected';
+      const modeledResidues = identity?.modeledResidues ?? (state.residues.filter(residue => residue.chain === chain).length || state.residues.length || 'not parsed');
+      context.innerHTML = `
+        <h3>Current Protein Context</h3>
+        <p><strong>Protein:</strong> ${escapeHtml(identity?.proteinName || state.structureLabel || state.structureId)}</p>
+        <p><strong>PDB ID:</strong> ${escapeHtml(state.structureId || 'none')} &nbsp; <strong>Selected chain:</strong> ${escapeHtml(chain)}</p>
+        <p><strong>Modeled residues:</strong> ${modeledResidues}</p>
+        <p><strong>Source organism:</strong> ${escapeHtml(identity?.sourceOrganism || uniprot?.organism || 'not available yet')}</p>
+        <p><strong>Mapped UniProt accession:</strong> ${escapeHtml(identity?.uniprotAccession || 'not available')}</p>
+      `;
+      stageList.innerHTML = state.evolutionIdentity.stages.map(stage => `
+        <div class="structure-pill ${evolutionStatusClass(stage.status)}">
+          <span><strong>${escapeHtml(stage.label)}</strong><br>${escapeHtml(stage.source)}<br>${escapeHtml(stage.status)}${stage.message ? `: ${escapeHtml(stage.message)}` : ''}</span>
+        </div>
+      `).join('');
+      const featureRows = (uniprot?.features || []).map(feature => `<li>${escapeHtml(feature.type)} ${escapeHtml(String(feature.start || ''))}${feature.end ? `-${escapeHtml(String(feature.end))}` : ''}: ${escapeHtml(feature.description || 'no description')}</li>`).join('');
+      const interproRows = (state.evolutionIdentity.interpro || []).map(item => `<li>${escapeHtml(item.name)} (${escapeHtml(item.type)}; ${escapeHtml(item.source)})</li>`).join('');
+      familyPanel.innerHTML = `
+        <h3>Family and Domain Evidence</h3>
+        <p><strong>UniProt record:</strong> ${uniprot ? `${escapeHtml(uniprot.name)} (${uniprot.reviewed ? 'reviewed' : 'unreviewed'})` : 'not available yet'}</p>
+        ${uniprot?.functionText ? `<p><strong>UniProt function:</strong> ${escapeHtml(uniprot.functionText)}</p>` : ''}
+        <p><strong>UniProt features:</strong></p>
+        ${featureRows ? `<ul>${featureRows}</ul>` : '<p>No feature annotations are available for this chain yet.</p>'}
+        <p><strong>InterPro annotations:</strong></p>
+        ${interproRows ? `<ul>${interproRows}</ul>` : '<p>No InterPro annotations are available yet.</p>'}
+      `;
+      readinessPanel.innerHTML = `
+        <h3>Homolog-Set Readiness</h3>
+        <p><strong>Status:</strong> Not ready for residue conservation mapping.</p>
+        <ul>
+          <li>Related-protein discovery: not implemented for the current protein in this static build.</li>
+          <li>Multiple sequence alignment: no current-protein MSA loaded.</li>
+          <li>Residue mapping: no displayed PDB-to-canonical sequence coordinate map yet.</li>
+          <li>Conservation coloring: disabled so unrelated datasets are never substituted.</li>
+        </ul>
+      `;
+      const computeButton = document.getElementById('computeConservation');
+      if (computeButton) {
+        computeButton.disabled = true;
+        computeButton.textContent = 'Conservation Mapping Disabled';
+      }
+      const note = document.getElementById('computeReadinessNote');
+      if (note) note.textContent = 'Current-protein residue conservation needs a validated homolog set, MSA, and residue mapping before scores can be calculated.';
+      renderConservationResultSummary();
+    }
+
     function renderCuratedHomologList(family) {
       const list = document.getElementById('curatedHomologList');
       if (!list) return;
@@ -12772,25 +13073,30 @@ END
     }
 
     function drawConservation() {
-      const c = colors();
-      renderConservationFamilyControls();
+      ensureEvolutionStateFresh();
+      renderCurrentProteinEvolution();
+      if (state.evolutionIdentity.status === 'not started') {
+        resolveCurrentProteinEvolutionIdentity().catch(error => {
+          state.evolutionIdentity.status = 'partial';
+          state.evolutionIdentity.errors.push(error.message);
+          renderCurrentProteinEvolution();
+        });
+      }
       document.getElementById('conservationLayer').value = state.conservationLayer;
       document.getElementById('conservedOnlyToggle').checked = state.conservationShowConservedOnly;
-      if (!state.conservation.length) {
+      document.getElementById('conservedCount').textContent = 'not computed';
+      document.getElementById('homologCount').textContent = 'not ready';
+      document.getElementById('layerResidueCount').textContent = 'not computed';
+      document.getElementById('layerConservedCount').textContent = 'not computed';
+      document.getElementById('conservationNote').innerHTML = `<strong>Current-protein conservation not computed</strong>Evolutionary Analysis is currently resolving identity, family/domain evidence, and readiness for ${escapeHtml(state.structureLabel)} (${escapeHtml(state.structureId)}) chain ${escapeHtml(currentEvolutionChain() || 'not selected')}. It will not substitute any unrelated curated dataset.`;
+      renderConservationTable([]);
+      renderCerGenerator([]);
+      if (canRenderStructure()) {
         state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#cbd5e1' } });
-        document.getElementById('conservedCount').textContent = 'not run';
-        document.getElementById('layerResidueCount').textContent = 'not run';
-        document.getElementById('layerConservedCount').textContent = 'not run';
-        renderConservationResultSummary();
-        const status = state.conservationResult?.status || 'Not computed yet';
-        document.getElementById('conservationNote').innerHTML = status === 'Computing conservation...'
-          ? '<strong>Computing conservation...</strong>Fetching structures from RCSB and aligning valid sequences to the selected reference.'
-          : `<strong>Conservation not computed yet</strong>Prepare a comparison set for ${currentConservationFamily().name}, then click Compute Conservation. The table will appear after at least one valid comparison structure is used.`;
-        renderConservationTable([]);
-        renderCerGenerator([]);
         zoomViewerSafely({ hetflag: false });
-        return;
       }
+      return;
+      const c = colors();
       const conserved = state.conservation.filter(entry => entry.score === 1);
       const layerRows = conservationRowsForLayer();
       const layerConserved = layerRows.filter(row => row.entry.score >= 0.75);
@@ -13686,6 +13992,7 @@ END
       state.mutationResidueKey = '';
       state.comparisonCase = '';
       state.conservationComparisons = '';
+      resetCurrentProteinEvolution('Loaded structure changed; previous evolution state was cleared.');
     }
 
     function applyParsedStructure(pdb, id = '1MBN', label = 'Myoglobin', source = 'unknown coordinate source') {
@@ -13895,7 +14202,7 @@ END
         state.structureStatus = error?.message?.includes('No standard amino-acid residues') ? APP_STATES.PARSING_FAILED : APP_STATES.RETRIEVAL_FAILED;
         state.appStatus = state.structureStatus;
         state.lastStructureError = error?.message || 'Could not load the structure files.';
-        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, curated case study, and guided text tools. Use Reload Structure Coordinates when ready.', { viewer: false });
+        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, and guided text tools. Use Reload Structure Coordinates when ready.', { viewer: false });
         updateSystemStatus();
         applyMode();
       }
@@ -13904,7 +14211,6 @@ END
     document.getElementById('modeTabs').addEventListener('click', event => {
       const button = event.target.closest('button[data-mode]');
       if (!button) return;
-      if (button.dataset.mode === 'sequence') preserveProteinWorkspace();
       state.activePathway = null;
       state.mode = button.dataset.mode;
       if (state.mode !== 'hbonds') state.selectedHbond = null;
@@ -13939,7 +14245,7 @@ END
       returnToFrontDoor({ push: true });
     });
 
-    document.getElementById('returnToProteinWorkspace').addEventListener('click', () => {
+    document.getElementById('returnToProteinWorkspace')?.addEventListener('click', () => {
       returnToProteinWorkspace({ restoreFocus: true, push: true });
     });
 
@@ -14759,7 +15065,24 @@ END
     });
 
     document.getElementById('computeConservation').addEventListener('click', () => {
-      computeConservationForIds(selectedConservationIds());
+      renderCurrentProteinEvolution();
+    });
+
+    document.getElementById('refreshEvolutionIdentity').addEventListener('click', () => {
+      resetCurrentProteinEvolution('Manual refresh requested.');
+      resolveCurrentProteinEvolutionIdentity(true).catch(error => {
+        state.evolutionIdentity.status = 'partial';
+        state.evolutionIdentity.errors.push(error.message);
+        renderCurrentProteinEvolution();
+      });
+    });
+
+    document.getElementById('retryEvolutionStage').addEventListener('click', () => {
+      resolveCurrentProteinEvolutionIdentity(true).catch(error => {
+        state.evolutionIdentity.status = 'partial';
+        state.evolutionIdentity.errors.push(error.message);
+        renderCurrentProteinEvolution();
+      });
     });
 
     document.getElementById('mapConservation').addEventListener('click', () => {

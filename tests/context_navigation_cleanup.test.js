@@ -30,95 +30,86 @@ function bodyOf(functionName) {
   return html.slice(start, next >= 0 ? next : start + 5000);
 }
 
-test('Rubisco is separated into a curated case-study group with the requested label', () => {
+test('Rubisco has no active navigation route or tool button', () => {
+  assert(!html.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
+  assert(!html.includes('data-mode="sequence">Sequence Data</button>'));
   const currentProteinGroup = sliceBetween('<h2>Explore Current Protein</h2>', '<h2>Explore Chemical Properties</h2>');
   assert(!currentProteinGroup.includes('Rubisco'));
-  assert(html.includes('<h2>Curated Case Studies</h2>'));
-  assert(html.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
+  const analyze = sliceBetween('<h2>Analyze &amp; Advanced Tools</h2>', '<h2>Data &amp; Export Readiness</h2>');
+  assert(!analyze.includes('Rubisco'));
 });
 
-test('Explore navigation groups contain the requested tools only', () => {
-  const currentProtein = sliceBetween('<h2>Explore Current Protein</h2>', '<h2>Explore Chemical Properties</h2>');
-  ['Structure', 'Ramachandran', 'Backbone H-bonds', 'Side-chain Interactions', 'Helix Patterns', 'Beta / Topology', 'Solvent Access', 'Hydrophobic Core'].forEach(label => assert(currentProtein.includes(label), `${label} missing from current protein group`));
-  assert(!currentProtein.includes('pH & Charge'));
-  const chemistry = sliceBetween('<h2>Explore Chemical Properties</h2>', '<h2>Explore Structure–Function</h2>');
-  ['pH & Charge', 'Chemistry Lens', 'Charge Surface'].forEach(label => assert(chemistry.includes(label), `${label} missing from chemistry group`));
-  assert(!chemistry.includes('Mutation Sandbox'));
-  assert(!chemistry.includes('Guided Lesson'));
-  const structureFunction = sliceBetween('<h2>Explore Structure–Function</h2>', '<h2>Curated Case Studies</h2>');
-  assert(structureFunction.includes('Mutation Sandbox'));
+test('Rubisco appears only as a disabled future case study in the roadmap', () => {
+  const roadmap = html.slice(html.indexOf('<h2>Development Roadmap</h2>'), html.indexOf('</div>', html.indexOf('<h2>Development Roadmap</h2>') + 350));
+  assert(roadmap.includes('<button disabled>Rubisco Evolution Case Study<span class="coming-soon">Future development</span></button>'));
+  assert(!roadmap.includes('data-mode="sequence"'));
 });
 
-test('Rubisco case study has its own context and return-to-workspace behavior', () => {
-  assert(html.includes('Case study:</strong> Rubisco RbcL Evolution'));
-  assert(html.includes('Reference sequence:</strong>'));
-  assert(html.includes('Structure workspace preserved:</strong>'));
-  assert(html.includes('id="returnToProteinWorkspace"'));
-  assert(html.includes('Return to ${state.structureLabel} workspace'));
-  assert(html.includes('function preserveProteinWorkspace'));
-  assert(html.includes('function returnToProteinWorkspace'));
-  const context = bodyOf('updateLearningContext');
-  assert(context.includes("state.mode === 'sequence'"));
-  assert(context.includes("contextPrimaryLabel')"));
-  assert(context.includes('Rubisco RbcL Evolution'));
-  assert(context.includes('rubiscoReferenceSequenceLabel()'));
+test('evolution pathway is current-protein centered', () => {
+  assert(html.includes('How has this protein evolved?'));
+  assert(html.includes('Identify related proteins, compare their sequences, and map conserved positions onto the structure you are currently exploring.'));
+  assert(html.includes('Resolve current protein identity'));
+  assert(html.includes('Check homolog-set readiness'));
+  assert(!html.includes('Explore the Rubisco evolution case study'));
+  const pathwayBlock = html.slice(html.indexOf('protein_evolution:'), html.indexOf('const state'));
+  assert(!pathwayBlock.includes("mode: 'sequence'"));
 });
 
-test('initial selected residue is visibly None and measurements ask for selection', () => {
+test('sequence route is rejected by URL and activity-state validation', () => {
+  const safeMode = bodyOf('safeMode');
+  assert(safeMode.includes("if (mode === 'sequence') return null"));
+  const read = bodyOf('readStudentRouteFromUrl');
+  assert(read.includes("mode !== 'sequence'"));
+  const apply = bodyOf('applyMode');
+  assert(apply.includes("state.mode === 'sequence'"));
+  assert(apply.includes("state.mode = 'overview'"));
+});
+
+test('current-protein evolution identity model clears stale conservation state', () => {
+  assert(html.includes('evolutionIdentity: {'));
+  assert(html.includes('function resetCurrentProteinEvolution'));
+  const reset = bodyOf('resetCurrentProteinEvolution');
+  assert(reset.includes('state.conservation = []'));
+  assert(reset.includes("reference: state.structureId"));
+  const structureReset = bodyOf('resetStructureState');
+  assert(structureReset.includes('resetCurrentProteinEvolution'));
+});
+
+test('Evolutionary Analysis exposes source-labeled readiness stages', () => {
+  assert(html.includes('<h2>Evolutionary Analysis</h2>'));
+  assert(html.includes('id="currentProteinEvolutionContext"'));
+  assert(html.includes('id="evolutionStageList"'));
+  assert(html.includes('RCSB PDB Data API'));
+  assert(html.includes('RCSB Sequence Coordinates API'));
+  assert(html.includes('UniProt REST API'));
+  assert(html.includes('InterPro API'));
+  assert(html.includes('NCBI CDD/CD-Search'));
+});
+
+test('conservation mapping is disabled until current-protein prerequisites are ready', () => {
+  const render = bodyOf('renderCurrentProteinEvolution');
+  assert(render.includes("computeButton.disabled = true"));
+  assert(render.includes('Conservation Mapping Disabled'));
+  assert(render.includes('validated homolog set, MSA, and residue mapping'));
+  const draw = bodyOf('drawConservation');
+  assert(draw.includes('It will not substitute any unrelated curated dataset'));
+  assert(draw.includes('renderConservationTable([])'));
+});
+
+test('initial selected residue remains visibly None', () => {
   assert(html.includes('selectedResidueIndex: null'));
   assert(html.includes('Selected residue</span><strong id="contextResidue">None</strong>'));
   const currentResidue = bodyOf('currentResidue');
   assert(currentResidue.includes('if (!hasLearnerSelectedResidue()) return null'));
-  const observations = bodyOf('quantitativeObservations');
-  assert(observations.includes('Select a residue to calculate'));
-  const card = bodyOf('renderMolecularEvidenceCard');
-  assert(card.includes('None selected'));
-  const torsion = bodyOf('drawTorsion');
-  assert(torsion.includes('No residue selected'));
 });
 
-test('Learn front door hides empty pathway controls until selected', () => {
-  assert(html.includes('<section class="pathway-panel hidden" id="pathwayPanel"'));
-  const render = bodyOf('renderStudentModeControls');
-  assert(render.includes("state.studentMode === 'learn' && state.activePathway"));
-  const context = bodyOf('updateLearningContext');
-  assert(context.includes('None selected'));
+test('Explore navigation groups keep the requested tool groupings', () => {
+  const currentProtein = sliceBetween('<h2>Explore Current Protein</h2>', '<h2>Explore Chemical Properties</h2>');
+  ['Structure', 'Ramachandran', 'Backbone H-bonds', 'Side-chain Interactions', 'Helix Patterns', 'Beta / Topology', 'Solvent Access', 'Hydrophobic Core'].forEach(label => assert(currentProtein.includes(label), `${label} missing from current protein group`));
+  const chemistry = sliceBetween('<h2>Explore Chemical Properties</h2>', '<h2>Explore Structure–Function</h2>');
+  ['pH & Charge', 'Chemistry Lens', 'Charge Surface'].forEach(label => assert(chemistry.includes(label), `${label} missing from chemistry group`));
+  const structureFunction = sliceBetween('<h2>Explore Structure–Function</h2>', '<h2>Analyze &amp; Advanced Tools</h2>');
+  assert(structureFunction.includes('Mutation Sandbox'));
 });
 
-test('evolution pathway wording identifies Rubisco as the curated example', () => {
-  assert(html.includes('How can protein sequences reveal evolution?'));
-  assert(html.includes('Curated example: Rubisco RbcL evolution'));
-  assert(html.includes('Explore the Rubisco evolution case study'));
-  assert(html.includes('Investigate conservation in the current protein'));
-  assert(!html.includes('How has this protein evolved?'));
-});
-
-test('viewer recovery controls are consolidated and use specific labels', () => {
-  assert(html.includes('Retry 3D Viewer'));
-  assert(html.includes('Reload Structure Coordinates'));
-  assert(html.includes('3D viewer unavailable. ${state.structureLabel} (${state.structureId}) coordinates loaded successfully. Two-dimensional analyses remain available.'));
-  const update = bodyOf('updateSystemStatus');
-  assert(update.includes("recovery?.classList.add('hidden')"));
-  const fallback = bodyOf('showViewerFallback');
-  assert(fallback.includes('data-retry-viewer'));
-  assert(fallback.includes('data-retry-structure'));
-});
-
-test('context labels update across Learn Explore Analyze and Rubisco', () => {
-  const context = bodyOf('updateLearningContext');
-  assert(context.includes("modeLabel.textContent = state.studentMode === 'learn' ? 'Pathway' : 'Workspace'"));
-  assert(context.includes("'Advanced analysis'"));
-  assert(context.includes("'Open exploration'"));
-  assert(context.includes("'Case study'"));
-});
-
-test('browser URL restoration preserves Rubisco and return routes', () => {
-  const read = bodyOf('readStudentRouteFromUrl');
-  assert(read.includes("if (mode === 'sequence') preserveProteinWorkspace()"));
-  const enter = bodyOf('enterPathway');
-  assert(enter.includes("mode === 'sequence') preserveProteinWorkspace()"));
-  assert(html.includes("document.getElementById('returnToProteinWorkspace').addEventListener('click'"));
-  assert(html.includes('writeStudentRoute(options.push !== false)'));
-});
-
-console.log('Context, labeling, and navigation cleanup checks passed.');
+console.log('Current-protein evolution and navigation cleanup checks passed.');

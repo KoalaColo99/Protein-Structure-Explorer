@@ -478,10 +478,10 @@ run('Sequence mode is limited to curated Rubisco Sequence Atlas content', () => 
   assert(!sequencePanel.includes('1MBN sequence'));
 });
 
-run('Sequence mode renders curated content without drawing the structure sequence', () => {
+run('Curated sequence renderer remains preserved but inactive in primary navigation', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('function drawVisualEvolutionExplorer()'));
-  assert(indexHtml.includes('if (state.mode === \'sequence\') drawVisualEvolutionExplorer();'));
+  assert(indexHtml.includes("if (mode === 'sequence') return null"));
   assert(!indexHtml.includes('if (state.mode === \'sequence\') drawStructureSequence();'));
 });
 
@@ -657,7 +657,8 @@ run('mode controls remain keyboard-accessible buttons', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('id="modeTabs" aria-label="Biochemistry Visual Atlas navigation"'));
   assert(indexHtml.includes('<button class="active" data-mode="overview">Structure</button>'));
-  assert(indexHtml.includes('<button data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
+  assert(!indexHtml.includes('<button data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
+  assert(indexHtml.includes('<button disabled>Rubisco Evolution Case Study<span class="coming-soon">Future development</span></button>'));
 });
 
 run('Backbone Dihedral Manipulator is optional and preserves the native Ramachandran workflow', () => {
@@ -1361,7 +1362,7 @@ run('Alignment View UI preserves structure behavior and avoids clickable mapping
   assert(indexHtml.includes('Alignment position, reference-sequence position, and structure residue number are different numbering systems.'));
   assert(indexHtml.includes('No structure residue mapping is active in this view.'));
   assert(indexHtml.includes('data-mode="overview">Structure</button>'));
-  assert(indexHtml.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
+  assert(!indexHtml.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
   assert(!indexHtml.includes('data-alignment-residue-index'));
   assert(!indexHtml.includes('selectTorsionIndex(Number(cell.dataset.alignmentColumn))'));
 });
