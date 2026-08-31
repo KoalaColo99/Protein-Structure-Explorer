@@ -657,7 +657,7 @@ run('mode controls remain keyboard-accessible buttons', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert(indexHtml.includes('id="modeTabs" aria-label="Biochemistry Visual Atlas navigation"'));
   assert(indexHtml.includes('<button class="active" data-mode="overview">Structure</button>'));
-  assert(indexHtml.includes('<button data-mode="sequence">Rubisco Sequence Atlas</button>'));
+  assert(indexHtml.includes('<button data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
 });
 
 run('Backbone Dihedral Manipulator is optional and preserves the native Ramachandran workflow', () => {
@@ -673,7 +673,7 @@ run('Backbone Dihedral Manipulator is optional and preserves the native Ramachan
     'state.backboneManipulator',
     'selectedResidueIndex',
     'state.torsions.forEach((entry, index)',
-    'const current = state.torsions[state.selectedResidueIndex]'
+    'const current = hasLearnerSelectedResidue() ? state.torsions[state.selectedResidueIndex] : null'
   ].forEach(text => assert(indexHtml.includes(text), `Missing manipulator preservation text: ${text}`));
 });
 
@@ -1361,7 +1361,7 @@ run('Alignment View UI preserves structure behavior and avoids clickable mapping
   assert(indexHtml.includes('Alignment position, reference-sequence position, and structure residue number are different numbering systems.'));
   assert(indexHtml.includes('No structure residue mapping is active in this view.'));
   assert(indexHtml.includes('data-mode="overview">Structure</button>'));
-  assert(indexHtml.includes('data-mode="sequence">Rubisco Sequence Atlas</button>'));
+  assert(indexHtml.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
   assert(!indexHtml.includes('data-alignment-residue-index'));
   assert(!indexHtml.includes('selectTorsionIndex(Number(cell.dataset.alignmentColumn))'));
 });

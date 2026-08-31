@@ -526,6 +526,11 @@
       padding: 9px;
     }
 
+    .case-study-group {
+      background: #f8fafc;
+      border-color: #b7c7dc;
+    }
+
     .atlas-group h2 {
       margin: 0 0 7px;
       font-size: 14px;
@@ -1989,8 +1994,8 @@
         </div>
         <div class="readout" id="status">Loading structure...</div>
         <div class="recovery-actions hidden" id="recoveryActions" aria-label="Structure and viewer recovery actions">
-          <button id="retryViewer" type="button">Retry Viewer</button>
-          <button id="retryStructure" type="button">Retry Structure</button>
+          <button id="retryViewer" type="button">Retry 3D Viewer</button>
+          <button id="retryStructure" type="button">Reload Structure Coordinates</button>
         </div>
       </div>
       <div class="sequence-stage-overview hidden" id="sequenceStageOverview" aria-live="polite"></div>
@@ -2015,7 +2020,7 @@
         <p>An interactive learning environment for exploring protein structure, chemistry, evolution, and function.</p>
         <p><strong>Protein Explorer</strong> — Visualize and analyze experimentally determined protein structures.</p>
         <p><strong>Chemical Properties</strong> — Explore how pH, protonation, and charge influence biomolecular behavior.</p>
-        <p><strong>Function &amp; Prediction</strong> — Connect structure to biological function and compare experimental structures with predictive models (coming soon).</p>
+        <p><strong>Structure &amp; Function</strong> — Connect molecular structure, chemical interactions, mutations, and biological interpretation.</p>
       </section>
 
       <div class="student-mode-switch" id="studentModeSwitch" role="tablist" aria-label="Atlas navigation modes">
@@ -2027,10 +2032,10 @@
       <section class="learning-context" aria-label="Current learning context">
         <span>Current context</span>
         <div class="context-grid">
-          <div class="context-item"><span>Structure</span><strong id="contextStructure">Myoglobin (1MBN)</strong></div>
-          <div class="context-item"><span>Chain</span><strong id="contextChain">A</strong></div>
-          <div class="context-item"><span>Selected residue</span><strong id="contextResidue">none</strong></div>
-          <div class="context-item"><span>Pathway</span><strong id="contextPathway">Front door</strong></div>
+          <div class="context-item"><span id="contextPrimaryLabel">Structure</span><strong id="contextStructure">Myoglobin (1MBN)</strong></div>
+          <div class="context-item"><span id="contextSecondaryLabel">Chain</span><strong id="contextChain">A</strong></div>
+          <div class="context-item"><span id="contextTertiaryLabel">Selected residue</span><strong id="contextResidue">None</strong></div>
+          <div class="context-item"><span id="contextModeLabel">Pathway</span><strong id="contextPathway">None selected</strong></div>
         </div>
       </section>
 
@@ -2066,19 +2071,23 @@
           </div>
         </div>
         <div class="atlas-group" data-student-area="explore">
-          <h2>Atlas Case Studies</h2>
-          <div class="atlas-tools">
-            <button data-mode="sequence">Rubisco Sequence Atlas</button>
-          </div>
-        </div>
-        <div class="atlas-group" data-student-area="explore">
-          <h2>Explore Chemistry</h2>
+          <h2>Explore Chemical Properties</h2>
           <div class="atlas-tools">
             <button data-mode="ph">pH & Charge</button>
             <button data-mode="chemistry">Chemistry Lens</button>
             <button data-mode="chargeSurface">Charge Surface</button>
+          </div>
+        </div>
+        <div class="atlas-group" data-student-area="explore">
+          <h2>Explore Structure–Function</h2>
+          <div class="atlas-tools">
             <button data-mode="mutation">Mutation Sandbox</button>
-            <button data-mode="lesson">Guided Lesson</button>
+          </div>
+        </div>
+        <div class="atlas-group case-study-group" data-student-area="explore analyze">
+          <h2>Curated Case Studies</h2>
+          <div class="atlas-tools">
+            <button data-mode="sequence">Open Rubisco Evolution Case Study</button>
           </div>
         </div>
         <div class="atlas-group" data-student-area="analyze">
@@ -2113,7 +2122,7 @@
 
       <section class="section">
         <h2>Atlas Overview</h2>
-        <p>The atlas is organized into Protein Explorer tools for loaded molecular structures, Chemical Properties tools for pH and charge, optional Atlas Case Studies such as Rubisco sequence evolution, and future Function/Prediction tools.</p>
+        <p>The atlas is organized into Protein Explorer tools for loaded molecular structures, Chemical Properties tools for pH and charge, Structure &amp; Function tools for molecular interpretation, and clearly labeled curated case studies.</p>
         <details class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
           <summary><strong>Atlas Dataset Registry</strong></summary>
           <p>Loading dataset registry...</p>
@@ -2222,6 +2231,11 @@
       <section class="section mode-panel hidden" id="sequencePanel">
         <h2>Rubisco Sequence Atlas</h2>
         <p>Explore the instructor-curated Rubisco large-subunit sequence set and alignment as a separate case study. This is not mapped onto the molecular structure viewer until a verified Rubisco structure and residue mapping are added.</p>
+        <div class="mini-card">
+          <h3>Rubisco RbcL Evolution Case Study</h3>
+          <p id="rubiscoCaseContext">This curated sequence-evolution case study is separate from the preserved structure workspace.</p>
+          <button type="button" id="returnToProteinWorkspace">Return to protein workspace</button>
+        </div>
         <div class="mini-card" id="curatedSequencePanel">
           <h3>Comparative Sequence Set</h3>
           <p>Inspect the active registry-resolved dataset of complete reference sequences. These records are not assumed to match structure residue numbers.</p>
@@ -5185,18 +5199,18 @@ END
       },
       protein_evolution: {
         letter: 'E',
-        title: 'How has this protein evolved?',
-        summary: 'Sequence comparison -> conservation -> structural mapping -> functional interpretation',
+        title: 'How can protein sequences reveal evolution?',
+        summary: 'Curated example: Rubisco RbcL evolution; optional current-protein conservation remains in Analyze.',
         objectives: [
           'Distinguish curated sequence comparison from structure-residue mapping.',
           'Interpret conservation scores as evidence rather than proof.',
           'Connect conserved residues or regions to possible structural or functional roles.'
         ],
         steps: [
-          { label: 'Sequence comparison', mode: 'sequence', prompt: 'Compare curated Rubisco sequences without assuming structure numbering.' },
-          { label: 'Conservation', mode: 'conservation', prompt: 'Prepare and compute a biologically related comparison set for the loaded structure.' },
-          { label: 'Structural mapping', mode: 'conservation', prompt: 'Map computed conservation onto the current reference structure when available.' },
-          { label: 'Functional interpretation', mode: 'mutation', prompt: 'Use conservation and chemistry evidence to reason about mutation effects.' }
+          { label: 'Explore the Rubisco evolution case study', mode: 'sequence', prompt: 'Compare curated Rubisco RbcL reference sequences without assuming Myoglobin structure numbering.' },
+          { label: 'Investigate conservation in the current protein', mode: 'conservation', prompt: 'Use Analyze mode when you are ready to prepare current-protein comparison structures.' },
+          { label: 'Structural mapping boundaries', mode: 'conservation', prompt: 'Map conservation only when a suitable current-protein comparison set has been prepared.' },
+          { label: 'Functional interpretation', mode: 'mutation', prompt: 'Use structure and chemistry evidence to reason about possible mutation effects.' }
         ]
       }
     };
@@ -5246,6 +5260,7 @@ END
       sequenceComparisonSort: 'dataset',
       expandedReferenceSequenceIds: new Set(),
       selectedAlignmentColumnIndex: null,
+      preservedProteinWorkspace: null,
       dihedralLayout: {
         leftPanePercent: 58,
         minLeftPanePercent: 35,
@@ -5288,7 +5303,7 @@ END
         explanation: ''
       },
       selectedHbond: null,
-      selectedResidueIndex: 0,
+      selectedResidueIndex: null,
       contactType: 'all',
       selectedStabilityResidueIndex: 0,
       stabilityView: 'whole',
@@ -6712,16 +6727,16 @@ END
 
     function viewerUnavailableMessage() {
       if (!hasParsedCoordinates()) {
-        return 'No structure coordinates are available yet. Try Retry Structure, or use the pH, buffer, amino-acid, and Rubisco sequence tools while the structure is unavailable.';
+        return 'No structure coordinates are available yet. Use Reload Structure Coordinates, or continue with pH, buffer, amino-acid, and guided text tools while the structure is unavailable.';
       }
-      return `${state.structureLabel} (${state.structureId}) coordinates were parsed, but the 3D viewer is unavailable. You can still use navigation, pH, buffers, amino-acid charge tools, guided text, and sequence-derived 2D tools. Try Retry Viewer when ready.`;
+      return `3D viewer unavailable. ${state.structureLabel} (${state.structureId}) coordinates loaded successfully. Two-dimensional analyses remain available.`;
     }
 
     function showViewerFallback(title, message, actions = {}) {
       const fallback = document.getElementById('viewerFallback');
       if (!fallback) return;
       fallback.classList.remove('hidden');
-      fallback.innerHTML = `<div class="viewer-fallback-card"><strong>${title}</strong><p>${message}</p><div class="recovery-actions"><button type="button" data-retry-viewer>Retry Viewer</button><button type="button" data-retry-structure>Retry Structure</button></div></div>`;
+      fallback.innerHTML = `<div class="viewer-fallback-card"><strong>${title}</strong><p>${message}</p><div class="recovery-actions"><button type="button" data-retry-viewer>Retry 3D Viewer</button><button type="button" data-retry-structure>Reload Structure Coordinates</button></div></div>`;
       fallback.querySelector('[data-retry-viewer]')?.addEventListener('click', retryViewer);
       fallback.querySelector('[data-retry-structure]')?.addEventListener('click', retryStructure);
       if (actions.viewer === false) fallback.querySelector('[data-retry-viewer]')?.setAttribute('disabled', '');
@@ -6786,27 +6801,111 @@ END
       if (state.appStatus === APP_STATES.COORDINATES_LOADING) status.textContent = `Loading ${state.structureId} coordinates...`;
       else if (state.appStatus === APP_STATES.RETRIEVAL_FAILED) status.textContent = `Structure retrieval failed. ${state.lastStructureError || 'Check the PDB ID or network connection.'}`;
       else if (state.appStatus === APP_STATES.PARSING_FAILED) status.textContent = `Structure parsing failed. ${state.lastStructureError || 'The coordinate file could not be interpreted.'}`;
-      else if (state.appStatus === APP_STATES.COORDINATES_WITHOUT_3D) status.textContent = `${modeLabels[state.mode] || 'Tool'} available without 3D rendering.`;
+      else if (state.appStatus === APP_STATES.COORDINATES_WITHOUT_3D) status.textContent = `3D viewer unavailable. ${state.structureLabel} (${state.structureId}) coordinates loaded successfully. Two-dimensional analyses remain available.`;
       else if (state.appStatus === APP_STATES.VIEWER_READY) status.textContent = `${modeLabels[state.mode] || 'Tool'} ready.`;
       else status.textContent = state.appStatus;
 
-      const needsRecovery = !hasViewer() || [APP_STATES.RETRIEVAL_FAILED, APP_STATES.PARSING_FAILED].includes(state.structureStatus);
-      recovery?.classList.toggle('hidden', !needsRecovery);
+      recovery?.classList.add('hidden');
       if (retryViewerButton) retryViewerButton.disabled = !hasParsedCoordinates();
       if (retryStructureButton) retryStructureButton.disabled = false;
     }
 
+    function hasLearnerSelectedResidue() {
+      return Number.isInteger(state.selectedResidueIndex);
+    }
+
+    function currentResidueIndex() {
+      return hasLearnerSelectedResidue() ? state.selectedResidueIndex : 0;
+    }
+
     function currentResidue() {
+      if (!hasLearnerSelectedResidue()) return null;
       return state.torsions[state.selectedResidueIndex]?.residue || state.residues[state.selectedResidueIndex] || null;
     }
 
     function updateLearningContext() {
       const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
       const residue = currentResidue();
+      const primaryLabel = document.getElementById('contextPrimaryLabel');
+      const secondaryLabel = document.getElementById('contextSecondaryLabel');
+      const tertiaryLabel = document.getElementById('contextTertiaryLabel');
+      const modeLabel = document.getElementById('contextModeLabel');
+      if (state.mode === 'sequence') {
+        const reference = rubiscoReferenceSequenceLabel();
+        if (primaryLabel) primaryLabel.textContent = 'Case study';
+        if (secondaryLabel) secondaryLabel.textContent = 'Reference sequence';
+        if (tertiaryLabel) tertiaryLabel.textContent = 'Structure workspace preserved';
+        if (modeLabel) modeLabel.textContent = 'Case study';
+        document.getElementById('contextStructure').textContent = 'Rubisco RbcL Evolution';
+        document.getElementById('contextChain').textContent = reference;
+        document.getElementById('contextResidue').textContent = `${state.structureLabel} (${state.structureId})`;
+        document.getElementById('contextPathway').textContent = 'Rubisco RbcL Evolution';
+        return;
+      }
+      if (primaryLabel) primaryLabel.textContent = 'Structure';
+      if (secondaryLabel) secondaryLabel.textContent = 'Chain';
+      if (tertiaryLabel) tertiaryLabel.textContent = 'Selected residue';
+      if (modeLabel) modeLabel.textContent = state.studentMode === 'learn' ? 'Pathway' : 'Workspace';
       document.getElementById('contextStructure').textContent = `${state.structureLabel} (${state.structureId})`;
-      document.getElementById('contextChain').textContent = residue?.chain || state.residues[0]?.chain || 'none';
-      document.getElementById('contextResidue').textContent = residue ? residue.label : 'none selected';
-      document.getElementById('contextPathway').textContent = pathway ? `${pathway.letter}. ${pathway.title}` : 'Front door';
+      document.getElementById('contextChain').textContent = residue?.chain || state.activeChain || state.residues[0]?.chain || 'none';
+      document.getElementById('contextResidue').textContent = residue ? residue.label : 'None';
+      document.getElementById('contextPathway').textContent = state.studentMode === 'learn'
+        ? pathway ? `${pathway.letter}. ${pathway.title}` : 'None selected'
+        : state.studentMode === 'analyze' ? 'Advanced analysis' : 'Open exploration';
+    }
+
+    function rubiscoReferenceSequenceLabel() {
+      const dataset = currentCuratedSequenceDataset();
+      const reference = dataset?.records?.[0];
+      if (!reference) return 'Reference sequence unavailable';
+      return `${reference.organism} ${reference.sourceDatabase} ${reference.sourceAccession}`;
+    }
+
+    function updateRubiscoCaseContext() {
+      const context = document.getElementById('rubiscoCaseContext');
+      const button = document.getElementById('returnToProteinWorkspace');
+      if (context) {
+        context.innerHTML = `<strong>Case study:</strong> Rubisco RbcL Evolution<br><strong>Reference sequence:</strong> ${escapeHtml(rubiscoReferenceSequenceLabel())}<br><strong>Structure workspace preserved:</strong> ${escapeHtml(state.structureLabel)} (${escapeHtml(state.structureId)}).`;
+      }
+      if (button) button.textContent = `Return to ${state.structureLabel} workspace`;
+    }
+
+    function preserveProteinWorkspace() {
+      if (state.mode === 'sequence') return;
+      state.preservedProteinWorkspace = {
+        mode: state.mode,
+        studentMode: state.studentMode,
+        activePathway: state.activePathway,
+        activePathwayStep: state.activePathwayStep,
+        selectedResidueIndex: state.selectedResidueIndex,
+        selectedStabilityResidueIndex: state.selectedStabilityResidueIndex,
+        selectedIonIndex: state.selectedIonIndex,
+        contactType: state.contactType,
+        solventType: state.solventType,
+        hydrophobicType: state.hydrophobicType,
+        proteinView: state.proteinView,
+        paletteMode: state.paletteMode
+      };
+    }
+
+    function returnToProteinWorkspace(options = {}) {
+      const workspace = state.preservedProteinWorkspace || { mode: 'overview', studentMode: 'explore', activePathway: null, activePathwayStep: 0, selectedResidueIndex: state.selectedResidueIndex };
+      state.mode = workspace.mode || 'overview';
+      state.studentMode = workspace.studentMode || 'explore';
+      state.activePathway = workspace.activePathway || null;
+      state.activePathwayStep = workspace.activePathwayStep || 0;
+      state.selectedResidueIndex = Number.isInteger(workspace.selectedResidueIndex) ? workspace.selectedResidueIndex : null;
+      state.selectedStabilityResidueIndex = Number.isInteger(workspace.selectedStabilityResidueIndex) ? workspace.selectedStabilityResidueIndex : 0;
+      state.selectedIonIndex = Number.isInteger(workspace.selectedIonIndex) ? workspace.selectedIonIndex : state.selectedIonIndex;
+      state.contactType = workspace.contactType || state.contactType;
+      state.solventType = workspace.solventType || state.solventType;
+      state.hydrophobicType = workspace.hydrophobicType || state.hydrophobicType;
+      state.proteinView = workspace.proteinView || state.proteinView;
+      state.paletteMode = workspace.paletteMode || state.paletteMode;
+      renderStudentModeControls();
+      renderPathwayPanel();
+      applyMode({ restoreFocus: options.restoreFocus !== false });
+      if (options.updateUrl !== false) writeStudentRoute(options.push !== false);
     }
 
     function renderStudentModeControls() {
@@ -6898,11 +6997,17 @@ END
       } else {
         state.activePathway = null;
       }
-      if (!hasPathway && mode && document.getElementById(`${mode}Panel`)) state.mode = mode;
+      if (!hasPathway && mode && document.getElementById(`${mode}Panel`)) {
+        if (mode === 'sequence') preserveProteinWorkspace();
+        state.mode = mode;
+      }
     }
 
     function setStudentMode(mode, options = {}) {
       if (!['learn', 'explore', 'analyze'].includes(mode)) return;
+      if (state.mode === 'sequence') {
+        returnToProteinWorkspace({ restoreFocus: false, updateUrl: false });
+      }
       state.studentMode = mode;
       if (mode !== 'learn') state.activePathway = null;
       renderStudentModeControls();
@@ -6918,6 +7023,7 @@ END
       state.studentMode = 'learn';
       state.activePathway = pathwayId;
       state.activePathwayStep = Math.max(0, Math.min(pathway.steps.length - 1, Number(stepIndex) || 0));
+      if (pathway.steps[state.activePathwayStep].mode === 'sequence') preserveProteinWorkspace();
       state.mode = pathway.steps[state.activePathwayStep].mode;
       renderStudentModeControls();
       renderPathwayPanel();
@@ -6998,9 +7104,11 @@ END
       const studentMode = safeStudentMode(candidate.studentMode) || 'learn';
       const pathway = safePathway(candidate.pathway);
       if (candidate.pathway && !pathway) warnings.push('Unsupported pathway was ignored.');
-      const selectedResidueIndex = Number.isInteger(Number(candidate.selectedResidueIndex))
-        ? Math.max(0, Number(candidate.selectedResidueIndex))
-        : 0;
+      const selectedResidueIndex = candidate.selectedResidueIndex === null || candidate.selectedResidueIndex === undefined
+        ? null
+        : Number.isInteger(Number(candidate.selectedResidueIndex))
+          ? Math.max(0, Number(candidate.selectedResidueIndex))
+          : null;
       return {
         schema: 1,
         pdbId: pdbId || '1MBN',
@@ -7038,8 +7146,11 @@ END
     }
 
     function selectedResidueSnapshot() {
+      if (state.mode === 'sequence') return [];
       const residues = new Map();
-      [currentResidue(), selectedStabilityResidue()].filter(Boolean).forEach(residue => residues.set(residue.key, residue));
+      if (state.mode !== 'sequence' && hasLearnerSelectedResidue()) {
+        [currentResidue()].filter(Boolean).forEach(residue => residues.set(residue.key, residue));
+      }
       if (state.selectedContact) {
         residues.set(state.selectedContact.resA.key, state.selectedContact.resA);
         if (state.selectedContact.resB?.key) residues.set(state.selectedContact.resB.key, state.selectedContact.resB);
@@ -7098,8 +7209,10 @@ END
       state.structureId = activity.pdbId;
       state.structureModel = activity.model;
       state.activeChain = activity.chain;
-      state.selectedResidueIndex = Math.min(activity.selectedResidueIndex, Math.max(0, state.residues.length - 1));
-      state.selectedStabilityResidueIndex = state.selectedResidueIndex;
+      state.selectedResidueIndex = Number.isInteger(activity.selectedResidueIndex)
+        ? Math.min(activity.selectedResidueIndex, Math.max(0, state.residues.length - 1))
+        : null;
+      state.selectedStabilityResidueIndex = hasLearnerSelectedResidue() ? state.selectedResidueIndex : 0;
       state.studentMode = activity.studentMode;
       state.activePathway = activity.pathway;
       state.activePathwayStep = activity.pathway ? Math.min(activity.pathwayStep, LEARNING_PATHWAYS[activity.pathway].steps.length - 1) : 0;
@@ -7129,9 +7242,9 @@ END
     }
 
     function quantitativeObservations() {
-      const residue = currentResidue();
-      const torsion = state.torsions[state.selectedResidueIndex];
-      const stabilityResidue = selectedStabilityResidue();
+      const residue = state.mode === 'sequence' ? null : currentResidue();
+      const torsion = state.mode !== 'sequence' && hasLearnerSelectedResidue() ? state.torsions[state.selectedResidueIndex] : null;
+      const stabilityResidue = state.mode !== 'sequence' && hasLearnerSelectedResidue() ? selectedStabilityResidue() : null;
       const stabilityEvidence = stabilityResidue ? stabilityEvidenceForResidue(stabilityResidue) : null;
       const ligand = selectedLigandGroup();
       const ligandNearby = ligand ? nearbyResiduesForLigand(ligand) : [];
@@ -7149,8 +7262,8 @@ END
         selectedIonizableResidue: state.ionizable[state.selectedIonIndex]?.label || 'none',
         backboneHbondCandidates: state.hbonds.length,
         sideChainContacts: state.contacts.length,
-        selectedSasa: stabilityEvidence?.sasa === null || stabilityEvidence?.sasa === undefined ? 'n/a' : `${Math.round(stabilityEvidence.sasa)} Å²`,
-        selectedContactCount: stabilityEvidence?.role.contacts.length ?? 0,
+        selectedSasa: stabilityEvidence?.sasa === null || stabilityEvidence?.sasa === undefined ? 'Select a residue to calculate' : `${Math.round(stabilityEvidence.sasa)} Å²`,
+        selectedContactCount: stabilityEvidence?.role.contacts.length ?? 'Select a residue to calculate',
         selectedLigand: ligand ? ligandGroupLabel(ligand) : 'none',
         selectedLigandCategory: ligand ? classifyLigandGroup(ligand).label : 'none',
         selectedLigandNearbyResidues: ligandNearby.length,
@@ -7247,7 +7360,7 @@ END
       card.innerHTML = `
         <h3>Molecular Evidence Card</h3>
         <p><strong>Structure:</strong> ${escapeHtml(payload.structure.label)} (${escapeHtml(payload.structure.id)}) from ${escapeHtml(payload.structure.source)}; model ${escapeHtml(payload.structure.model)}, chain ${escapeHtml(payload.structure.chain)}.</p>
-        <p><strong>Selected feature:</strong> ${payload.selectedFeature.length ? payload.selectedFeature.map(item => escapeHtml(item.label)).join(', ') : 'none selected'}.</p>
+        <p><strong>Selected feature:</strong> ${payload.selectedFeature.length ? payload.selectedFeature.map(item => escapeHtml(item.label)).join(', ') : 'None selected'}.</p>
         <p><strong>Quantitative observations:</strong> pH ${payload.quantitativeObservations.pH}; φ ${payload.quantitativeObservations.phi}; ψ ${payload.quantitativeObservations.psi}; selected SASA ${payload.quantitativeObservations.selectedSasa}; contacts ${payload.quantitativeObservations.selectedContactCount}.</p>
         ${advancedObservations ? `<ul>${advancedObservations}</ul>` : ''}
         <p><strong>Claim:</strong> ${escapeHtml(payload.studentClaim || 'No claim entered yet.')}</p>
@@ -7398,7 +7511,7 @@ END
     }
 
     function structureSummaryPayload() {
-      const residue = currentResidue();
+      const residue = state.mode === 'sequence' ? null : currentResidue();
       const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
       return {
         atlasVersion: ATLAS_VERSION,
@@ -7457,7 +7570,7 @@ END
     function downloadViewerImage() {
       const canvas = document.querySelector('#viewer canvas');
       if (!canvas) {
-        setExportStatus('No viewer canvas is available. Try Retry Viewer, then download the image.');
+        setExportStatus('No viewer canvas is available. Use Retry 3D Viewer, then download the image.');
         return;
       }
       try {
@@ -7503,7 +7616,7 @@ END
       const payload = structureSummaryPayload();
       const text = [
         `Structure: ${payload.structure.label} (${payload.structure.id})`,
-        `Selected residue: ${payload.selectedResidue ? payload.selectedResidue.label : 'none selected'}`,
+        `Selected residue: ${payload.selectedResidue ? payload.selectedResidue.label : 'None selected'}`,
         `Mode: ${payload.studentNavigation.mode}`,
         `Pathway: ${payload.studentNavigation.pathway || 'front door'}`,
         `Current tool: ${payload.studentNavigation.tool}`,
@@ -7669,6 +7782,7 @@ END
       if (state.mode === 'sequence') drawVisualEvolutionExplorer();
       if (state.mode === 'sequence') {
         hideViewerFallback();
+        updateRubiscoCaseContext();
         updateLearningContext();
         updateSystemStatus();
         renderMolecularEvidenceCard();
@@ -8862,6 +8976,7 @@ END
 
     function renderCuratedSequencePanel() {
       renderCuratedSequenceDatasetSelector();
+      updateRubiscoCaseContext();
       const note = document.getElementById('curatedSequenceDatasetNote');
       const container = document.getElementById('curatedReferenceSequences');
       if (!note || !container) return;
@@ -8978,8 +9093,8 @@ END
       const container = document.getElementById('sequenceViewer');
       if (!container) return;
       const sequence = sequenceFromResidues(state.residues);
-      const selectedEntry = state.torsions[state.selectedResidueIndex];
-      const selectedResidue = selectedEntry?.residue || state.residues[state.selectedResidueIndex];
+      const selectedEntry = hasLearnerSelectedResidue() ? state.torsions[state.selectedResidueIndex] : null;
+      const selectedResidue = selectedEntry?.residue || currentResidue();
       container.innerHTML = '';
       document.getElementById('sequenceResidueCount').textContent = state.residues.length || 'none';
       if (!state.residues.length || !sequence.length) {
@@ -9005,7 +9120,7 @@ END
         segment.residues.forEach(({ residue, index }) => {
           const button = document.createElement('button');
           button.type = 'button';
-          button.className = `sequence-residue${index === state.selectedResidueIndex ? ' selected' : ''}`;
+          button.className = `sequence-residue${hasLearnerSelectedResidue() && index === state.selectedResidueIndex ? ' selected' : ''}`;
           button.dataset.sequenceIndex = index;
           button.setAttribute('aria-label', `Select ${residue.label}, chain ${residue.chain || 'blank'}`);
           button.innerHTML = `<strong>${sequence[index] || 'X'}</strong><span>${residue.chain || '-'}:${residue.resi}</span>`;
@@ -9105,7 +9220,7 @@ END
       state.dihedralLayout.viewerMode = mode === 'wholeProtein' ? 'wholeProtein' : 'localBackbone';
       updateDihedralViewerModeControls();
       if (!state.viewer) {
-        setViewerControlMessage('The Ramachandran 2D plot remains available, but 3D dihedral focus needs WebGL. Try Retry Viewer.');
+        setViewerControlMessage('The Ramachandran 2D plot remains available, but 3D dihedral focus needs WebGL. Use Retry 3D Viewer when ready.');
         return;
       }
       if (state.dihedralLayout.viewerMode === 'wholeProtein') {
@@ -10300,6 +10415,15 @@ END
     }
 
     function drawTorsion(options = {}) {
+      if (!hasLearnerSelectedResidue()) {
+        document.getElementById('phiValue').textContent = 'Select a residue to calculate';
+        document.getElementById('psiValue').textContent = 'Select a residue to calculate';
+        document.getElementById('omegaValue').textContent = 'Select a residue to calculate';
+        document.getElementById('ramaResidueDetails').innerHTML = '<strong>No residue selected</strong>Select a residue from the list, sequence, or plot to calculate φ, ψ, ω, SASA, and contact evidence.';
+        renderRamaResidueList();
+        drawRamaPlot();
+        return;
+      }
       const entry = state.torsions[state.selectedResidueIndex];
       if (!entry) return;
       syncBackboneManipulatorToSelection();
@@ -10373,7 +10497,7 @@ END
       list.innerHTML = '';
       state.torsions.forEach((entry, index) => {
         const item = document.createElement('div');
-        item.className = `item${index === state.selectedResidueIndex ? ' selected' : ''}`;
+        item.className = `item${hasLearnerSelectedResidue() && index === state.selectedResidueIndex ? ' selected' : ''}`;
         item.dataset.torsionIndex = index;
         item.innerHTML = `<strong>${entry.residue.label}</strong><span>${formatAngle(entry.phi)} / ${formatAngle(entry.psi)}; ${ramaRegionLabel(entry)}</span>`;
         list.appendChild(item);
@@ -12891,7 +13015,7 @@ END
       const c = colors();
       if (!hasViewer()) {
         renderMutationEvidence();
-        document.getElementById('mutationNote').innerHTML = `<strong>3D highlighting unavailable</strong>The mutation property comparison, contact counts, student prediction, and evidence export still work from parsed ${escapeHtml(state.structureId)} coordinates. Retry Viewer to restore atom-level highlighting.`;
+        document.getElementById('mutationNote').innerHTML = `<strong>3D highlighting unavailable</strong>The mutation property comparison, contact counts, student prediction, and evidence export still work from parsed ${escapeHtml(state.structureId)} coordinates. Use Retry 3D Viewer to restore atom-level highlighting.`;
         return;
       }
       if (state.structureId !== '1MBN') {
@@ -13305,7 +13429,7 @@ END
       });
       const residueSlider = document.getElementById('residueSlider');
       residueSlider.max = state.torsions.length - 1;
-      residueSlider.value = state.selectedResidueIndex;
+      residueSlider.value = currentResidueIndex();
 
       const ionResidue = document.getElementById('ionResidue');
       ionResidue.innerHTML = '';
@@ -13460,7 +13584,7 @@ END
         ctx.fill();
       }
 
-      const current = state.torsions[state.selectedResidueIndex];
+      const current = hasLearnerSelectedResidue() ? state.torsions[state.selectedResidueIndex] : null;
       if (current && current.phi !== null && current.psi !== null) {
         ctx.fillStyle = colors().selected;
         ctx.strokeStyle = '#ffffff';
@@ -13554,7 +13678,7 @@ END
       state.selectedContact = null;
       state.selectedHelixBond = null;
       state.selectedSheetKey = null;
-      state.selectedResidueIndex = 0;
+      state.selectedResidueIndex = null;
       state.selectedIonIndex = 0;
       state.lessonIndex = 0;
       state.selectedLigandIndex = 0;
@@ -13705,7 +13829,7 @@ END
         state.structureStatus = APP_STATES.RETRIEVAL_FAILED;
         state.appStatus = APP_STATES.RETRIEVAL_FAILED;
         state.lastStructureError = error?.message || `Could not retrieve ${code}.`;
-        document.getElementById('galleryNote').innerHTML = `<strong>Could not load ${code}</strong>Check the PDB ID or network connection, then use Retry Structure. Non-3D tools remain available.`;
+        document.getElementById('galleryNote').innerHTML = `<strong>Could not load ${code}</strong>Check the PDB ID or network connection, then use Reload Structure Coordinates. Non-3D tools remain available.`;
         updateSystemStatus();
         applyMode();
         throw error;
@@ -13771,7 +13895,7 @@ END
         state.structureStatus = error?.message?.includes('No standard amino-acid residues') ? APP_STATES.PARSING_FAILED : APP_STATES.RETRIEVAL_FAILED;
         state.appStatus = state.structureStatus;
         state.lastStructureError = error?.message || 'Could not load the structure files.';
-        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, Rubisco sequence, and guided text tools. Try Retry Structure when ready.', { viewer: false });
+        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, curated case study, and guided text tools. Use Reload Structure Coordinates when ready.', { viewer: false });
         updateSystemStatus();
         applyMode();
       }
@@ -13780,6 +13904,7 @@ END
     document.getElementById('modeTabs').addEventListener('click', event => {
       const button = event.target.closest('button[data-mode]');
       if (!button) return;
+      if (button.dataset.mode === 'sequence') preserveProteinWorkspace();
       state.activePathway = null;
       state.mode = button.dataset.mode;
       if (state.mode !== 'hbonds') state.selectedHbond = null;
@@ -13812,6 +13937,10 @@ END
 
     document.getElementById('returnToFrontDoor').addEventListener('click', () => {
       returnToFrontDoor({ push: true });
+    });
+
+    document.getElementById('returnToProteinWorkspace').addEventListener('click', () => {
+      returnToProteinWorkspace({ restoreFocus: true, push: true });
     });
 
     document.getElementById('continuePathway').addEventListener('click', () => {
@@ -14726,7 +14855,7 @@ END
       state.appStatus = state.structureStatus || APP_STATES.RETRIEVAL_FAILED;
       state.lastStructureError = error?.message || 'Could not load the structure files.';
       updateSystemStatus();
-      showViewerFallback('Atlas started in recovery mode', 'Some startup work failed, but the non-3D teaching tools should remain available. Try Retry Structure or Retry Viewer.', { viewer: hasParsedCoordinates() });
+      showViewerFallback('Atlas started in recovery mode', 'Some startup work failed, but the non-3D teaching tools should remain available. Use Reload Structure Coordinates or Retry 3D Viewer.', { viewer: hasParsedCoordinates() });
     });
   </script>
 </body>

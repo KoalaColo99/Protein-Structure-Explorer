@@ -54,7 +54,7 @@ test('each required pathway is represented with objectives and steps', () => {
     'What stabilizes a folded protein?',
     'How does pH affect a protein?',
     'How does structure support function?',
-    'How has this protein evolved?'
+    'How can protein sequences reveal evolution?'
   ].forEach(title => assert(html.includes(title), `${title} missing`));
   const pathwayBlock = html.slice(html.indexOf('const LEARNING_PATHWAYS'), html.indexOf('const state'));
   assert((pathwayBlock.match(/objectives: \[/g) || []).length >= 5);
@@ -87,6 +87,7 @@ test('context shows structure, chain, selected residue, and pathway', () => {
   assert(context.includes('currentResidue()'));
   assert(context.includes('state.structureLabel'));
   assert(context.includes('pathway.title'));
+  assert(context.includes('Rubisco RbcL Evolution'));
 });
 
 test('browser back and forward behavior is wired through URL state', () => {

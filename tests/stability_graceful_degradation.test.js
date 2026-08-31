@@ -54,7 +54,7 @@ test('failed remote PDB retrieval can use the bundled myoglobin fallback', () =>
 test('total structure failure has an explicit recovery state and retry path', () => {
   const loader = bodyOf('loadStructureById');
   assert(loader.includes('APP_STATES.RETRIEVAL_FAILED'));
-  assert(loader.includes('Retry Structure'));
+  assert(loader.includes('Reload Structure Coordinates'));
   assert(html.includes('id="retryStructure"'));
   assert(html.includes("addEventListener('click', retryStructure)"));
 });

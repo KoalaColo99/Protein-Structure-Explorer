@@ -78,7 +78,8 @@ test('2D Ramachandran tools remain available when the 3D viewer is unavailable',
   const drawEnd = html.indexOf('function residueHelixAssignment(', drawStart);
   const draw = html.slice(drawStart, drawEnd);
   assert(draw.includes('if (hasViewer())'));
-  assert(draw.indexOf("document.getElementById('phiValue').textContent") > draw.indexOf('if (hasViewer())'));
+  assert(draw.includes("document.getElementById('phiValue').textContent"));
+  assert(!draw.includes('if (!hasViewer()) return'));
   assert(draw.includes('drawRamaPlot()'));
   const overlayStart = html.indexOf('function drawManipulatorOverlay(');
   const overlayEnd = html.indexOf('function drawTorsion(', overlayStart);
