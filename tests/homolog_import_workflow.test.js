@@ -66,6 +66,38 @@ test('candidate review distinguishes search hits from conservation and supports 
   assert(fasta.includes('Raw FASTA still requires a genuine multiple-sequence alignment'));
 });
 
+test('stage gates prevent empty candidate review and explain locked stages', () => {
+  const requirement = bodyOf('homologStageRequirement');
+  const setStage = bodyOf('setHomologWorkflowStage');
+  const sanitize = bodyOf('sanitizeHomologWorkflowState');
+  assert(requirement.includes("stageId === 'candidates' && homologCandidateCount() === 0"));
+  assert(requirement.includes('No candidate homologs are available yet'));
+  assert(requirement.includes("stageId === 'alignment' && homologSelectedCount() < 3"));
+  assert(requirement.includes("stageId === 'map' && !homologAlignmentValid()"));
+  assert(setStage.includes('state.homologWorkflow.status = requirement'));
+  assert(setStage.includes('return false'));
+  assert(sanitize.includes("state.homologWorkflow.stage = 'criteria'"));
+});
+
+test('zero-candidate state has no misleading selection controls or success status', () => {
+  const review = bodyOf('homologCandidateReviewMarkup');
+  const zeroStart = review.indexOf('No candidate homologs are available yet.');
+  assert(zeroStart >= 0, 'zero-candidate message missing');
+  const zeroBlock = review.slice(zeroStart, review.indexOf('const selectedCount', zeroStart));
+  assert(zeroBlock.includes('Run an automatic search or import sequences before reviewing candidates.'));
+  assert(zeroBlock.includes('Return to Search Criteria'));
+  assert(zeroBlock.includes('Paste UniProt Accessions'));
+  assert(zeroBlock.includes('Paste or Upload FASTA'));
+  assert(!zeroBlock.includes('Select recommended set'));
+  assert(!zeroBlock.includes('Recommended set selected'));
+});
+
+test('real accession examples are not prepopulated in import fields', () => {
+  const fasta = bodyOf('homologManualImportMarkup');
+  assert(fasta.includes('placeholder="Enter one UniProt accession per line"'));
+  assert(!fasta.includes('P02185, P02144, P68082'));
+});
+
 test('candidate filtering and recommended set use quality thresholds before diversity', () => {
   const quality = bodyOf('candidateQualityReason');
   const recommend = bodyOf('selectRecommendedHomologSet');
@@ -73,14 +105,19 @@ test('candidate filtering and recommended set use quality thresholds before dive
   assert(quality.includes('low query coverage'));
   assert(quality.includes('domain architecture differs'));
   assert(quality.includes('synthetic construct'));
+  assert(quality.includes('excessive ambiguous residues'));
+  assert(quality.includes('excessive gaps'));
   assert(recommend.includes('onePerSpecies'));
   assert(recommend.includes('onePerGenus'));
   assert(recommend.includes('preferReviewed'));
+  assert(recommend.includes("!reason.includes('warning:')"));
 });
 
 test('live service limitations are explicit and do not substitute unrelated sequences', () => {
   const search = bodyOf('runAutomaticHomologSearch');
   const align = bodyOf('alignSelectedHomologs');
+  assert(search.includes('Automatic search not connected. No sequences have been retrieved.'));
+  assert(search.includes("state.homologWorkflow.stage = 'criteria'"));
   assert(search.includes('EMBL-EBI BLASTp/FASTA candidate homolog search'));
   assert(search.includes('No unrelated bundled sequences were substituted'));
   assert(search.includes('serverless proxy'));
@@ -93,6 +130,7 @@ test('prealigned FASTA, mapping, and conservation activation are separate stages
   const map = bodyOf('mapHomologAlignmentToStructure');
   const ready = bodyOf('importedHomologWorkflowReady');
   assert(load.includes('user-supplied prealigned FASTA loaded'));
+  assert(load.includes('candidates.length >= 3'));
   assert(map.includes('reference alignment row to selected coordinate-derived chain sequence'));
   assert(map.includes('confidence'));
   assert(map.includes('state.conservation = metrics.filter'));

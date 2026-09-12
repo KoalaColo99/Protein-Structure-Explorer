@@ -15706,12 +15706,79 @@ END
     }
 
     function homologWorkflowProgressMarkup() {
-      const current = HOMOLOG_WORKFLOW_STAGES.findIndex(stage => stage.id === state.homologWorkflow.stage);
+      const statusFor = stage => homologStageStatus(stage.id);
       return `
-        <ol class="guide-stepper" aria-label="Homolog import workflow progress">
-          ${HOMOLOG_WORKFLOW_STAGES.map((stage, index) => `<li><button type="button" data-homolog-stage="${stage.id}" aria-current="${stage.id === state.homologWorkflow.stage ? 'step' : 'false'}" ${index > current + 1 ? 'disabled' : ''}>${index + 1}. ${escapeHtml(stage.label)}</button></li>`).join('')}
+        <ol class="guide-stepper homolog-progress" aria-label="Homolog import workflow progress">
+          ${HOMOLOG_WORKFLOW_STAGES.map((stage, index) => {
+            const status = statusFor(stage);
+            const locked = status === 'locked';
+            return `<li class="homolog-progress-step ${status}"><button type="button" data-homolog-stage="${stage.id}" aria-current="${stage.id === state.homologWorkflow.stage ? 'step' : 'false'}" aria-disabled="${locked ? 'true' : 'false'}">${index + 1}. ${escapeHtml(stage.label)} <span class="sr-only">(${status})</span></button></li>`;
+          }).join('')}
         </ol>
       `;
+    }
+
+    function homologReferenceComplete() {
+      const reference = selectedHomologReference();
+      return Boolean(reference.chain?.chain && reference.sequence && reference.sequence.replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '').length >= 10);
+    }
+
+    function homologCandidateCount() {
+      return state.homologWorkflow.candidates?.length || 0;
+    }
+
+    function homologSelectedCount() {
+      return selectedHomologCandidates().length;
+    }
+
+    function homologAlignmentValid() {
+      const records = state.homologWorkflow.alignmentRecords || [];
+      return records.length >= 3 && new Set(records.map(record => record.alignedSequence?.length || 0)).size === 1;
+    }
+
+    function homologMappingValid() {
+      return state.homologWorkflow.mapping?.confidence === 'adequate';
+    }
+
+    function homologStageRequirement(stageId) {
+      if (stageId === 'criteria' && !homologReferenceComplete()) return 'Select a valid reference chain and query sequence first.';
+      if (stageId === 'candidates' && homologCandidateCount() === 0) return 'No candidate homologs are available yet. Run an automatic search or import sequences before reviewing candidates.';
+      if (stageId === 'alignment' && homologSelectedCount() < 3) return 'At least three total sequences, including the reference, are required before alignment.';
+      if (stageId === 'map' && !homologAlignmentValid()) return 'A valid multiple-sequence alignment with at least three rows is required before mapping.';
+      return '';
+    }
+
+    function homologStageStatus(stageId) {
+      if (stageId === state.homologWorkflow.stage) return state.homologWorkflow.warnings?.length ? 'error' : 'current';
+      const order = HOMOLOG_WORKFLOW_STAGES.map(stage => stage.id);
+      const currentIndex = order.indexOf(state.homologWorkflow.stage);
+      const stageIndex = order.indexOf(stageId);
+      if (stageIndex < currentIndex && !homologStageRequirement(stageId)) return 'completed';
+      if (homologStageRequirement(stageId)) return 'locked';
+      if (stageId === 'map' && homologMappingValid()) return 'completed';
+      return 'available';
+    }
+
+    function setHomologWorkflowStage(stageId) {
+      const requirement = homologStageRequirement(stageId);
+      if (requirement) {
+        state.homologWorkflow.status = requirement;
+        return false;
+      }
+      state.homologWorkflow.stage = stageId;
+      return true;
+    }
+
+    function sanitizeHomologWorkflowState() {
+      if (!state.homologWorkflow.active) return;
+      const current = state.homologWorkflow.stage;
+      const requirement = homologStageRequirement(current);
+      if (!requirement) return;
+      if (current === 'map') state.homologWorkflow.stage = homologSelectedCount() >= 3 ? 'alignment' : homologCandidateCount() ? 'candidates' : 'criteria';
+      else if (current === 'alignment') state.homologWorkflow.stage = homologCandidateCount() ? 'candidates' : 'criteria';
+      else if (current === 'candidates') state.homologWorkflow.stage = 'criteria';
+      else if (current === 'criteria') state.homologWorkflow.stage = 'reference';
+      state.homologWorkflow.status = requirement;
     }
 
     function homologServiceLimitationsMarkup() {
@@ -15727,6 +15794,7 @@ END
 
     function renderHomologImportWorkflow(dataset = null) {
       const workflow = state.homologWorkflow;
+      sanitizeHomologWorkflowState();
       if (!workflow.active) {
         return `
           <div class="mini-card homolog-workflow-card" id="homologImportWorkflow">
@@ -15827,12 +15895,14 @@ END
           <label class="check-row"><input id="homologIncludeReference" type="checkbox" ${criteria.includeReference ? 'checked' : ''}> Include reference sequence in final alignment</label>
         </fieldset>
         <details class="chem-note"><summary>Why these defaults?</summary><p>A diverse but clearly homologous set is usually more informative than many nearly identical sequences. Low coverage can mean only one domain matches, especially for multidomain proteins.</p></details>
+        ${homologManualImportMarkup()}
         <div class="button-row">
-          <button type="button" data-homolog-action="run-search">Find homologs automatically</button>
-          <button type="button" data-homolog-action="import-fasta">Use FASTA/accession fallback</button>
+          <button type="button" data-homolog-action="run-search">Search for Homologs</button>
+          <button type="button" data-homolog-action="validate-imported">Validate Imported Sequences</button>
           <button type="button" data-homolog-action="help-criteria">I'm not sure</button>
           <button type="button" data-homolog-action="reference">Back</button>
         </div>
+        <p class="warning-text">Automatic search is not connected in this static build until official job submission and polling are verified. Manual accession or FASTA import can still produce candidate records.</p>
       `;
     }
 
@@ -15840,17 +15910,36 @@ END
       const rows = state.homologWorkflow.candidates;
       const selected = new Set(state.homologWorkflow.selectedAccessions);
       const criteria = homologCriteria();
+      if (!rows.length) {
+        return `
+          <fieldset>
+            <legend>3. Review candidates</legend>
+            <h4>No candidate homologs are available yet.</h4>
+            <p>Run an automatic search or import sequences before reviewing candidates.</p>
+            <div class="button-row">
+              <button type="button" data-homolog-action="criteria">Return to Search Criteria</button>
+              <button type="button" data-homolog-action="criteria-accessions">Paste UniProt Accessions</button>
+              <button type="button" data-homolog-action="criteria-fasta">Paste or Upload FASTA</button>
+            </div>
+          </fieldset>
+        `;
+      }
+      const selectedCount = selectedHomologCandidates().length;
+      const selectionMessage = selectedCount < 3
+        ? 'At least three total sequences, including the reference, are required.'
+        : selectedCount < 5
+          ? 'Alignment is allowed, but five or more diverse sequences are recommended.'
+          : 'Review diversity, redundancy, coverage, and domain compatibility before aligning.';
       return `
         <fieldset>
           <legend>3. Review candidates</legend>
-          <p>Select at least three total sequences including the reference before aligning. Five or more diverse homologs are recommended.</p>
+          <p>${escapeHtml(selectionMessage)}</p>
           <div class="button-row">
             <button type="button" data-homolog-action="select-recommended">Select recommended set</button>
             <button type="button" data-homolog-action="select-visible">Select all visible</button>
             <button type="button" data-homolog-action="clear-selection">Clear selection</button>
             <button type="button" data-homolog-action="restore-recommended">Restore recommended selection</button>
           </div>
-          ${homologManualImportMarkup()}
           <div class="table-wrap">
             <table class="responsive-data-table">
               <caption>Candidate homologs. Search hits are candidates, not conserved residues.</caption>
@@ -15874,9 +15963,10 @@ END
           </div>
         </fieldset>
         <div class="button-row">
-          <button type="button" data-homolog-action="align-selected">Align selected homologs</button>
+          <button type="button" data-homolog-action="align-selected" ${selectedCount < 3 ? 'disabled' : ''}>Align Selected Homologs</button>
           <button type="button" data-homolog-action="criteria">Back to criteria</button>
         </div>
+        ${selectedCount < 3 ? '<p class="warning-text">Select at least three total sequences, including the reference, before alignment.</p>' : ''}
       `;
     }
 
@@ -15885,7 +15975,7 @@ END
         <details class="chem-note" open>
           <summary>Fallback import paths</summary>
           <label for="homologAccessions">Paste UniProt accessions</label>
-          <textarea id="homologAccessions" rows="2" placeholder="P02185, P02144, P68082">${escapeHtml(state.homologWorkflow.importedAccessions || '')}</textarea>
+          <textarea id="homologAccessions" rows="2" placeholder="Enter one UniProt accession per line">${escapeHtml(state.homologWorkflow.importedAccessions || '')}</textarea>
           <label for="homologFasta">Paste FASTA or prealigned FASTA</label>
           <textarea id="homologFasta" rows="5" placeholder=">reference|chain A&#10;MVLSE...">${escapeHtml(state.homologWorkflow.importedFasta || '')}</textarea>
           <div class="button-row">
@@ -15934,7 +16024,7 @@ END
           <p><strong>Scoring:</strong> Existing normalized Shannon/exact-identity visual model. Gaps are reported separately and excluded from amino-acid frequency counts; N &lt; 3 is insufficient evidence.</p>
           ${renderHomologMappedAlignmentPreview()}
           <div class="button-row">
-            <button type="button" data-homolog-action="color-imported" ${mapping?.confidence === 'adequate' ? '' : 'disabled'}>Show whole conservation map</button>
+            <button type="button" data-homolog-action="color-imported" ${mapping?.confidence === 'adequate' ? '' : 'disabled'}>Apply Conservation Coloring</button>
             <button type="button" data-homolog-action="high-imported" ${mapping?.confidence === 'adequate' ? '' : 'disabled'}>Show highly conserved positions</button>
             <button type="button" data-homolog-action="variable-imported" ${mapping?.confidence === 'adequate' ? '' : 'disabled'}>Show variable positions</button>
             <button type="button" data-homolog-action="download-provenance">Download JSON provenance</button>
@@ -16030,9 +16120,14 @@ END
 
     function candidateQualityReason(candidate, criteria = homologCriteria()) {
       const reasons = [];
+      const ambiguousPercent = candidate.length ? ((candidate.sequence || '').replace(/-/g, '').split('').filter(char => /[BXZJUO]/.test(char)).length / candidate.length) * 100 : 0;
+      const gapPercent = candidate.sequence?.length ? candidate.sequence.split('').filter(char => char === '-').length / candidate.sequence.length * 100 : 0;
       if (criteria.reviewedOnly && !candidate.reviewed) reasons.push('excluded: unreviewed');
       if (criteria.excludeFragments && candidate.fragment) reasons.push('excluded: fragment annotation');
       if (criteria.excludeSynthetic && candidate.synthetic) reasons.push('excluded: synthetic construct');
+      if (!candidate.sequence || !candidate.length) reasons.push('excluded: sequence could not be retrieved or parsed');
+      if (ambiguousPercent > criteria.maxAmbiguousPercent) reasons.push('warning: excessive ambiguous residues');
+      if (gapPercent > 40) reasons.push('warning: excessive gaps in imported alignment row');
       if (candidate.identity != null && candidate.identity < criteria.minIdentity) reasons.push('warning: below minimum identity guidance');
       if (candidate.identity != null && candidate.identity > criteria.maxIdentity) reasons.push('warning: may be redundant with the query');
       if (candidate.queryCoverage != null && candidate.queryCoverage < criteria.minCoverage) reasons.push('warning: low query coverage may indicate a partial/domain-only hit');
@@ -16053,7 +16148,10 @@ END
     function selectRecommendedHomologSet(candidates = state.homologWorkflow.candidates, criteria = homologCriteria()) {
       const query = selectedHomologReference().sequence;
       const eligible = candidates
-        .filter(candidate => usableHomologCandidate(candidate, criteria))
+        .filter(candidate => {
+          const reason = candidateQualityReason(candidate, criteria);
+          return usableHomologCandidate(candidate, criteria) && !reason.includes('warning:');
+        })
         .sort((a, b) => {
           if (criteria.preferReviewed && a.reviewed !== b.reviewed) return a.reviewed ? -1 : 1;
           const aDistance = Math.abs((a.identity ?? 50) - 70);
@@ -16094,6 +16192,29 @@ END
         }
       }
       return selected;
+    }
+
+    function referenceHomologCandidate() {
+      const reference = selectedHomologReference();
+      const accession = state.evolutionIdentity.identity?.uniprotAccession || `${state.structureId}_${state.homologWorkflow.referenceChain || currentEvolutionChain()}`;
+      return {
+        accession,
+        proteinName: `${state.structureLabel || state.structureId} reference`,
+        organism: state.evolutionIdentity.identity?.sourceOrganism || 'reference structure',
+        taxonomicGroup: 'reference',
+        reviewed: Boolean(state.evolutionIdentity.identity?.uniprotAccession),
+        fragment: false,
+        synthetic: false,
+        sequence: reference.sequence,
+        length: reference.sequence.length,
+        lengthRatio: 1,
+        identity: 100,
+        queryCoverage: 100,
+        subjectCoverage: 100,
+        evalue: '0',
+        domainArchitectureMatch: true,
+        reason: 'reference sequence included for alignment mapping'
+      };
     }
 
     function parseFastaRecords(text = '') {
@@ -16204,19 +16325,25 @@ END
       const candidates = candidatesFromFasta(state.homologWorkflow.importedFasta);
       mergeHomologCandidates(candidates);
       const aligned = candidates.length && new Set(candidates.map(candidate => candidate.sequence.length)).size === 1 && candidates.some(candidate => candidate.sequence.includes('-'));
-      if (aligned) {
+      if (!candidates.length) {
+        state.homologWorkflow.stage = 'criteria';
+      } else if (aligned && candidates.length >= 3) {
         state.homologWorkflow.alignmentRecords = candidates.map(candidate => ({ ...candidate, alignedSequence: candidate.sequence }));
         state.homologWorkflow.serviceStatus.alignment = 'user-supplied prealigned FASTA loaded';
         state.homologWorkflow.stage = 'alignment';
       } else {
         state.homologWorkflow.stage = 'candidates';
       }
-      state.homologWorkflow.status = candidates.length ? `${candidates.length} FASTA sequence${candidates.length === 1 ? '' : 's'} imported. ${aligned ? 'Prealigned rows are ready for review.' : 'A genuine MSA is still required before conservation.'}` : 'No valid FASTA records were found.';
+      state.homologWorkflow.status = candidates.length ? `${candidates.length} FASTA sequence${candidates.length === 1 ? '' : 's'} imported. ${aligned && candidates.length >= 3 ? 'Prealigned rows are ready for review.' : 'Review candidates; a genuine MSA is still required before conservation.'}` : 'No valid FASTA records were found.';
     }
 
     function mergeHomologCandidates(candidates) {
       const byAccession = new Map(state.homologWorkflow.candidates.map(candidate => [candidate.accession, candidate]));
       candidates.forEach(candidate => byAccession.set(candidate.accession, candidate));
+      if (candidates.length && homologCriteria().includeReference) {
+        const reference = referenceHomologCandidate();
+        byAccession.set(reference.accession, reference);
+      }
       state.homologWorkflow.candidates = [...byAccession.values()];
       if (!state.homologWorkflow.selectedAccessions.length) {
         state.homologWorkflow.selectedAccessions = selectRecommendedHomologSet(state.homologWorkflow.candidates).map(candidate => candidate.accession);
@@ -16227,7 +16354,7 @@ END
       updateHomologCriteriaFromControls();
       const reference = selectedHomologReference();
       state.homologWorkflow.cacheKey = homologCacheKey();
-      state.homologWorkflow.status = 'Preparing official homolog-search request.';
+      state.homologWorkflow.status = 'Automatic search not connected. No sequences have been retrieved.';
       state.homologWorkflow.serviceStatus.search = 'blocked in static browser until service submission is configured and verified';
       state.homologWorkflow.serviceStatus.blockedReason = 'EMBL-EBI BLAST/FASTA Job Dispatcher requires asynchronous job submission/polling and may require a contact email and CORS-compatible browser submission. This static GitHub Pages build does not embed credentials, private keys, or an instructor contact email.';
       state.homologWorkflow.warnings = [
@@ -16246,7 +16373,7 @@ END
           privacy: 'Only protein sequence/search parameters should be sent; no student names or responses.'
         }
       });
-      state.homologWorkflow.stage = 'candidates';
+      state.homologWorkflow.stage = 'criteria';
     }
 
     function selectedHomologCandidates() {
@@ -19670,7 +19797,7 @@ END
     document.getElementById('evolutionCandidatePanel').addEventListener('click', event => {
       const stageButton = event.target.closest('button[data-homolog-stage]');
       if (stageButton) {
-        state.homologWorkflow.stage = stageButton.dataset.homologStage;
+        setHomologWorkflowStage(stageButton.dataset.homologStage);
         renderCurrentProteinEvolution();
         return;
       }
@@ -19697,7 +19824,7 @@ END
         state.homologWorkflow.active = true;
         if (!state.homologWorkflow.criteria) resetHomologWorkflowForCurrentStructure('Workflow started. Select the reference chain before searching.');
       }
-      if (['reference', 'criteria', 'candidates', 'alignment', 'map'].includes(action)) state.homologWorkflow.stage = action;
+      if (['reference', 'criteria', 'candidates', 'alignment', 'map'].includes(action)) setHomologWorkflowStage(action);
       if (action === 'help-reference') {
         state.homologWorkflow.status = 'Choose the chain you want to interpret structurally. Use canonical sequence only when the PDB-to-UniProt mapping is strong and unambiguous.';
       }
@@ -19710,10 +19837,28 @@ END
         });
         return;
       }
-      if (action === 'import-fasta') state.homologWorkflow.stage = 'candidates';
+      if (action === 'import-fasta' || action === 'criteria-accessions' || action === 'criteria-fasta') {
+        state.homologWorkflow.stage = 'criteria';
+        state.homologWorkflow.status = action === 'criteria-accessions'
+          ? 'Paste UniProt accessions, then choose Validate Imported Sequences.'
+          : 'Paste FASTA or prealigned FASTA, then choose Validate Imported Sequences.';
+      }
+      if (action === 'validate-imported') {
+        if ((document.getElementById('homologFasta')?.value || state.homologWorkflow.importedFasta || '').trim()) {
+          loadHomologFasta();
+        } else if ((document.getElementById('homologAccessions')?.value || state.homologWorkflow.importedAccessions || '').trim()) {
+          loadHomologAccessions().finally(() => {
+            if (homologCandidateCount() > 0) setHomologWorkflowStage('candidates');
+            renderCurrentProteinEvolution();
+          });
+          return;
+        } else {
+          state.homologWorkflow.status = 'No candidate sequences have been imported. Paste accessions or FASTA first.';
+        }
+      }
       if (action === 'load-accessions') {
         loadHomologAccessions().finally(() => {
-          state.homologWorkflow.stage = 'candidates';
+          if (homologCandidateCount() > 0) setHomologWorkflowStage('candidates');
           renderCurrentProteinEvolution();
         });
         return;
