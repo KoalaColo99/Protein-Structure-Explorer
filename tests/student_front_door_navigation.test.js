@@ -143,6 +143,36 @@ test('non-viewer guided steps render focused activities without booting the work
   assert(viewerReady.includes('startAtlasWorkspace({ readRoute: false })'));
 });
 
+test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagram labels', () => {
+  const visual = bodyOf('renderGuidedPeptideRigidityView');
+  const prediction = bodyOf('submitGuidedPeptideBondPrediction');
+  const feedback = bodyOf('feedbackForGuidedResponse');
+  const render = bodyOf('renderGuidedPathway');
+  assert(render.includes("state.activePathway === 'sequence_structure' && state.activePathwayStep === 3"));
+  assert(render.includes('Why is the peptide bond rigid?'));
+  assert(visual.includes('Which backbone bonds can rotate substantially under ordinary protein conditions? Select all that apply.'));
+  assert(visual.includes('id="guidedBondNCa"'));
+  assert(visual.includes('id="guidedBondCaC"'));
+  assert(visual.includes('id="guidedBondPeptide"'));
+  assert(visual.includes('Cα(i)'));
+  assert(visual.includes('C′(i)'));
+  assert(visual.includes('N(i+1)'));
+  assert(visual.includes('Cα(i+1)'));
+  assert(visual.includes('O(i)'));
+  assert(visual.includes('H(i+1)'));
+  assert(visual.includes('ψ(i): Cα(i)-C′(i)'));
+  assert(visual.includes('ω(i): peptide C′(i)-N(i+1)'));
+  assert(visual.includes('φ(i+1): N(i+1)-Cα(i+1)'));
+  assert(visual.includes('shaded approximate peptide-unit plane, not a bond'));
+  assert(!visual.includes('>C=O<'));
+  assert(prediction.includes('prediction.nCa && prediction.caC && !prediction.peptide'));
+  assert(prediction.includes('Correct prediction.'));
+  assert(prediction.includes('The N-Cα and Cα-C′ bonds can rotate substantially.'));
+  assert(prediction.includes('The peptide C′-N bond does not rotate freely.'));
+  assert(feedback.includes('delocal'));
+  assert(feedback.includes('lone.?pair'));
+});
+
 test('active pathway shell hides the internal pathway chooser', () => {
   assert(html.includes('.student-mode-learn .front-door.hidden'));
   assert(html.includes('.student-mode-learn .pathway-panel.hidden'));

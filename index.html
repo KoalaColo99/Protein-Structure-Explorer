@@ -459,6 +459,27 @@
       color: var(--ink);
     }
 
+    .guided-prediction {
+      background: #fff;
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+      padding: 12px;
+    }
+
+    .guided-prediction legend {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .guided-prediction label {
+      align-items: center;
+      display: flex;
+      gap: 8px;
+    }
+
     .aa-comparison-grid {
       display: grid;
       gap: 10px;
@@ -5964,8 +5985,8 @@ END
             requiresViewer: false,
             question: 'Why does the peptide bond rotate much less freely than nearby backbone bonds?',
             objective: 'Explain peptide-bond partial double-bond character, approximate planarity, and the omega torsion.',
-            focus: 'Resonance gives the peptide C-N bond partial double-bond character, making the peptide unit approximately planar while φ and ψ remain the main rotations.',
-            prompt: 'Before revealing the answer, predict which backbone bonds can rotate substantially: N-Cα, Cα-C, or peptide C-N.'
+            focus: 'Resonance gives the peptide C′-N bond partial double-bond character, making the peptide unit approximately planar while φ and ψ remain the main rotations.',
+            prompt: 'Use the multiple-select prediction below, then explain: What molecular feature restricts rotation around the peptide C′-N bond?'
           },
           {
             label: 'Rotate φ and ψ',
@@ -6109,6 +6130,13 @@ END
       viewerTargetId: 'viewer',
       guidedEvidence: {},
       guidedSelectedAminoAcids: new Set(['GLY', 'ASP']),
+      guidedPeptideBondPrediction: {
+        nCa: false,
+        caC: false,
+        peptide: false,
+        submitted: false,
+        feedback: ''
+      },
       appStatus: APP_STATES.STARTING,
       structureStatus: APP_STATES.NO_STRUCTURE,
       viewerStatus: APP_STATES.STARTING,
@@ -8047,25 +8075,56 @@ END
     }
 
     function renderGuidedPeptideRigidityView() {
+      const prediction = state.guidedPeptideBondPrediction || {};
+      const feedback = prediction.submitted
+        ? prediction.feedback
+        : 'Select the bonds you think can rotate substantially, then submit your prediction.';
       return `<div class="guided-visual-placeholder">
         <div>
-          <svg class="guided-svg" viewBox="0 0 760 270" role="img" aria-label="Peptide bond resonance model showing partial double bond character and approximate planarity">
-            <path class="guided-bond" d="M110 135 L230 135" />
-            <path class="guided-bond peptide" d="M230 135 L350 135" />
-            <path class="guided-bond" d="M350 135 L470 135" />
-            <path class="guided-bond rotate" d="M110 135 L230 135" />
-            <path class="guided-bond rotate" d="M350 135 L470 135" />
-            <circle class="guided-atom backbone" cx="110" cy="135" r="28" /><text class="guided-label" x="110" y="140">Cα</text>
-            <circle class="guided-atom backbone" cx="230" cy="135" r="28" /><text class="guided-label" x="230" y="140">C=O</text>
-            <circle class="guided-atom backbone" cx="350" cy="135" r="28" /><text class="guided-label" x="350" y="140">N</text>
-            <circle class="guided-atom backbone" cx="470" cy="135" r="28" /><text class="guided-label" x="470" y="140">Cα</text>
-            <rect x="198" y="82" width="184" height="106" rx="18" fill="rgba(124,58,237,.10)" stroke="#7c3aed" stroke-dasharray="8 5" />
-            <text class="guided-small-label" x="290" y="72">approximately planar peptide unit</text>
-            <text class="guided-small-label" x="290" y="214">ω: peptide C-N torsion, usually near planar</text>
-            <text class="guided-small-label" x="110" y="42">φ rotation</text>
-            <text class="guided-small-label" x="470" y="42">ψ rotation</text>
+          <svg class="guided-svg" viewBox="0 0 820 330" role="img" aria-label="Peptide unit showing C alpha i bonded to carbonyl C prime i, peptide C prime N bond, branched oxygen and amide hydrogen, and phi psi omega axes">
+            <polygon points="126,202 270,132 400,132 548,202 422,252 245,252" fill="rgba(124,58,237,.10)" stroke="#7c3aed" stroke-dasharray="8 5" />
+            <text class="guided-small-label" x="335" y="286">shaded approximate peptide-unit plane, not a bond</text>
+
+            <path class="guided-bond" d="M125 205 L270 135" />
+            <path class="guided-bond" d="M270 135 L400 135" />
+            <path class="guided-bond" d="M400 135 L548 205" />
+            <path class="guided-bond" d="M270 135 L270 60" />
+            <path class="guided-bond" d="M282 139 L282 64" />
+            <path class="guided-bond" d="M400 135 L400 68" />
+
+            <circle class="guided-atom backbone" cx="125" cy="205" r="28" /><text class="guided-label" x="125" y="210">Cα</text>
+            <text class="guided-small-label" x="125" y="245">Cα(i)</text>
+            <circle class="guided-atom backbone" cx="270" cy="135" r="28" /><text class="guided-label" x="270" y="140">C′</text>
+            <text class="guided-small-label" x="270" y="178">C′(i)</text>
+            <circle class="guided-atom sidechain" cx="270" cy="54" r="24" /><text class="guided-label" x="270" y="59">O</text>
+            <text class="guided-small-label" x="316" y="58">O(i)</text>
+            <circle class="guided-atom backbone" cx="400" cy="135" r="28" /><text class="guided-label" x="400" y="140">N</text>
+            <text class="guided-small-label" x="400" y="178">N(i+1)</text>
+            <circle class="guided-atom sidechain" cx="400" cy="60" r="22" /><text class="guided-label" x="400" y="65">H</text>
+            <text class="guided-small-label" x="448" y="66">H(i+1)</text>
+            <circle class="guided-atom backbone" cx="548" cy="205" r="28" /><text class="guided-label" x="548" y="210">Cα</text>
+            <text class="guided-small-label" x="548" y="245">Cα(i+1)</text>
+
+            <path class="guided-bond rotate" d="M125 205 L270 135" opacity=".68" />
+            <path class="guided-bond rotate" d="M400 135 L548 205" opacity=".68" />
+            <path d="M270 135 L400 135" stroke="#7c3aed" stroke-width="7" stroke-linecap="round" />
+            <text class="guided-small-label" x="198" y="115">ψ(i): Cα(i)-C′(i)</text>
+            <text class="guided-small-label" x="335" y="112">ω(i): peptide C′(i)-N(i+1)</text>
+            <text class="guided-small-label" x="498" y="115">φ(i+1): N(i+1)-Cα(i+1)</text>
+            <text class="guided-small-label" x="682" y="72">Covalent bonds are solid lines.</text>
+            <text class="guided-small-label" x="682" y="94">O is branched from C′, not inline.</text>
+            <text class="guided-small-label" x="682" y="116">The purple C′-N bond is the peptide bond.</text>
           </svg>
-          <p>The peptide C-N bond has partial double-bond character because electron density is delocalized across the amide. That makes the peptide unit approximately planar and makes ω much less freely rotating than φ or ψ.</p>
+          <fieldset class="guided-prediction">
+            <legend>Which backbone bonds can rotate substantially under ordinary protein conditions? Select all that apply.</legend>
+            <label><input type="checkbox" id="guidedBondNCa" ${prediction.nCa ? 'checked' : ''}> N-Cα</label>
+            <label><input type="checkbox" id="guidedBondCaC" ${prediction.caC ? 'checked' : ''}> Cα-C′</label>
+            <label><input type="checkbox" id="guidedBondPeptide" ${prediction.peptide ? 'checked' : ''}> peptide C′-N</label>
+            <button type="button" id="guidedPeptidePredictionSubmit">Submit prediction</button>
+            <div class="guided-feedback${prediction.submitted ? ' saved' : ''}" id="guidedPeptidePredictionFeedback" aria-live="polite">${feedback}</div>
+          </fieldset>
+          <p><strong>Reasoning prompt:</strong> What molecular feature restricts rotation around the peptide C′-N bond?</p>
+          <p>The peptide C′-N bond has partial double-bond character because electron density is delocalized across the amide. That makes the peptide unit approximately planar and makes ω much less freely rotating than φ or ψ.</p>
         </div>
       </div>`;
     }
@@ -8251,7 +8310,10 @@ END
       });
       const main = document.getElementById('guidedMain');
       main.classList.toggle('single-column', !guidedStepNeedsViewer(step));
-      document.getElementById('guidedVisualTitle').textContent = guidedStepNeedsViewer(step) ? 'Molecular view' : 'Focused activity';
+      const focusedTitle = state.activePathway === 'sequence_structure' && state.activePathwayStep === 3
+        ? 'Why is the peptide bond rigid?'
+        : 'Focused activity';
+      document.getElementById('guidedVisualTitle').textContent = guidedStepNeedsViewer(step) ? 'Molecular view' : focusedTitle;
       document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, step);
       if (guidedStepNeedsViewer(step)) ensureGuidedViewerStepReady();
     }
@@ -8275,13 +8337,35 @@ END
         [/order|direction|n-?termin|c-?termin|sequence|residue/, 'Good: you are using order and directionality as sequence evidence.'],
         [/gly|pro|ser|phe|asp|lys|polar|charge|aromatic|hydrogen|size|side.?chain/, 'Good: you are comparing side-chain chemistry rather than memorizing names.'],
         [/backbone|n.?c|cα|alpha|peptide|side.?chain/, 'Good: you distinguished the repeating backbone from variable side chains.'],
-        [/resonance|partial|double|planar|omega|ω|rigid/, 'Good: you connected peptide-bond resonance with restricted ω rotation.'],
+        [/resonance|partial|double|planar|omega|ω|rigid|delocal|electron|lone.?pair|amide/, 'Good: you connected resonance, electron delocalization, partial double-bond character, or approximate planarity with restricted ω rotation.'],
         [/phi|φ|psi|ψ|rotate|move|fixed|omega|ω/, 'Good: you identified φ/ψ rotation while keeping ω fixed at first.'],
         [/steric|clash|crowd|favored|allowed|disfavored|gly|pro/, 'Good: you connected Ramachandran regions to molecular crowding and residue context.'],
         [/helix|sheet|hydrogen|h.?bond|backbone|strand|alpha|beta/, 'Good: you compared recurring backbone patterns in helices and beta sheets.'],
         [/claim|evidence|reason|sequence|rigid|constraint|secondary|environment|favorable/, 'Good: your synthesis names evidence categories and avoids one-factor explanations.']
       ];
       return `<strong>Feedback</strong>${checks[stepIndex]?.[0].test(lower) ? checks[stepIndex][1] : 'Try naming the molecular evidence from this step more directly, then connect it to the pathway question.'}`;
+    }
+
+    function submitGuidedPeptideBondPrediction() {
+      const prediction = {
+        nCa: Boolean(document.getElementById('guidedBondNCa')?.checked),
+        caC: Boolean(document.getElementById('guidedBondCaC')?.checked),
+        peptide: Boolean(document.getElementById('guidedBondPeptide')?.checked),
+        submitted: true,
+        feedback: ''
+      };
+      if (prediction.nCa && prediction.caC && !prediction.peptide) {
+        prediction.feedback = '<strong>Correct prediction.</strong> The N-Cα and Cα-C′ bonds can rotate substantially. These rotations are described by the φ and ψ torsion angles. Rotation about the peptide C′-N bond is restricted because resonance gives this bond partial double-bond character.';
+      } else if (prediction.peptide) {
+        prediction.feedback = '<strong>Revise the peptide-bond choice.</strong> The peptide C′-N bond does not rotate freely. Delocalization of the nitrogen lone pair into the carbonyl group gives the C′-N bond partial double-bond character and helps keep the peptide unit approximately planar.';
+      } else if (!prediction.nCa && !prediction.caC) {
+        prediction.feedback = '<strong>Try again.</strong> The nearby single bonds N-Cα and Cα-C′ provide the substantial backbone rotations. The peptide C′-N bond is restricted by resonance.';
+      } else {
+        prediction.feedback = '<strong>Almost.</strong> Select both N-Cα and Cα-C′ as substantially rotatable backbone bonds, and leave peptide C′-N unselected because resonance restricts that bond.';
+      }
+      state.guidedPeptideBondPrediction = prediction;
+      const feedback = document.getElementById('guidedPeptidePredictionFeedback');
+      if (feedback) feedback.innerHTML = prediction.feedback;
     }
 
     function saveGuidedStepResponse() {
@@ -16290,6 +16374,10 @@ END
     document.getElementById('guidedStepTabs').addEventListener('keydown', activateButtonFromKeyboard);
 
     document.getElementById('guidedVisualization').addEventListener('click', event => {
+      if (event.target.closest('#guidedPeptidePredictionSubmit')) {
+        submitGuidedPeptideBondPrediction();
+        return;
+      }
       const aaButton = event.target.closest('button[data-guided-aa]');
       if (aaButton) {
         toggleGuidedAminoAcid(aaButton.dataset.guidedAa);
