@@ -51,7 +51,8 @@
       min-height: 100vh;
     }
 
-    body.atlas-home-active .app {
+    body.atlas-home-active .app,
+    body.guided-pathway-active .app {
       display: none;
     }
 
@@ -76,7 +77,7 @@
       border-radius: 12px;
       box-shadow: 0 18px 48px rgba(23, 32, 42, .08);
       margin: 0 auto;
-      max-width: 1060px;
+      max-width: 1240px;
       padding: clamp(24px, 4vw, 46px);
       width: 100%;
     }
@@ -95,7 +96,7 @@
       letter-spacing: 0;
       line-height: 1.05;
       margin: 0;
-      max-width: 820px;
+      max-width: 900px;
     }
 
     .atlas-home-intro {
@@ -103,7 +104,7 @@
       font-size: clamp(16px, 2vw, 19px);
       line-height: 1.55;
       margin: 18px 0 30px;
-      max-width: 760px;
+      max-width: 820px;
     }
 
     .atlas-home-grid {
@@ -208,6 +209,277 @@
 
     .atlas-home-resume.available {
       display: inline-block;
+    }
+
+    .guided-pathway {
+      background:
+        radial-gradient(circle at 18% 12%, rgba(86, 180, 233, .12), transparent 28%),
+        radial-gradient(circle at 86% 8%, rgba(0, 158, 115, .10), transparent 28%),
+        #f5f8fb;
+      display: none;
+      min-height: 100vh;
+      padding: clamp(18px, 3vw, 42px);
+    }
+
+    body.guided-pathway-active .guided-pathway {
+      display: block;
+    }
+
+    body.guided-pathway-active .atlas-home {
+      display: none;
+    }
+
+    .guided-shell {
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(184, 200, 211, .76);
+      border-radius: 14px;
+      box-shadow: 0 18px 48px rgba(23, 32, 42, .08);
+      margin: 0 auto;
+      max-width: 1160px;
+      padding: clamp(18px, 3vw, 34px);
+    }
+
+    .guided-topbar {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .guided-topbar button {
+      width: auto;
+    }
+
+    .guided-kicker {
+      color: var(--safe-blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .guided-header {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+      max-width: 840px;
+    }
+
+    .guided-header h1 {
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.05;
+      margin: 0;
+    }
+
+    .guided-question {
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 19px);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .guided-progress {
+      display: grid;
+      gap: 8px;
+      margin: 18px 0 24px;
+    }
+
+    .guided-progress-track {
+      background: #e8eef5;
+      border-radius: 99px;
+      height: 10px;
+      overflow: hidden;
+    }
+
+    .guided-progress-fill {
+      background: linear-gradient(90deg, var(--safe-blue), var(--safe-green));
+      border-radius: 99px;
+      height: 100%;
+      transition: width .2s ease;
+    }
+
+    .guided-step-tabs {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+    }
+
+    .guided-step-tab {
+      background: #fff;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      min-height: 44px;
+      padding: 8px;
+    }
+
+    .guided-step-tab.active {
+      border-color: var(--safe-blue);
+      box-shadow: 0 0 0 3px rgba(0,114,178,.12);
+      color: var(--ink);
+      font-weight: 800;
+    }
+
+    .guided-main {
+      display: grid;
+      gap: 20px;
+      grid-template-columns: minmax(280px, .78fr) minmax(420px, 1.22fr);
+      align-items: start;
+    }
+
+    .guided-main.single-column {
+      grid-template-columns: 1fr;
+      max-width: 900px;
+    }
+
+    .guided-card,
+    .guided-visual {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: clamp(16px, 2vw, 22px);
+    }
+
+    .guided-card h2,
+    .guided-visual h2 {
+      font-size: 22px;
+      margin: 0 0 10px;
+    }
+
+    .guided-card p,
+    .guided-visual p,
+    .guided-card li {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .guided-card ul {
+      margin: 12px 0 0;
+      padding-left: 20px;
+    }
+
+    .guided-prompt {
+      background: #f0f7fb;
+      border-left: 4px solid var(--safe-blue);
+      border-radius: 8px;
+      margin-top: 16px;
+      padding: 12px;
+    }
+
+    .guided-visual-placeholder,
+    .guided-viewer {
+      align-items: center;
+      background: linear-gradient(135deg, #f8fbfd, #edf5f7);
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      display: grid;
+      min-height: 340px;
+      overflow: hidden;
+      padding: 18px;
+      position: relative;
+    }
+
+    .guided-viewer {
+      padding: 0;
+    }
+
+    .guided-viewer #guidedViewer {
+      min-height: 360px;
+      width: 100%;
+    }
+
+    .guided-viewer-note {
+      background: rgba(255,255,255,.92);
+      border: 1px solid #d8e2ec;
+      border-radius: 8px;
+      bottom: 12px;
+      color: var(--muted);
+      left: 12px;
+      padding: 10px;
+      position: absolute;
+      right: 12px;
+    }
+
+    .sequence-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .sequence-token {
+      background: #fff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: var(--ink);
+      font-weight: 800;
+      min-width: 34px;
+      padding: 8px 9px;
+      text-align: center;
+    }
+
+    .property-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .property-card {
+      background: #f8fafc;
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      padding: 12px;
+    }
+
+    .property-card strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .backbone-diagram {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      text-align: center;
+    }
+
+    .backbone-node {
+      background: #fff;
+      border: 2px solid var(--safe-blue);
+      border-radius: 999px;
+      font-weight: 800;
+      padding: 14px 8px;
+      position: relative;
+    }
+
+    .backbone-node:not(:last-child)::after {
+      background: #94a3b8;
+      content: "";
+      height: 3px;
+      position: absolute;
+      right: -14px;
+      top: 50%;
+      width: 16px;
+    }
+
+    .guided-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      margin-top: 22px;
+    }
+
+    .guided-actions .button-row {
+      display: flex;
+      gap: 10px;
+      width: auto;
+    }
+
+    .guided-details {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
     }
 
     .app.resizing-split {
@@ -2146,9 +2418,35 @@
       .atlas-home { padding: 18px 12px; }
       .atlas-home-grid,
       .atlas-home-workspace { grid-template-columns: 1fr; }
+      .atlas-home-shell { padding: 18px; }
+      .atlas-home-card { gap: 7px; padding: 13px; }
+      .atlas-home-card p { font-size: 12px; }
       .atlas-home-card { min-height: auto; }
+      .guided-pathway { padding: 12px; }
+      .guided-shell { padding: 16px; }
+      .guided-topbar,
+      .guided-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+      .guided-actions .button-row { width: 100%; }
+      .guided-step-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .guided-main,
+      .guided-main.single-column { grid-template-columns: 1fr; }
+      .guided-visual-placeholder,
+      .guided-viewer #guidedViewer { min-height: 260px; }
+      .property-grid,
+      .backbone-diagram { grid-template-columns: 1fr; }
+      .backbone-node:not(:last-child)::after { display: none; }
       .atlas-tools { grid-template-columns: 1fr; }
       .viewer-controls .button-row { grid-template-columns: 1fr; }
+    }
+
+    @media (min-width: 521px) and (max-width: 980px) {
+      .atlas-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .guided-main,
+      .guided-main.single-column { grid-template-columns: 1fr; }
+      .guided-step-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     }
   </style>
 </head>
@@ -2195,6 +2493,56 @@
           <button class="atlas-home-resume" type="button" id="resumeAtlasSession">Resume previous session</button>
         </div>
         <button type="button" id="enterAtlasWorkspace">Enter workspace</button>
+      </div>
+    </div>
+  </section>
+  <section class="guided-pathway" id="guidedPathway" aria-labelledby="guidedPathwayTitle" aria-hidden="true">
+    <div class="guided-shell">
+      <div class="guided-topbar">
+        <button type="button" id="guidedAtlasHome">Atlas Home</button>
+        <span class="guided-kicker" id="guidedStructureContext">Guided pathway</span>
+      </div>
+      <header class="guided-header">
+        <span class="guided-kicker" id="guidedStepCount">Step 1 of 7</span>
+        <h1 id="guidedPathwayTitle" tabindex="-1">Building Protein Structure</h1>
+        <p class="guided-question" id="guidedLearningQuestion">How does an amino-acid sequence become a three-dimensional structure?</p>
+      </header>
+      <div class="guided-progress" aria-label="Pathway progress">
+        <div class="guided-progress-track" aria-hidden="true"><div class="guided-progress-fill" id="guidedProgressFill"></div></div>
+        <div class="guided-step-tabs" id="guidedStepTabs" role="tablist" aria-label="Building Protein Structure steps"></div>
+      </div>
+      <div class="guided-main" id="guidedMain">
+        <section class="guided-card" aria-labelledby="guidedStepTitle">
+          <h2 id="guidedStepTitle">Read the Sequence</h2>
+          <p id="guidedStepOrientation"></p>
+          <div class="guided-prompt">
+            <strong>Observation prompt</strong>
+            <p id="guidedStepPrompt"></p>
+          </div>
+          <div class="guided-details">
+            <details id="guidedWhyItMatters">
+              <summary>Why this matters</summary>
+              <p id="guidedWhyText"></p>
+            </details>
+            <details id="guidedExploreFurther">
+              <summary>Explore further</summary>
+              <p id="guidedExploreText"></p>
+            </details>
+          </div>
+        </section>
+        <section class="guided-visual" aria-labelledby="guidedVisualTitle">
+          <h2 id="guidedVisualTitle">Primary visualization</h2>
+          <div id="guidedVisualization"></div>
+        </section>
+      </div>
+      <div class="guided-actions">
+        <div class="button-row">
+          <button type="button" id="guidedBackStep">Back</button>
+          <button type="button" id="guidedContinueStep">Continue</button>
+        </div>
+        <div class="button-row">
+          <button type="button" id="guidedOpenWorkspace">Open in full workspace</button>
+        </div>
       </div>
     </div>
   </section>
@@ -5441,10 +5789,55 @@ END
           'Recognize backbone hydrogen-bond patterns that support common secondary structures.'
         ],
         steps: [
-          { label: 'Amino acids', mode: 'ph', prompt: 'Start by comparing side-chain charge, polarity, and pKa behavior.' },
-          { label: 'Peptide backbone', mode: 'overview', prompt: 'Read the structure sequence and locate the repeating backbone pattern.' },
-          { label: 'Ramachandran constraints', mode: 'torsions', prompt: 'Choose a residue and connect its phi/psi values to allowed regions.' },
-          { label: 'Secondary structure', mode: 'hbonds', prompt: 'Look for recurring backbone hydrogen bonds that stabilize helices or sheets.' }
+          {
+            label: 'Read the Sequence',
+            mode: 'overview',
+            requiresViewer: false,
+            focus: 'Proteins are ordered polymers built from chemically different amino acids.',
+            prompt: 'What evidence tells you this protein is a chain with a specific residue order rather than a random collection of parts?'
+          },
+          {
+            label: 'Compare Side-Chain Properties',
+            mode: 'chemistry',
+            requiresViewer: false,
+            focus: 'Selected side chains differ in polarity, charge tendency, size, aromaticity, and hydrogen-bonding capacity.',
+            prompt: 'Choose two side chains from the comparison view. Which chemical difference would most affect how each residue behaves in water or inside a folded protein?'
+          },
+          {
+            label: 'Trace the Peptide Backbone',
+            mode: 'overview',
+            requiresViewer: true,
+            focus: 'Recognize the repeating backbone, peptide bonds, side chains, and N-to-C directionality.',
+            prompt: 'Follow the repeating N-Cα-C pattern. Which atoms belong to the backbone, and where do the side chains branch away?'
+          },
+          {
+            label: 'Rotate the Backbone',
+            mode: 'torsions',
+            requiresViewer: true,
+            focus: 'Explore phi and psi as the principal backbone rotations.',
+            prompt: 'Predict what will move when phi or psi changes. Which bonds define the rotation?'
+          },
+          {
+            label: 'Discover Conformational Constraints',
+            mode: 'torsions',
+            requiresViewer: true,
+            focus: 'Connect steric interference with allowed and disallowed Ramachandran regions.',
+            prompt: 'When a conformation is disfavored, is it forbidden by rule or made unlikely by atom crowding?'
+          },
+          {
+            label: 'Recognize Secondary Structure',
+            mode: 'hbonds',
+            requiresViewer: true,
+            focus: 'Relate repeated backbone conformations and backbone hydrogen bonding to alpha helices and beta sheets.',
+            prompt: 'Look for a repeated pattern. How do backbone angles and hydrogen bonds work together in a helix or sheet?'
+          },
+          {
+            label: 'Synthesize the Pathway',
+            mode: 'overview',
+            requiresViewer: false,
+            focus: 'Explain how sequence chemistry and backbone constraints make some structures more favorable than others.',
+            prompt: 'Write one claim connecting sequence chemistry, backbone rotations, steric constraints, and secondary structure.'
+          }
         ]
       },
       folded_stability: {
@@ -5546,6 +5939,9 @@ END
       model: null,
       atlasInitialized: false,
       atlasHomeActive: false,
+      guidedPathwayActive: false,
+      guidedViewerActive: false,
+      viewerTargetId: 'viewer',
       appStatus: APP_STATES.STARTING,
       structureStatus: APP_STATES.NO_STRUCTURE,
       viewerStatus: APP_STATES.STARTING,
@@ -7251,19 +7647,45 @@ END
     function shouldShowAtlasHomeFromUrl() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('home') === '1') return true;
+      if (shouldShowGuidedPathwayFromUrl(params)) return false;
       return !hasAtlasRouteParams(params);
+    }
+
+    function shouldShowGuidedPathwayFromUrl(params = new URLSearchParams(window.location.search)) {
+      const pathway = params.get('pathway');
+      return params.get('student') === 'learn' && params.get('workspace') !== '1' && pathway && LEARNING_PATHWAYS[pathway];
     }
 
     function setAtlasHomeActive(active, options = {}) {
       state.atlasHomeActive = Boolean(active);
+      if (state.atlasHomeActive) state.guidedPathwayActive = false;
       document.body.classList.toggle('atlas-home-active', state.atlasHomeActive);
+      document.body.classList.toggle('guided-pathway-active', false);
       const app = document.querySelector('.app');
       const home = document.getElementById('atlasHome');
+      const guided = document.getElementById('guidedPathway');
       if (app) app.setAttribute('aria-hidden', state.atlasHomeActive ? 'true' : 'false');
       if (home) home.setAttribute('aria-hidden', state.atlasHomeActive ? 'false' : 'true');
+      if (guided) guided.setAttribute('aria-hidden', 'true');
       document.getElementById('resumeAtlasSession')?.classList.toggle('available', Boolean(state.atlasInitialized));
       if (state.atlasHomeActive && options.focus !== false) {
         document.getElementById('atlasHomeTitle')?.focus?.({ preventScroll: true });
+      }
+    }
+
+    function setGuidedPathwayActive(active, options = {}) {
+      state.guidedPathwayActive = Boolean(active);
+      if (state.guidedPathwayActive) state.atlasHomeActive = false;
+      document.body.classList.toggle('guided-pathway-active', state.guidedPathwayActive);
+      document.body.classList.toggle('atlas-home-active', false);
+      const app = document.querySelector('.app');
+      const home = document.getElementById('atlasHome');
+      const guided = document.getElementById('guidedPathway');
+      if (app) app.setAttribute('aria-hidden', state.guidedPathwayActive ? 'true' : 'false');
+      if (home) home.setAttribute('aria-hidden', 'true');
+      if (guided) guided.setAttribute('aria-hidden', state.guidedPathwayActive ? 'false' : 'true');
+      if (state.guidedPathwayActive && options.focus !== false) {
+        document.getElementById('guidedPathwayTitle')?.focus?.({ preventScroll: true });
       }
     }
 
@@ -7280,9 +7702,16 @@ END
     async function ensureAtlasStarted(options = {}) {
       if (state.atlasInitialized) {
         setAtlasHomeActive(false, { focus: false });
+        setGuidedPathwayActive(false, { focus: false });
+        if (options.viewerTargetId && state.viewerTargetId !== options.viewerTargetId) {
+          initializeViewerSubsystem(options.viewerTargetId);
+          renderCurrentModel();
+        }
         return true;
       }
+      if (options.viewerTargetId) state.viewerTargetId = options.viewerTargetId;
       setAtlasHomeActive(false, { focus: false });
+      setGuidedPathwayActive(false, { focus: false });
       await startAtlasWorkspace(options);
       return true;
     }
@@ -7294,8 +7723,7 @@ END
       state.activePathway = pathwayId;
       state.activePathwayStep = 0;
       state.mode = pathway.steps[0].mode;
-      await ensureAtlasStarted({ readRoute: false });
-      enterPathway(pathwayId, 0, { restoreFocus: true, push: true });
+      enterGuidedPathway(pathwayId, 0, { restoreFocus: true, push: true });
     }
 
     async function openWorkspaceFromHome(options = {}) {
@@ -7311,7 +7739,7 @@ END
       state.mode = options.resume && state.preservedProteinWorkspace?.mode
         ? state.preservedProteinWorkspace.mode
         : 'overview';
-      await ensureAtlasStarted({ readRoute: false });
+      await ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' });
       if (options.resume && state.preservedProteinWorkspace) returnToProteinWorkspace({ restoreFocus: true, push: true });
       else setStudentMode(state.studentMode, { restoreFocus: true, push: true });
     }
@@ -7343,6 +7771,159 @@ END
         button.innerHTML = `<strong>${pathway.letter}. ${pathway.title}</strong><span>${pathway.summary}</span>`;
         grid.appendChild(button);
       });
+    }
+
+    function guidedStepNeedsViewer(step) {
+      return Boolean(step?.requiresViewer);
+    }
+
+    function writeGuidedRoute(push = true) {
+      const params = new URLSearchParams();
+      params.set('student', 'learn');
+      params.set('pathway', state.activePathway);
+      params.set('step', String(state.activePathwayStep));
+      params.set('tool', state.mode);
+      const method = push ? 'pushState' : 'replaceState';
+      window.history[method]({ guided: true, pathway: state.activePathway, step: state.activePathwayStep, mode: state.mode }, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+    }
+
+    function renderGuidedSequenceView() {
+      const excerpt = ['VAL','LEU','SER','GLU','GLY','GLU','TRP','GLN','LEU','VAL','LEU','HIS','VAL','TRP','ALA'];
+      return `<div class="guided-visual-placeholder">
+        <div>
+          <p><strong>Myoglobin chain A sequence excerpt</strong></p>
+          <div class="sequence-strip" aria-label="Sequence excerpt">${excerpt.map((residue, index) => `<span class="sequence-token">${residue}<br><small>${index + 1}</small></span>`).join('')}</div>
+          <p>Each token represents one residue in a defined N-to-C order. The full structure adds geometry to this chemical sequence.</p>
+        </div>
+      </div>`;
+    }
+
+    function renderGuidedPropertyView() {
+      const examples = [
+        ['Asp/Glu', 'Often negatively charged near neutral pH; good hydrogen-bond acceptors.'],
+        ['Lys/Arg', 'Often positively charged; frequently solvent exposed or paired with acidic groups.'],
+        ['Leu/Ile/Val', 'Nonpolar, branched side chains; common in buried packing.'],
+        ['Phe/Tyr/Trp', 'Aromatic side chains; bulky, hydrophobic, and sometimes hydrogen-bonding.']
+      ];
+      return `<div class="guided-visual-placeholder">
+        <div class="property-grid">${examples.map(([label, text]) => `<div class="property-card"><strong>${label}</strong><span>${text}</span></div>`).join('')}</div>
+      </div>`;
+    }
+
+    function renderGuidedBackboneDiagram() {
+      return `<div class="guided-visual-placeholder">
+        <div>
+          <div class="backbone-diagram" aria-label="Backbone repeat diagram">
+            <span class="backbone-node">N</span>
+            <span class="backbone-node">Cα<br><small>R group</small></span>
+            <span class="backbone-node">C=O</span>
+            <span class="backbone-node">N</span>
+            <span class="backbone-node">Cα</span>
+          </div>
+          <p>The peptide backbone repeats N-Cα-C. Side chains attach at Cα, while peptide bonds connect one residue to the next.</p>
+        </div>
+      </div>`;
+    }
+
+    function renderGuidedViewerView(step) {
+      return `<div class="guided-viewer">
+        <div id="guidedViewer" role="img" aria-label="${escapeHtml(step.label)} molecular view"></div>
+        <p class="guided-viewer-note" id="guidedViewerNote">Loading the molecular view for this step. If 3D rendering is unavailable, use Open in full workspace for the two-dimensional analysis tools.</p>
+      </div>`;
+    }
+
+    function renderGuidedSynthesisView() {
+      return `<div class="guided-visual-placeholder">
+        <div>
+          <p><strong>Build a claim from evidence.</strong></p>
+          <ul>
+            <li>Sequence provides residue order and side-chain chemistry.</li>
+            <li>Peptide-bond geometry makes the backbone a constrained chain.</li>
+            <li>Phi and psi rotations allow many possibilities, but not all are equally favorable.</li>
+            <li>Repeated favorable conformations support helices and sheets.</li>
+          </ul>
+        </div>
+      </div>`;
+    }
+
+    function guidedVisualizationMarkup(stepIndex, step) {
+      if (guidedStepNeedsViewer(step)) return renderGuidedViewerView(step);
+      if (stepIndex === 0) return renderGuidedSequenceView();
+      if (stepIndex === 1) return renderGuidedPropertyView();
+      if (stepIndex === 2) return renderGuidedBackboneDiagram();
+      return renderGuidedSynthesisView();
+    }
+
+    async function ensureGuidedViewerStepReady() {
+      const note = document.getElementById('guidedViewerNote');
+      try {
+        state.viewerTargetId = 'guidedViewer';
+        if (!state.atlasInitialized) {
+          await startAtlasWorkspace({ readRoute: false });
+        } else {
+          initializeViewerSubsystem('guidedViewer');
+          renderCurrentModel();
+        }
+        setGuidedPathwayActive(true, { focus: false });
+        if (note) note.textContent = `${state.structureLabel} (${state.structureId}) coordinates are loaded for this focused step.`;
+      } catch (error) {
+        if (note) note.textContent = `3D viewer unavailable. Continue with the prompt, or open the full workspace for two-dimensional tools. ${error?.message || ''}`;
+      }
+    }
+
+    function renderGuidedPathway() {
+      const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
+      if (!pathway) return;
+      const step = pathway.steps[state.activePathwayStep] || pathway.steps[0];
+      const homeContent = ATLAS_HOME_PATHWAY_CONTENT[state.activePathway] || {};
+      const finalStep = state.activePathwayStep >= pathway.steps.length - 1;
+      document.getElementById('guidedPathwayTitle').textContent = homeContent.displayTitle || `${pathway.letter}. ${pathway.title}`;
+      document.getElementById('guidedLearningQuestion').textContent = homeContent.question || pathway.title;
+      document.getElementById('guidedStepCount').textContent = `Step ${state.activePathwayStep + 1} of ${pathway.steps.length}`;
+      document.getElementById('guidedStructureContext').textContent = state.atlasInitialized
+        ? `${state.structureLabel} (${state.structureId}) context preserved`
+        : 'Guided pathway';
+      document.getElementById('guidedStepTitle').textContent = step.label;
+      document.getElementById('guidedStepOrientation').textContent = step.focus || step.prompt;
+      document.getElementById('guidedStepPrompt').textContent = step.prompt;
+      document.getElementById('guidedWhyText').textContent = homeContent.why || 'This step connects molecular evidence with chemical reasoning.';
+      document.getElementById('guidedExploreText').textContent = guidedStepNeedsViewer(step)
+        ? 'Open the full workspace to use the complete molecular viewer, measurements, and analysis tools for this step.'
+        : 'Open the full workspace when you want the full tool set, custom structures, measurements, or exports.';
+      document.getElementById('guidedBackStep').disabled = state.activePathwayStep <= 0;
+      document.getElementById('guidedContinueStep').textContent = finalStep ? 'Restart pathway' : 'Continue';
+      const fill = document.getElementById('guidedProgressFill');
+      if (fill) fill.style.width = `${((state.activePathwayStep + 1) / pathway.steps.length) * 100}%`;
+      const tabs = document.getElementById('guidedStepTabs');
+      tabs.innerHTML = '';
+      pathway.steps.forEach((item, index) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = `guided-step-tab${index === state.activePathwayStep ? ' active' : ''}`;
+        button.dataset.guidedStep = String(index);
+        button.setAttribute('role', 'tab');
+        button.setAttribute('aria-selected', index === state.activePathwayStep ? 'true' : 'false');
+        button.setAttribute('aria-current', index === state.activePathwayStep ? 'step' : 'false');
+        button.textContent = `${index + 1}. ${item.label}`;
+        tabs.appendChild(button);
+      });
+      const main = document.getElementById('guidedMain');
+      main.classList.toggle('single-column', !guidedStepNeedsViewer(step));
+      document.getElementById('guidedVisualTitle').textContent = guidedStepNeedsViewer(step) ? 'Molecular view' : 'Focused activity';
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, step);
+      if (guidedStepNeedsViewer(step)) ensureGuidedViewerStepReady();
+    }
+
+    function enterGuidedPathway(pathwayId, stepIndex = 0, options = {}) {
+      const pathway = LEARNING_PATHWAYS[pathwayId];
+      if (!pathway) return;
+      state.studentMode = 'learn';
+      state.activePathway = pathwayId;
+      state.activePathwayStep = Math.max(0, Math.min(pathway.steps.length - 1, Number(stepIndex) || 0));
+      state.mode = pathway.steps[state.activePathwayStep].mode;
+      renderGuidedPathway();
+      setGuidedPathwayActive(true, { focus: options.restoreFocus !== false });
+      if (options.updateUrl !== false) writeGuidedRoute(options.push !== false);
     }
 
     function renderPathwayPanel() {
@@ -7380,9 +7961,12 @@ END
       if (state.activePathway) {
         params.set('pathway', state.activePathway);
         params.set('step', String(state.activePathwayStep));
+        if (!state.guidedPathwayActive) params.set('workspace', '1');
+        else params.delete('workspace');
       } else {
         params.delete('pathway');
         params.delete('step');
+        params.delete('workspace');
       }
       const nextUrl = `${window.location.pathname}?${params.toString()}${window.location.hash}`;
       const method = push ? 'pushState' : 'replaceState';
@@ -15179,11 +15763,12 @@ END
       }
     }
 
-    function initializeViewerSubsystem() {
+    function initializeViewerSubsystem(targetId = state.viewerTargetId || 'viewer') {
       if (!window.$3Dmol || typeof $3Dmol.createViewer !== 'function') {
         throw new Error('3Dmol.js did not load, so WebGL rendering is unavailable.');
       }
-      state.viewer = $3Dmol.createViewer('viewer', { backgroundColor: '#eef3f8' });
+      state.viewerTargetId = targetId;
+      state.viewer = $3Dmol.createViewer(targetId, { backgroundColor: '#eef3f8' });
       state.viewerStatus = hasParsedCoordinates() ? APP_STATES.VIEWER_READY : APP_STATES.STARTING;
       state.lastViewerError = '';
       return state.viewer;
@@ -15254,6 +15839,11 @@ END
         writeAtlasHomeRoute(false);
         return;
       }
+      if (shouldShowGuidedPathwayFromUrl()) {
+        readStudentRouteFromUrl();
+        enterGuidedPathway(state.activePathway, state.activePathwayStep, { restoreFocus: false, push: false });
+        return;
+      }
       await startAtlasWorkspace({ readRoute: true });
     }
 
@@ -15300,9 +15890,38 @@ END
     document.getElementById('pathwayGrid').addEventListener('click', event => {
       const button = event.target.closest('button[data-pathway]');
       if (!button) return;
-      enterPathway(button.dataset.pathway, 0, { restoreFocus: true, push: true });
+      enterGuidedPathway(button.dataset.pathway, 0, { restoreFocus: true, push: true });
     });
     document.getElementById('pathwayGrid').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('guidedAtlasHome').addEventListener('click', () => {
+      showAtlasHome({ restoreFocus: true, push: true });
+    });
+
+    document.getElementById('guidedStepTabs').addEventListener('click', event => {
+      const button = event.target.closest('button[data-guided-step]');
+      if (!button || !state.activePathway) return;
+      enterGuidedPathway(state.activePathway, Number(button.dataset.guidedStep), { restoreFocus: true, push: true });
+    });
+    document.getElementById('guidedStepTabs').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('guidedContinueStep').addEventListener('click', () => {
+      if (!state.activePathway) return;
+      const steps = LEARNING_PATHWAYS[state.activePathway].steps;
+      const next = state.activePathwayStep >= steps.length - 1 ? 0 : state.activePathwayStep + 1;
+      enterGuidedPathway(state.activePathway, next, { restoreFocus: true, push: true });
+    });
+
+    document.getElementById('guidedBackStep').addEventListener('click', () => {
+      if (!state.activePathway || state.activePathwayStep <= 0) return;
+      enterGuidedPathway(state.activePathway, state.activePathwayStep - 1, { restoreFocus: true, push: true });
+    });
+
+    document.getElementById('guidedOpenWorkspace').addEventListener('click', async () => {
+      if (!state.activePathway) return;
+      await ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' });
+      setStudentMode('learn', { restoreFocus: true, push: true });
+    });
 
     document.getElementById('pathwayProgress').addEventListener('click', event => {
       const button = event.target.closest('button[data-pathway-step]');
@@ -15340,11 +15959,17 @@ END
         showAtlasHome({ restoreFocus: true, updateUrl: false });
         return;
       }
+      if (shouldShowGuidedPathwayFromUrl()) {
+        readStudentRouteFromUrl();
+        enterGuidedPathway(state.activePathway, state.activePathwayStep, { restoreFocus: true, updateUrl: false });
+        return;
+      }
       if (!state.atlasInitialized) {
-        startAtlasWorkspace({ readRoute: true });
+        startAtlasWorkspace({ readRoute: true, viewerTargetId: 'viewer' });
         return;
       }
       setAtlasHomeActive(false, { focus: false });
+      setGuidedPathwayActive(false, { focus: false });
       readStudentRouteFromUrl();
       renderStudentModeControls();
       renderPathwayPanel();

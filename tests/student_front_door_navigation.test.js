@@ -92,10 +92,50 @@ test('outer homepage gates scientific workspace initialization', () => {
   const startupEnd = html.indexOf('async function retryViewer', startupStart);
   const startup = html.slice(startupStart, startupEnd);
   assert(init.includes('shouldShowAtlasHomeFromUrl()'));
+  assert(init.includes('shouldShowGuidedPathwayFromUrl()'));
   assert(init.includes('writeAtlasHomeRoute(false)'));
   assert(startup.includes('initializeViewerSubsystem()'));
   assert(startup.includes('await loadInitialStructure()'));
   assert(html.includes('body.atlas-home-active .app'));
+});
+
+test('guided pathway is a top-level state separate from the full workspace', () => {
+  assert(html.includes('id="guidedPathway"'));
+  assert(html.includes('body.guided-pathway-active .app'));
+  assert(html.includes('function setGuidedPathwayActive('));
+  assert(html.includes('function enterGuidedPathway('));
+  assert(html.includes('function renderGuidedPathway('));
+  const homeEntry = bodyOf('openPathwayFromHome');
+  assert(homeEntry.includes('enterGuidedPathway(pathwayId, 0'));
+  assert(!homeEntry.includes('ensureAtlasStarted({ readRoute: false })'));
+});
+
+test('Building Protein Structure uses seven focused guided steps', () => {
+  [
+    'Read the Sequence',
+    'Compare Side-Chain Properties',
+    'Trace the Peptide Backbone',
+    'Rotate the Backbone',
+    'Discover Conformational Constraints',
+    'Recognize Secondary Structure',
+    'Synthesize the Pathway'
+  ].forEach(label => assert(html.includes(`label: '${label}'`), `${label} guided step missing`));
+  const sequenceBlock = html.slice(html.indexOf('sequence_structure:'), html.indexOf('folded_stability:', html.indexOf('sequence_structure:')));
+  assert((sequenceBlock.match(/requiresViewer: true/g) || []).length === 4);
+  assert((sequenceBlock.match(/requiresViewer: false/g) || []).length === 3);
+  assert(!sequenceBlock.includes("label: 'Amino acids', mode: 'ph'"));
+});
+
+test('non-viewer guided steps render focused activities without booting the workspace', () => {
+  const render = bodyOf('renderGuidedPathway');
+  const visual = bodyOf('guidedVisualizationMarkup');
+  const viewerReady = bodyOf('ensureGuidedViewerStepReady');
+  assert(render.includes('if (guidedStepNeedsViewer(step)) ensureGuidedViewerStepReady()'));
+  assert(visual.includes('renderGuidedSequenceView()'));
+  assert(visual.includes('renderGuidedPropertyView()'));
+  assert(visual.includes('renderGuidedSynthesisView()'));
+  assert(viewerReady.includes("state.viewerTargetId = 'guidedViewer'"));
+  assert(viewerReady.includes('startAtlasWorkspace({ readRoute: false })'));
 });
 
 test('active pathway shell hides the internal pathway chooser', () => {
@@ -151,6 +191,7 @@ test('student navigation supports Enter and Space keyboard activation', () => {
   assert(html.includes("document.getElementById('studentModeSwitch').addEventListener('keydown', activateButtonFromKeyboard)"));
   assert(html.includes("document.getElementById('pathwayGrid').addEventListener('keydown', activateButtonFromKeyboard)"));
   assert(html.includes("document.getElementById('pathwayProgress').addEventListener('keydown', activateButtonFromKeyboard)"));
+  assert(html.includes("document.getElementById('guidedStepTabs').addEventListener('keydown', activateButtonFromKeyboard)"));
   assert(html.includes("document.getElementById('modeTabs').addEventListener('keydown', activateButtonFromKeyboard)"));
 });
 
