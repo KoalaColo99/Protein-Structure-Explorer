@@ -150,7 +150,18 @@ test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagra
   const render = bodyOf('renderGuidedPathway');
   assert(render.includes("state.activePathway === 'sequence_structure' && state.activePathwayStep === 3"));
   assert(render.includes('Why is the peptide bond rigid?'));
+  assert(render.includes("document.getElementById('guidedPromptBox'), responseBox, document.getElementById('guidedDetailsBox')"));
+  assert(render.includes("element.style.display = isPeptideRigidityStep ? 'none' : ''"));
+  assert(render.includes("element.setAttribute('aria-hidden', isPeptideRigidityStep ? 'true' : 'false')"));
+  assert(visual.indexOf('Predict first.') < visual.indexOf('Peptide unit showing C alpha'));
   assert(visual.includes('Which backbone bonds can rotate substantially under ordinary protein conditions? Select all that apply.'));
+  assert(visual.indexOf('Which backbone bonds can rotate substantially') < visual.indexOf('guidedPeptidePredictionSubmit'));
+  assert(visual.indexOf('guidedPeptidePredictionSubmit') < visual.indexOf('guidedPeptidePredictionFeedback'));
+  assert(visual.indexOf('guidedPeptidePredictionFeedback') < visual.indexOf('Reasoning prompt:'));
+  assert(visual.indexOf('Reasoning prompt:') < visual.indexOf('Explain your reasoning'));
+  assert(visual.indexOf('Explain your reasoning') < visual.indexOf('Save as Evidence'));
+  assert(visual.indexOf('Save as Evidence') < visual.indexOf('Why this matters'));
+  assert(visual.includes('Explain why the peptide C′-N bond rotates much less freely than the N-Cα and Cα-C′ bonds.'));
   assert(visual.includes('id="guidedBondNCa"'));
   assert(visual.includes('id="guidedBondCaC"'));
   assert(visual.includes('id="guidedBondPeptide"'));
@@ -171,6 +182,8 @@ test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagra
   assert(prediction.includes('The peptide C′-N bond does not rotate freely.'));
   assert(feedback.includes('delocal'));
   assert(feedback.includes('lone.?pair'));
+  assert(html.includes("event.target.closest('#guidedStep4SaveEvidence')"));
+  assert(html.includes("document.getElementById('guidedPeptideReasoningResponse')"));
 });
 
 test('active pathway shell hides the internal pathway chooser', () => {

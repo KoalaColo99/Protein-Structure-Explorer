@@ -2672,7 +2672,7 @@
         <section class="guided-card" aria-labelledby="guidedStepTitle">
           <h2 id="guidedStepTitle">Read the Sequence</h2>
           <p id="guidedStepOrientation"></p>
-          <div class="guided-prompt">
+          <div class="guided-prompt" id="guidedPromptBox">
             <strong>Observation prompt</strong>
             <p id="guidedStepPrompt"></p>
           </div>
@@ -2682,7 +2682,7 @@
             <button type="button" id="guidedSaveResponse">Save response for final explanation</button>
             <div class="guided-feedback" id="guidedStepFeedback" aria-live="polite">Your saved response will appear as evidence in the final step.</div>
           </div>
-          <div class="guided-details">
+          <div class="guided-details" id="guidedDetailsBox">
             <details id="guidedWhyItMatters">
               <summary>Why this matters</summary>
               <p id="guidedWhyText"></p>
@@ -8079,8 +8079,12 @@ END
       const feedback = prediction.submitted
         ? prediction.feedback
         : 'Select the bonds you think can rotate substantially, then submit your prediction.';
+      const saved = state.guidedEvidence.sequence_structure?.[3];
+      const savedFeedback = saved?.feedback || 'Saved evidence will appear in the final explanation.';
+      const savedResponse = saved?.response || '';
       return `<div class="guided-visual-placeholder">
         <div>
+          <p><strong>Predict first.</strong> Choose the backbone bonds that can rotate substantially, then use the feedback to explain why the peptide bond behaves differently.</p>
           <svg class="guided-svg" viewBox="0 0 820 330" role="img" aria-label="Peptide unit showing C alpha i bonded to carbonyl C prime i, peptide C prime N bond, branched oxygen and amide hydrogen, and phi psi omega axes">
             <polygon points="126,202 270,132 400,132 548,202 422,252 245,252" fill="rgba(124,58,237,.10)" stroke="#7c3aed" stroke-dasharray="8 5" />
             <text class="guided-small-label" x="335" y="286">shaded approximate peptide-unit plane, not a bond</text>
@@ -8125,6 +8129,22 @@ END
           </fieldset>
           <p><strong>Reasoning prompt:</strong> What molecular feature restricts rotation around the peptide C′-N bond?</p>
           <p>The peptide C′-N bond has partial double-bond character because electron density is delocalized across the amide. That makes the peptide unit approximately planar and makes ω much less freely rotating than φ or ψ.</p>
+          <div class="guided-response${savedResponse ? ' saved' : ''}" id="guidedPeptideReasoningBox">
+            <label for="guidedPeptideReasoningResponse"><strong>Explain your reasoning</strong></label>
+            <textarea id="guidedPeptideReasoningResponse" placeholder="Explain why the peptide C′-N bond rotates much less freely than the N-Cα and Cα-C′ bonds.">${escapeHtml(savedResponse)}</textarea>
+            <button type="button" id="guidedStep4SaveEvidence">Save as Evidence</button>
+            <div class="guided-feedback" id="guidedPeptideEvidenceFeedback" aria-live="polite">${savedFeedback}</div>
+          </div>
+          <div class="guided-details">
+            <details>
+              <summary>Why this matters</summary>
+              <p>${escapeHtml(ATLAS_HOME_PATHWAY_CONTENT.sequence_structure.why)}</p>
+            </details>
+            <details>
+              <summary>Explore further</summary>
+              <p>Open the full workspace when you want the full tool set, custom structures, measurements, or exports.</p>
+            </details>
+          </div>
         </div>
       </div>`;
     }
@@ -8271,6 +8291,7 @@ END
       const step = pathway.steps[state.activePathwayStep] || pathway.steps[0];
       const homeContent = ATLAS_HOME_PATHWAY_CONTENT[state.activePathway] || {};
       const finalStep = state.activePathwayStep >= pathway.steps.length - 1;
+      const isPeptideRigidityStep = state.activePathway === 'sequence_structure' && state.activePathwayStep === 3;
       document.getElementById('guidedPathwayTitle').textContent = homeContent.displayTitle || `${pathway.letter}. ${pathway.title}`;
       document.getElementById('guidedLearningQuestion').textContent = step.question || homeContent.question || pathway.title;
       document.getElementById('guidedStepCount').textContent = `Step ${state.activePathwayStep + 1} of ${pathway.steps.length}`;
@@ -8287,6 +8308,12 @@ END
       if (response) response.value = saved?.response || '';
       if (feedback) feedback.innerHTML = saved?.feedback || 'Your saved response will appear as evidence in the final step.';
       responseBox?.classList.toggle('saved', Boolean(saved?.response));
+      [document.getElementById('guidedPromptBox'), responseBox, document.getElementById('guidedDetailsBox')].forEach(element => {
+        if (!element) return;
+        element.hidden = isPeptideRigidityStep;
+        element.style.display = isPeptideRigidityStep ? 'none' : '';
+        element.setAttribute('aria-hidden', isPeptideRigidityStep ? 'true' : 'false');
+      });
       document.getElementById('guidedWhyText').textContent = homeContent.why || 'This step connects molecular evidence with chemical reasoning.';
       document.getElementById('guidedExploreText').textContent = guidedStepNeedsViewer(step)
         ? 'Open the full workspace to use the complete molecular viewer, measurements, and analysis tools for this step.'
@@ -8310,7 +8337,7 @@ END
       });
       const main = document.getElementById('guidedMain');
       main.classList.toggle('single-column', !guidedStepNeedsViewer(step));
-      const focusedTitle = state.activePathway === 'sequence_structure' && state.activePathwayStep === 3
+      const focusedTitle = isPeptideRigidityStep
         ? 'Why is the peptide bond rigid?'
         : 'Focused activity';
       document.getElementById('guidedVisualTitle').textContent = guidedStepNeedsViewer(step) ? 'Molecular view' : focusedTitle;
@@ -8370,7 +8397,8 @@ END
 
     function saveGuidedStepResponse() {
       if (!state.activePathway) return;
-      const response = document.getElementById('guidedStepResponse')?.value || '';
+      const customStep4Response = document.getElementById('guidedPeptideReasoningResponse');
+      const response = customStep4Response?.value || document.getElementById('guidedStepResponse')?.value || '';
       if (!state.guidedEvidence[state.activePathway]) state.guidedEvidence[state.activePathway] = {};
       const feedback = feedbackForGuidedResponse(state.activePathwayStep, response);
       state.guidedEvidence[state.activePathway][state.activePathwayStep] = {
@@ -8378,9 +8406,11 @@ END
         response,
         feedback
       };
-      const feedbackBox = document.getElementById('guidedStepFeedback');
+      const feedbackBox = customStep4Response
+        ? document.getElementById('guidedPeptideEvidenceFeedback')
+        : document.getElementById('guidedStepFeedback');
       if (feedbackBox) feedbackBox.innerHTML = feedback;
-      document.getElementById('guidedResponseBox')?.classList.toggle('saved', Boolean(response.trim()));
+      (customStep4Response ? document.getElementById('guidedPeptideReasoningBox') : document.getElementById('guidedResponseBox'))?.classList.toggle('saved', Boolean(response.trim()));
       if (state.activePathwayStep === LEARNING_PATHWAYS[state.activePathway].steps.length - 1) {
         document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
       }
@@ -16376,6 +16406,10 @@ END
     document.getElementById('guidedVisualization').addEventListener('click', event => {
       if (event.target.closest('#guidedPeptidePredictionSubmit')) {
         submitGuidedPeptideBondPrediction();
+        return;
+      }
+      if (event.target.closest('#guidedStep4SaveEvidence')) {
+        saveGuidedStepResponse();
         return;
       }
       const aaButton = event.target.closest('button[data-guided-aa]');
