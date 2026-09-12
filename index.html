@@ -52,7 +52,8 @@
     }
 
     body.atlas-home-active .app,
-    body.guided-pathway-active .app {
+    body.guided-pathway-active .app,
+    body.workspace-hub-active .app {
       display: none;
     }
 
@@ -69,6 +70,179 @@
 
     body.atlas-home-active .atlas-home {
       display: grid;
+    }
+
+    .workspace-hub {
+      background:
+        radial-gradient(circle at 14% 12%, rgba(86, 180, 233, .13), transparent 30%),
+        radial-gradient(circle at 88% 16%, rgba(0, 158, 115, .10), transparent 28%),
+        #f4f8fa;
+      display: none;
+      min-height: 100vh;
+      padding: clamp(18px, 3vw, 42px);
+    }
+
+    body.workspace-hub-active .workspace-hub {
+      display: block;
+    }
+
+    body.workspace-hub-active .atlas-home,
+    body.workspace-hub-active .guided-pathway {
+      display: none;
+    }
+
+    .workspace-hub-shell {
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(184, 200, 211, .76);
+      border-radius: 14px;
+      box-shadow: 0 18px 48px rgba(23, 32, 42, .08);
+      margin: 0 auto;
+      max-width: 1180px;
+      padding: clamp(18px, 3vw, 36px);
+    }
+
+    .workspace-hub-topbar,
+    .focused-tool-bar {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+
+    .workspace-hub-summary {
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: space-between;
+      margin: 18px 0;
+      padding: 12px;
+    }
+
+    .protein-chip {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      display: inline-block;
+      padding: 7px 11px;
+    }
+
+    .workspace-tool-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .workspace-tool-group {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px;
+    }
+
+    .workspace-tool-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .workspace-tool-card {
+      background: #fbfdff;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      display: grid;
+      gap: 6px;
+      padding: 11px;
+      text-align: left;
+    }
+
+    .workspace-tool-card strong {
+      color: var(--ink);
+    }
+
+    .tool-prereq {
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .workspace-tool-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    body.focused-tool-active .about-atlas,
+    body.focused-tool-active #modeTabs,
+    body.focused-tool-active #allAtlasToolsIndex,
+    body.focused-tool-active #atlasDatasetRegistrySummary,
+    body.focused-tool-active .sidebar > .section:not(.mode-panel):not([data-focused-global="true"]),
+    body.focused-tool-active .front-door,
+    body.focused-tool-active .pathway-panel {
+      display: none;
+    }
+
+    body.focused-tool-active.focused-evidence-active .sidebar > .section[data-focused-global="evidence"] {
+      display: block;
+    }
+
+    body.focused-tool-active.focused-registry-active .sidebar > .section[data-focused-global="registry"],
+    body.focused-tool-active.focused-registry-active #atlasDatasetRegistrySummary {
+      display: block;
+    }
+
+    body.focused-tool-active.workspace-guide-active .sidebar {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(250px, 330px);
+      gap: 14px;
+    }
+
+    .tool-guide-panel {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      display: none;
+      padding: 12px;
+      position: sticky;
+      top: 12px;
+    }
+
+    body.workspace-guide-active .tool-guide-panel {
+      display: block;
+    }
+
+    .guide-stepper {
+      display: grid;
+      gap: 7px;
+      margin: 10px 0;
+    }
+
+    .guide-stepper button {
+      text-align: left;
+    }
+
+    body.focused-tool-active .sidebar {
+      padding-top: 14px;
+    }
+
+    #backToWorkspaceHub {
+      display: none;
+    }
+
+    body.focused-tool-active #backToWorkspaceHub {
+      display: inline-block;
+    }
+
+    #focusedMoreTools {
+      display: none;
+    }
+
+    body.focused-tool-active #focusedMoreTools {
+      display: block;
     }
 
     .atlas-home-shell {
@@ -2679,6 +2853,8 @@
       .backbone-node:not(:last-child)::after { display: none; }
       .atlas-tools { grid-template-columns: 1fr; }
       .viewer-controls .button-row { grid-template-columns: 1fr; }
+      .workspace-tool-grid { grid-template-columns: 1fr; }
+      body.focused-tool-active.workspace-guide-active .sidebar { grid-template-columns: 1fr; }
     }
 
     @media (min-width: 521px) and (max-width: 980px) {
@@ -2686,6 +2862,7 @@
       .guided-main,
       .guided-main.single-column { grid-template-columns: 1fr; }
       .guided-step-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .workspace-tool-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -2732,6 +2909,76 @@
           <button class="atlas-home-resume" type="button" id="resumeAtlasSession">Resume previous session</button>
         </div>
         <button type="button" id="enterAtlasWorkspace">Enter workspace</button>
+      </div>
+    </div>
+  </section>
+  <section class="workspace-hub" id="workspaceHub" aria-labelledby="workspaceHubTitle" aria-hidden="true">
+    <div class="workspace-hub-shell">
+      <div class="workspace-hub-topbar">
+        <button type="button" id="workspaceHubAtlasHome">Atlas Home</button>
+        <span class="atlas-home-eyebrow">Full Atlas Workspace</span>
+      </div>
+      <h1 id="workspaceHubTitle" tabindex="-1">Atlas Workspace</h1>
+      <p class="atlas-home-intro">What would you like to examine?</p>
+      <div class="workspace-hub-summary" aria-label="Current protein summary">
+        <div>
+          <strong id="hubProteinName">Myoglobin</strong>
+          <span class="protein-chip">PDB ID <strong id="hubPdbId">1MBN</strong></span>
+          <span class="protein-chip">Chain <strong id="hubChain">A</strong></span>
+        </div>
+        <button type="button" data-workspace-tool="gallery" data-workspace-mode="analyze">Change Structure</button>
+      </div>
+      <div class="mini-card hidden" id="recentToolCard">
+        <strong>Recently used tool</strong>
+        <p id="recentToolText"></p>
+        <button type="button" id="openRecentTool">Open recent tool</button>
+      </div>
+      <div class="workspace-tool-grid" aria-label="Atlas workspace tool groups">
+        <section class="workspace-tool-group">
+          <h2>Examine Structure</h2>
+          <div class="workspace-tool-list">
+            <article class="workspace-tool-card"><strong>Structure / Orientation</strong><span>Inspect the whole fold, helices, cofactors, and overall molecular context.</span><span class="tool-prereq">Structure required; viewer helpful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="overview" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Structure Sequence</strong><span>Read residues parsed from the coordinate file without loading the full sequence into every tool.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="overview" data-workspace-mode="analyze" data-workspace-target="structureSequencePanel">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Ramachandran / Backbone Rotation</strong><span>Explore phi/psi angles and hypothetical backbone rotations.</span><span class="tool-prereq">Structure required; selected residue useful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="torsions" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Backbone H-bonds</strong><span>Find backbone hydrogen-bond patterns that support secondary structure.</span><span class="tool-prereq">Structure and viewer recommended.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="hbonds" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Helix Patterns</strong><span>Summarize helical segments and candidate i to i+4 patterns.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="helixPatterns" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Beta / Topology</strong><span>Inspect beta-sheet topology when beta features are present.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="betaTopology" data-workspace-mode="explore">Open tool</button></div></article>
+          </div>
+        </section>
+        <section class="workspace-tool-group">
+          <h2>Investigate Chemistry</h2>
+          <div class="workspace-tool-list">
+            <article class="workspace-tool-card"><strong>Side-chain Interactions</strong><span>Inspect salt bridges, side-chain H-bonds, hydrophobic contacts, and heme contacts.</span><span class="tool-prereq">Structure required; selected residue useful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="tertiary" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Hydrophobic Core</strong><span>Identify nonpolar residues likely buried in the fold interior.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="hydrophobic" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Solvent Access</strong><span>Compare exposed and buried residues using SASA-style estimates.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="solvent" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>pH &amp; Charge</strong><span>Connect pH, pKa, fractional protonation, and net charge.</span><span class="tool-prereq">pH input; structure optional for protein mode.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="ph" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Chemistry Lens</strong><span>Inspect functional groups, resonance, charge pairing, and electron-rich atoms.</span><span class="tool-prereq">Structure context helpful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="chemistry" data-workspace-mode="explore">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Charge Surface</strong><span>Map likely acidic, basic, and neutral surface regions at the current pH.</span><span class="tool-prereq">Structure and viewer required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="chargeSurface" data-workspace-mode="explore">Open tool</button></div></article>
+          </div>
+        </section>
+        <section class="workspace-tool-group">
+          <h2>Connect Structure and Function</h2>
+          <div class="workspace-tool-list">
+            <article class="workspace-tool-card"><strong>Ligand Explorer</strong><span>Classify ligands, cofactors, ions, waters, and additives.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="ligands" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Active-Site Explorer</strong><span>Use curated role annotations where available.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="activeSite" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Conservation Analysis</strong><span>Analyze identity, homologs, alignment, and conserved positions for the current protein.</span><span class="tool-prereq">Structure and validated sequence data required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="conservation" data-workspace-mode="analyze" data-start-guide="conservation">Guide me</button><button type="button" data-workspace-tool="conservation" data-workspace-mode="analyze">Explore freely</button></div></article>
+            <article class="workspace-tool-card"><strong>Mutation Sandbox</strong><span>Compare qualitative residue-substitution consequences.</span><span class="tool-prereq">Structure required; selected residue useful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="mutation" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Structure Comparison</strong><span>Compare related structures or predicted models when data are available.</span><span class="tool-prereq">Network may be required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="comparison" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Rubisco Visual Evolution Explorer</strong><span>Explore curated RbcL sequences and alignment as a separate case study.</span><span class="tool-prereq">No current-protein structure mapping.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="sequence" data-workspace-mode="analyze">Open tool</button></div></article>
+          </div>
+        </section>
+        <section class="workspace-tool-group">
+          <h2>Analyze and Communicate</h2>
+          <div class="workspace-tool-list">
+            <article class="workspace-tool-card"><strong>Measurements: φ/ψ</strong><span>Report backbone dihedral measurements.</span><span class="tool-prereq">Structure required; selected residue useful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="torsions" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Measurements: SASA</strong><span>Report solvent-accessibility estimates.</span><span class="tool-prereq">Structure required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="solvent" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Measurements: Contacts</strong><span>Report nearby residue and cofactor contacts.</span><span class="tool-prereq">Structure and selected residue useful.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="tertiary" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Molecular Evidence Card</strong><span>Capture claim, evidence, reasoning, assumptions, and provenance.</span><span class="tool-prereq">Local only until exported.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="overview" data-workspace-mode="analyze" data-workspace-target="molecularEvidenceCard">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Export tools</strong><span>Download images, SVGs, CSV, Markdown, or printable CER reports.</span><span class="tool-prereq">Some exports require viewer or plot availability.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="overview" data-workspace-mode="analyze" data-workspace-target="downloadMarkdownSummary">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Custom PDB Loading / Structure Gallery</strong><span>Choose teaching structures or enter a PDB ID.</span><span class="tool-prereq">Network may be required for remote PDB IDs.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="gallery" data-workspace-mode="analyze">Open tool</button></div></article>
+            <article class="workspace-tool-card"><strong>Data Sources and Dataset Registry</strong><span>Inspect dataset status, provenance, and capability boundaries.</span><span class="tool-prereq">No viewer required.</span><div class="workspace-tool-actions"><button type="button" data-workspace-tool="overview" data-workspace-mode="analyze" data-workspace-target="atlasDatasetRegistrySummary">Open tool</button></div></article>
+          </div>
+        </section>
       </div>
     </div>
   </section>
@@ -2820,6 +3067,7 @@
       <p class="subhead">Interactive exploration of protein structure, chemistry, evolution, and function.</p>
       <div class="split-reset-row">
         <button id="atlasHomeButton" type="button">Atlas Home</button>
+        <button id="backToWorkspaceHub" type="button">Back to All Tools</button>
         <button id="resetSplitPane" type="button">Reset panel widths</button>
       </div>
       <div class="current-structure">
@@ -2848,6 +3096,19 @@
           <div class="context-item"><span id="contextTertiaryLabel">Selected residue</span><strong id="contextResidue">None</strong></div>
           <div class="context-item"><span id="contextModeLabel">Pathway</span><strong id="contextPathway">None selected</strong></div>
         </div>
+      </section>
+
+      <section class="section" id="focusedMoreTools" data-focused-global="true">
+        <details>
+          <summary>More tools</summary>
+          <div class="button-row">
+            <button type="button" data-workspace-tool="overview" data-workspace-mode="explore">Structure</button>
+            <button type="button" data-workspace-tool="torsions" data-workspace-mode="explore">Ramachandran</button>
+            <button type="button" data-workspace-tool="ph" data-workspace-mode="explore">pH &amp; Charge</button>
+            <button type="button" data-workspace-tool="conservation" data-workspace-mode="analyze">Conservation</button>
+            <button type="button" data-workspace-tool="gallery" data-workspace-mode="analyze">Change Structure</button>
+          </div>
+        </details>
       </section>
 
       <section class="front-door" id="frontDoor" aria-labelledby="frontDoorTitle">
@@ -2947,7 +3208,21 @@
         </div>
       </div>
 
-      <section class="section">
+      <aside class="tool-guide-panel" id="toolGuidePanel" aria-labelledby="toolGuideTitle">
+        <div class="workspace-hub-topbar">
+          <strong id="toolGuideTitle">Quick Investigation Guide</strong>
+          <button type="button" id="closeToolGuide">Exit guide</button>
+        </div>
+        <p id="toolGuideQuestion"></p>
+        <div class="guide-stepper" id="toolGuideSteps" role="tablist" aria-label="Guide steps"></div>
+        <div class="mini-card" id="toolGuideContent" aria-live="polite"></div>
+        <div class="button-row">
+          <button type="button" id="toolGuideBack">Back</button>
+          <button type="button" id="toolGuideNext">Next</button>
+        </div>
+      </aside>
+
+      <section class="section" data-focused-global="registry">
         <h2>Atlas Overview</h2>
         <p>The atlas is organized into Protein Explorer tools for loaded molecular structures, Chemical Properties tools for pH and charge, and Structure &amp; Function tools for molecular interpretation.</p>
         <details class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
@@ -3082,7 +3357,7 @@
         </div>
       </section>
 
-      <section class="section" data-student-area="analyze">
+      <section class="section" data-student-area="analyze" data-focused-global="evidence">
         <h2>Export</h2>
         <p>Capture lightweight evidence from the current structure and learning context without leaving the static page.</p>
         <div class="guided-controls">
@@ -6357,13 +6632,63 @@ END
       ]
     };
 
+    const WORKSPACE_GUIDES = {
+      conservation: {
+        title: 'Conservation Analysis Guide',
+        question: 'What has evolution preserved in this protein, and what might that reveal about structure or function?',
+        storageKey: 'bva.workspaceGuide.conservation',
+        steps: [
+          {
+            label: 'Question',
+            targetId: 'conservationPanel',
+            content: 'Frame the investigation around what evolution appears to preserve, then decide what evidence is needed before making a structural or functional interpretation.',
+            hint: 'A conservation claim needs identity, homolog choice, alignment, residue mapping, and structural context.'
+          },
+          {
+            label: 'Prepare',
+            targetId: 'currentProteinEvolutionContext',
+            content: 'Confirm the loaded protein, chain, PDB-to-UniProt identity mapping, and why identity must be established before comparing sequences.',
+            hint: 'Use the identity and readiness sections before interpreting any colors.'
+          },
+          {
+            label: 'Do',
+            targetId: 'evolutionCandidatePanel',
+            content: 'Inspect proposed homologous sequences, distinguish homolog selection from arbitrary comparison, open the validated alignment, and select one aligned position.',
+            hint: 'A useful comparison set should be related enough to align meaningfully and diverse enough to show conservation patterns.'
+          },
+          {
+            label: 'Notice',
+            targetId: 'currentProteinAlignmentPanel',
+            content: 'Compare residue identity and chemical similarity across homologs. Decide whether the selected position looks highly conserved, conservatively substituted, or variable.',
+            hint: 'Look for exact identity, chemically similar substitutions, gaps, and how many sequences support the pattern.'
+          },
+          {
+            label: 'Interpret',
+            targetId: 'currentProteinResidueInfo',
+            content: 'Ask whether conservation is more consistent with structural constraint, functional constraint, or both. Check whether the residue is buried, surface-exposed, near heme, or involved in local interactions.',
+            hint: 'Avoid overclaiming: conservation suggests importance, but the available evidence should justify the specific interpretation.'
+          },
+          {
+            label: 'Capture',
+            targetId: 'molecularEvidenceCard',
+            content: 'Save the selected alignment position, conservation category or score, residue identities across homologs, structural context, one visual or alignment excerpt, and a short evidence-based interpretation.',
+            hint: 'Use the Molecular Evidence Card or export controls only after you know what evidence supports your claim.'
+          }
+        ]
+      }
+    };
+
     const state = {
       viewer: null,
       model: null,
       atlasInitialized: false,
       atlasHomeActive: false,
+      workspaceHubActive: false,
       guidedPathwayActive: false,
       guidedViewerActive: false,
+      recentlyUsedTool: null,
+      activeToolGuide: null,
+      activeToolGuideStep: 0,
       viewerTargetId: 'viewer',
       guidedEvidence: {},
       guidedSelectedAminoAcids: new Set(['GLY', 'ASP']),
@@ -8128,9 +8453,14 @@ END
       return ['student', 'tool', 'pathway', 'activity'].some(key => params.has(key));
     }
 
+    function shouldShowWorkspaceHubFromUrl(params = new URLSearchParams(window.location.search)) {
+      return params.get('workspace') === 'hub';
+    }
+
     function shouldShowAtlasHomeFromUrl() {
       const params = new URLSearchParams(window.location.search);
       if (params.get('home') === '1') return true;
+      if (shouldShowWorkspaceHubFromUrl(params)) return false;
       if (shouldShowGuidedPathwayFromUrl(params)) return false;
       return !hasAtlasRouteParams(params);
     }
@@ -8142,15 +8472,22 @@ END
 
     function setAtlasHomeActive(active, options = {}) {
       state.atlasHomeActive = Boolean(active);
-      if (state.atlasHomeActive) state.guidedPathwayActive = false;
+      if (state.atlasHomeActive) {
+        state.guidedPathwayActive = false;
+        state.workspaceHubActive = false;
+      }
       document.body.classList.toggle('atlas-home-active', state.atlasHomeActive);
       document.body.classList.toggle('guided-pathway-active', false);
+      document.body.classList.toggle('workspace-hub-active', false);
+      document.body.classList.toggle('focused-tool-active', false);
       const app = document.querySelector('.app');
       const home = document.getElementById('atlasHome');
       const guided = document.getElementById('guidedPathway');
+      const hub = document.getElementById('workspaceHub');
       if (app) app.setAttribute('aria-hidden', state.atlasHomeActive ? 'true' : 'false');
       if (home) home.setAttribute('aria-hidden', state.atlasHomeActive ? 'false' : 'true');
       if (guided) guided.setAttribute('aria-hidden', 'true');
+      if (hub) hub.setAttribute('aria-hidden', 'true');
       document.getElementById('resumeAtlasSession')?.classList.toggle('available', Boolean(state.atlasInitialized));
       if (state.atlasHomeActive && options.focus !== false) {
         document.getElementById('atlasHomeTitle')?.focus?.({ preventScroll: true });
@@ -8159,17 +8496,48 @@ END
 
     function setGuidedPathwayActive(active, options = {}) {
       state.guidedPathwayActive = Boolean(active);
-      if (state.guidedPathwayActive) state.atlasHomeActive = false;
+      if (state.guidedPathwayActive) {
+        state.atlasHomeActive = false;
+        state.workspaceHubActive = false;
+      }
       document.body.classList.toggle('guided-pathway-active', state.guidedPathwayActive);
       document.body.classList.toggle('atlas-home-active', false);
+      document.body.classList.toggle('workspace-hub-active', false);
+      document.body.classList.toggle('focused-tool-active', false);
       const app = document.querySelector('.app');
       const home = document.getElementById('atlasHome');
       const guided = document.getElementById('guidedPathway');
+      const hub = document.getElementById('workspaceHub');
       if (app) app.setAttribute('aria-hidden', state.guidedPathwayActive ? 'true' : 'false');
       if (home) home.setAttribute('aria-hidden', 'true');
       if (guided) guided.setAttribute('aria-hidden', state.guidedPathwayActive ? 'false' : 'true');
+      if (hub) hub.setAttribute('aria-hidden', 'true');
       if (state.guidedPathwayActive && options.focus !== false) {
         document.getElementById('guidedPathwayTitle')?.focus?.({ preventScroll: true });
+      }
+    }
+
+    function setWorkspaceHubActive(active, options = {}) {
+      state.workspaceHubActive = Boolean(active);
+      if (state.workspaceHubActive) {
+        state.atlasHomeActive = false;
+        state.guidedPathwayActive = false;
+      }
+      document.body.classList.toggle('workspace-hub-active', state.workspaceHubActive);
+      document.body.classList.toggle('atlas-home-active', false);
+      document.body.classList.toggle('guided-pathway-active', false);
+      document.body.classList.toggle('focused-tool-active', !state.workspaceHubActive && !state.atlasHomeActive && !state.guidedPathwayActive);
+      const app = document.querySelector('.app');
+      const home = document.getElementById('atlasHome');
+      const guided = document.getElementById('guidedPathway');
+      const hub = document.getElementById('workspaceHub');
+      if (app) app.setAttribute('aria-hidden', state.workspaceHubActive ? 'true' : 'false');
+      if (home) home.setAttribute('aria-hidden', 'true');
+      if (guided) guided.setAttribute('aria-hidden', 'true');
+      if (hub) hub.setAttribute('aria-hidden', state.workspaceHubActive ? 'false' : 'true');
+      if (state.workspaceHubActive) renderWorkspaceHub();
+      if (state.workspaceHubActive && options.focus !== false) {
+        document.getElementById('workspaceHubTitle')?.focus?.({ preventScroll: true });
       }
     }
 
@@ -8178,9 +8546,60 @@ END
       window.history[method]({ atlasHome: true }, '', `${window.location.pathname}${window.location.hash}`);
     }
 
+    function writeWorkspaceHubRoute(push = true) {
+      const params = new URLSearchParams();
+      params.set('workspace', 'hub');
+      const method = push ? 'pushState' : 'replaceState';
+      window.history[method]({ workspaceHub: true }, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
+    }
+
     function showAtlasHome(options = {}) {
       setAtlasHomeActive(true, { focus: options.restoreFocus !== false });
       if (options.updateUrl !== false) writeAtlasHomeRoute(options.push !== false);
+    }
+
+    function showWorkspaceHub(options = {}) {
+      setWorkspaceHubActive(true, { focus: options.restoreFocus !== false });
+      if (options.updateUrl !== false) writeWorkspaceHubRoute(options.push !== false);
+    }
+
+    function recentToolStorageKey() {
+      return 'bva.workspace.recentTool';
+    }
+
+    function loadRecentlyUsedTool() {
+      if (state.recentlyUsedTool) return state.recentlyUsedTool;
+      try {
+        const parsed = JSON.parse(localStorage.getItem(recentToolStorageKey()) || 'null');
+        if (parsed?.mode && document.getElementById(`${parsed.mode}Panel`)) state.recentlyUsedTool = parsed;
+      } catch (error) {}
+      return state.recentlyUsedTool;
+    }
+
+    function saveRecentlyUsedTool(mode, studentMode = state.studentMode, targetId = '') {
+      if (!mode || !document.getElementById(`${mode}Panel`)) return;
+      state.recentlyUsedTool = {
+        mode,
+        studentMode,
+        targetId,
+        label: modeDisplayNames[mode] || mode
+      };
+      try {
+        localStorage.setItem(recentToolStorageKey(), JSON.stringify(state.recentlyUsedTool));
+      } catch (error) {}
+    }
+
+    function renderWorkspaceHub() {
+      document.getElementById('hubProteinName').textContent = state.structureLabel || 'Myoglobin';
+      document.getElementById('hubPdbId').textContent = state.structureId || '1MBN';
+      document.getElementById('hubChain').textContent = state.activeChain || state.residues[0]?.chain || 'A';
+      const recent = loadRecentlyUsedTool();
+      const card = document.getElementById('recentToolCard');
+      const text = document.getElementById('recentToolText');
+      if (card && text) {
+        card.classList.toggle('hidden', !recent);
+        if (recent) text.textContent = recent.targetId ? `${recent.label} (${recent.targetId})` : recent.label;
+      }
     }
 
     async function ensureAtlasStarted(options = {}) {
@@ -8211,6 +8630,12 @@ END
     }
 
     async function openWorkspaceFromHome(options = {}) {
+      if (!options.resume) {
+        state.studentMode = 'explore';
+        state.activePathway = null;
+        showWorkspaceHub({ restoreFocus: true, push: true });
+        return;
+      }
       state.studentMode = options.resume && state.preservedProteinWorkspace?.studentMode
         ? state.preservedProteinWorkspace.studentMode
         : 'explore';
@@ -8772,13 +9197,96 @@ END
       window.setTimeout(() => target.classList.remove('atlas-target-highlight'), 2600);
     }
 
+    function isEvidenceTarget(targetId = '') {
+      return ['molecularEvidenceCard', 'createActivityLink', 'downloadViewerImage', 'downloadPlotSvg', 'downloadMeasurementsCsv', 'downloadMarkdownSummary', 'downloadCerReport'].includes(targetId);
+    }
+
+    function isRegistryTarget(targetId = '') {
+      return targetId === 'atlasDatasetRegistrySummary';
+    }
+
+    function updateFocusedTargetVisibility(targetId = '') {
+      document.body.classList.toggle('focused-evidence-active', isEvidenceTarget(targetId));
+      document.body.classList.toggle('focused-registry-active', isRegistryTarget(targetId));
+    }
+
+    function persistGuideState() {
+      const guide = state.activeToolGuide ? WORKSPACE_GUIDES[state.activeToolGuide] : null;
+      if (!guide) return;
+      try {
+        localStorage.setItem(guide.storageKey, JSON.stringify({ step: state.activeToolGuideStep }));
+      } catch (error) {}
+    }
+
+    function restoreGuideState(guideId) {
+      const guide = WORKSPACE_GUIDES[guideId];
+      if (!guide) return 0;
+      try {
+        const parsed = JSON.parse(localStorage.getItem(guide.storageKey) || 'null');
+        return Math.max(0, Math.min(guide.steps.length - 1, Number(parsed?.step) || 0));
+      } catch (error) {
+        return 0;
+      }
+    }
+
+    function renderToolGuide() {
+      const guide = state.activeToolGuide ? WORKSPACE_GUIDES[state.activeToolGuide] : null;
+      document.body.classList.toggle('workspace-guide-active', Boolean(guide));
+      if (!guide) return;
+      const step = guide.steps[state.activeToolGuideStep] || guide.steps[0];
+      document.getElementById('toolGuideTitle').textContent = guide.title;
+      document.getElementById('toolGuideQuestion').textContent = guide.question;
+      const steps = document.getElementById('toolGuideSteps');
+      steps.innerHTML = guide.steps.map((item, index) => `<button type="button" data-guide-step="${index}" aria-current="${index === state.activeToolGuideStep ? 'step' : 'false'}">${index + 1}. ${escapeHtml(item.label)}</button>`).join('');
+      document.getElementById('toolGuideContent').innerHTML = `
+        <h3>${escapeHtml(step.label)}</h3>
+        <p>${escapeHtml(step.content)}</p>
+        <p><strong>Hint:</strong> ${escapeHtml(step.hint)}</p>
+        <button type="button" data-guide-focus="${escapeHtml(step.targetId)}">Focus the relevant control</button>
+      `;
+      document.getElementById('toolGuideBack').disabled = state.activeToolGuideStep <= 0;
+      document.getElementById('toolGuideNext').textContent = state.activeToolGuideStep >= guide.steps.length - 1 ? 'Review' : 'Next';
+    }
+
+    function startToolGuide(guideId) {
+      if (!WORKSPACE_GUIDES[guideId]) return;
+      state.activeToolGuide = guideId;
+      state.activeToolGuideStep = restoreGuideState(guideId);
+      renderToolGuide();
+      const target = WORKSPACE_GUIDES[guideId].steps[state.activeToolGuideStep]?.targetId;
+      highlightWorkspaceTarget(target);
+    }
+
+    function stopToolGuide() {
+      state.activeToolGuide = null;
+      state.activeToolGuideStep = 0;
+      document.body.classList.remove('workspace-guide-active');
+    }
+
+    function setToolGuideStep(index) {
+      const guide = state.activeToolGuide ? WORKSPACE_GUIDES[state.activeToolGuide] : null;
+      if (!guide) return;
+      state.activeToolGuideStep = Math.max(0, Math.min(guide.steps.length - 1, Number(index) || 0));
+      persistGuideState();
+      renderToolGuide();
+      const target = guide.steps[state.activeToolGuideStep]?.targetId;
+      updateFocusedTargetVisibility(target);
+      highlightWorkspaceTarget(target);
+    }
+
     async function openWorkspaceTool(mode, preferredStudentMode = '', targetId = '') {
       if (!mode || !document.getElementById(`${mode}Panel`)) return;
       if (mode === 'sequence') preserveProteinWorkspace();
       state.mode = mode;
       await ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' });
+      state.workspaceHubActive = false;
+      document.body.classList.remove('workspace-hub-active');
+      document.getElementById('workspaceHub')?.setAttribute('aria-hidden', 'true');
       setGuidedPathwayActive(false, { focus: false });
       setStudentMode(studentModeForWorkspaceTool(mode, preferredStudentMode), { restoreFocus: true, push: true });
+      document.body.classList.add('focused-tool-active');
+      updateFocusedTargetVisibility(targetId);
+      saveRecentlyUsedTool(mode, state.studentMode, targetId);
       highlightWorkspaceTarget(targetId);
     }
 
@@ -9979,6 +10487,11 @@ END
     }
 
     function applyMode(options = {}) {
+      document.body.classList.toggle('focused-tool-active', !state.atlasHomeActive && !state.workspaceHubActive && !state.guidedPathwayActive);
+      if (state.mode !== 'overview') {
+        document.body.classList.remove('focused-evidence-active');
+        document.body.classList.remove('focused-registry-active');
+      }
       if (!document.getElementById(`${state.mode}Panel`)) {
         state.mode = 'overview';
         state.activePathway = null;
@@ -16948,6 +17461,11 @@ END
         writeAtlasHomeRoute(false);
         return;
       }
+      if (shouldShowWorkspaceHubFromUrl()) {
+        setWorkspaceHubActive(true, { focus: false });
+        writeWorkspaceHubRoute(false);
+        return;
+      }
       if (shouldShowGuidedPathwayFromUrl()) {
         restoreGuidedSessionState();
         readStudentRouteFromUrl();
@@ -16977,6 +17495,31 @@ END
     });
     document.getElementById('allAtlasToolsIndex')?.addEventListener('keydown', activateButtonFromKeyboard);
 
+    document.getElementById('toolGuidePanel')?.addEventListener('click', event => {
+      const stepButton = event.target.closest('button[data-guide-step]');
+      if (stepButton) {
+        setToolGuideStep(Number(stepButton.dataset.guideStep));
+        return;
+      }
+      const focusButton = event.target.closest('button[data-guide-focus]');
+      if (focusButton) {
+        highlightWorkspaceTarget(focusButton.dataset.guideFocus);
+        return;
+      }
+      if (event.target.closest('#closeToolGuide')) {
+        stopToolGuide();
+        return;
+      }
+      if (event.target.closest('#toolGuideBack')) {
+        setToolGuideStep(state.activeToolGuideStep - 1);
+        return;
+      }
+      if (event.target.closest('#toolGuideNext')) {
+        setToolGuideStep(state.activeToolGuideStep + 1);
+      }
+    });
+    document.getElementById('toolGuidePanel')?.addEventListener('keydown', activateButtonFromKeyboard);
+
     document.getElementById('atlasHome').addEventListener('click', event => {
       const pathwayButton = event.target.closest('button[data-home-pathway]');
       if (pathwayButton) {
@@ -16994,8 +17537,39 @@ END
 
     document.getElementById('atlasHome').addEventListener('keydown', activateButtonFromKeyboard);
 
+    document.getElementById('workspaceHub').addEventListener('click', event => {
+      if (event.target.closest('#workspaceHubAtlasHome')) {
+        showAtlasHome({ restoreFocus: true, push: true });
+        return;
+      }
+      const recent = event.target.closest('#openRecentTool');
+      if (recent) {
+        const tool = loadRecentlyUsedTool();
+        if (tool) openWorkspaceTool(tool.mode, tool.studentMode, tool.targetId);
+        return;
+      }
+      const button = event.target.closest('button[data-workspace-tool]');
+      if (!button) return;
+      openWorkspaceTool(button.dataset.workspaceTool, button.dataset.workspaceMode, button.dataset.workspaceTarget).then(() => {
+        if (button.dataset.startGuide) startToolGuide(button.dataset.startGuide);
+        else stopToolGuide();
+      });
+    });
+    document.getElementById('workspaceHub').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('focusedMoreTools')?.addEventListener('click', event => {
+      const button = event.target.closest('button[data-workspace-tool]');
+      if (!button) return;
+      openWorkspaceTool(button.dataset.workspaceTool, button.dataset.workspaceMode, button.dataset.workspaceTarget).then(() => stopToolGuide());
+    });
+    document.getElementById('focusedMoreTools')?.addEventListener('keydown', activateButtonFromKeyboard);
+
     document.getElementById('atlasHomeButton').addEventListener('click', () => {
       showAtlasHome({ restoreFocus: true, push: true });
+    });
+
+    document.getElementById('backToWorkspaceHub').addEventListener('click', () => {
+      showWorkspaceHub({ restoreFocus: true, push: true });
     });
 
     document.getElementById('studentModeSwitch').addEventListener('click', event => {
@@ -17145,6 +17719,10 @@ END
         showAtlasHome({ restoreFocus: true, updateUrl: false });
         return;
       }
+      if (shouldShowWorkspaceHubFromUrl()) {
+        showWorkspaceHub({ restoreFocus: true, updateUrl: false });
+        return;
+      }
       if (shouldShowGuidedPathwayFromUrl()) {
         readStudentRouteFromUrl();
         enterGuidedPathway(state.activePathway, state.activePathwayStep, { restoreFocus: true, updateUrl: false });
@@ -17156,6 +17734,8 @@ END
       }
       setAtlasHomeActive(false, { focus: false });
       setGuidedPathwayActive(false, { focus: false });
+      state.workspaceHubActive = false;
+      document.body.classList.remove('workspace-hub-active');
       readStudentRouteFromUrl();
       renderStudentModeControls();
       renderPathwayPanel();
