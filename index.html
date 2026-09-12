@@ -51,6 +51,165 @@
       min-height: 100vh;
     }
 
+    body.atlas-home-active .app {
+      display: none;
+    }
+
+    .atlas-home {
+      align-items: center;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(86, 180, 233, .16), transparent 30%),
+        radial-gradient(circle at 82% 12%, rgba(0, 158, 115, .13), transparent 28%),
+        #eef6f7;
+      display: none;
+      min-height: 100vh;
+      padding: 48px 20px;
+    }
+
+    body.atlas-home-active .atlas-home {
+      display: grid;
+    }
+
+    .atlas-home-shell {
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid rgba(184, 200, 211, .75);
+      border-radius: 12px;
+      box-shadow: 0 18px 48px rgba(23, 32, 42, .08);
+      margin: 0 auto;
+      max-width: 1060px;
+      padding: clamp(24px, 4vw, 46px);
+      width: 100%;
+    }
+
+    .atlas-home-eyebrow {
+      color: var(--safe-blue);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      margin: 0 0 12px;
+      text-transform: uppercase;
+    }
+
+    .atlas-home h1 {
+      font-size: clamp(32px, 5vw, 54px);
+      letter-spacing: 0;
+      line-height: 1.05;
+      margin: 0;
+      max-width: 820px;
+    }
+
+    .atlas-home-intro {
+      color: var(--muted);
+      font-size: clamp(16px, 2vw, 19px);
+      line-height: 1.55;
+      margin: 18px 0 30px;
+      max-width: 760px;
+    }
+
+    .atlas-home-grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .atlas-home-card {
+      --accent: var(--safe-blue);
+      background: #fff;
+      border: 1px solid var(--line);
+      border-top: 5px solid var(--accent);
+      border-radius: 10px;
+      display: grid;
+      gap: 10px;
+      min-height: 238px;
+      padding: 16px;
+    }
+
+    .atlas-home-card:hover,
+    .atlas-home-card:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+      outline: none;
+    }
+
+    .atlas-home-card span {
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .atlas-home-card strong {
+      color: var(--ink);
+      display: block;
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .atlas-home-card p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.42;
+      margin: 0;
+    }
+
+    .atlas-home-card .journey {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .atlas-home-action {
+      align-self: end;
+      color: var(--safe-blue);
+      font-size: 13px;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    .atlas-home-workspace {
+      align-items: center;
+      background: #f8fafc;
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr auto;
+      margin-top: 18px;
+      padding: 16px;
+    }
+
+    .atlas-home-workspace h2 {
+      font-size: 18px;
+      margin: 0 0 4px;
+    }
+
+    .atlas-home-workspace p {
+      color: var(--muted);
+      margin: 0;
+    }
+
+    .atlas-home-workspace button,
+    .atlas-home-resume {
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .atlas-home-resume {
+      background: transparent;
+      color: var(--safe-blue);
+      display: none;
+      margin-top: 10px;
+      padding: 8px 0 0;
+      text-decoration: underline;
+      width: auto;
+    }
+
+    .atlas-home-resume.available {
+      display: inline-block;
+    }
+
     .app.resizing-split {
       cursor: ew-resize;
       user-select: none;
@@ -508,6 +667,11 @@
     .student-mode-learn .front-door,
     .student-mode-learn .pathway-panel {
       display: block;
+    }
+
+    .student-mode-learn .front-door.hidden,
+    .student-mode-learn .pathway-panel.hidden {
+      display: none;
     }
 
     .student-mode-learn:not(.student-pathway-active) .mode-panel {
@@ -1963,6 +2127,7 @@
     .hidden { display: none; }
 
     @media (max-width: 900px) {
+      .atlas-home-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .app { grid-template-columns: 1fr; }
       .stage { min-height: 58vh; border-right: 0; border-bottom: 1px solid var(--line); }
       .split-divider { display: none; }
@@ -1978,12 +2143,61 @@
     }
 
     @media (max-width: 520px) {
+      .atlas-home { padding: 18px 12px; }
+      .atlas-home-grid,
+      .atlas-home-workspace { grid-template-columns: 1fr; }
+      .atlas-home-card { min-height: auto; }
       .atlas-tools { grid-template-columns: 1fr; }
       .viewer-controls .button-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
+  <section class="atlas-home" id="atlasHome" aria-labelledby="atlasHomeTitle">
+    <div class="atlas-home-shell">
+      <p class="atlas-home-eyebrow">Biochemistry Visual Atlas</p>
+      <h1 id="atlasHomeTitle">See how protein structure emerges—and how it makes biology possible.</h1>
+      <p class="atlas-home-intro">Choose a guided pathway to investigate one central question. Each pathway connects molecular structure, chemical reasoning, and biological function through a sequence of interactive explorations.</p>
+      <div class="atlas-home-grid" aria-label="Guided protein-structure pathways">
+        <button class="atlas-home-card" type="button" data-home-pathway="sequence_structure" style="--accent:#0072b2">
+          <span>Pathway 1</span>
+          <strong>Building Protein Structure</strong>
+          <p>How does an amino-acid sequence become a three-dimensional structure?</p>
+          <p class="journey">Amino acids → peptide backbone → φ/ψ constraints → secondary structure</p>
+          <span class="atlas-home-action">Begin pathway</span>
+        </button>
+        <button class="atlas-home-card" type="button" data-home-pathway="folded_stability" style="--accent:#009e73">
+          <span>Pathway 2</span>
+          <strong>Stabilizing the Fold</strong>
+          <p>What holds a protein together?</p>
+          <p class="journey">Hydrogen bonding → side-chain interactions → hydrophobic core → solvent exposure</p>
+          <span class="atlas-home-action">Begin pathway</span>
+        </button>
+        <button class="atlas-home-card" type="button" data-home-pathway="ph_effects" style="--accent:#e69f00">
+          <span>Pathway 3</span>
+          <strong>Protein Charge and pH</strong>
+          <p>How does pH change a protein?</p>
+          <p class="journey">Ionization → residue charge → net charge → charge distribution</p>
+          <span class="atlas-home-action">Begin pathway</span>
+        </button>
+        <button class="atlas-home-card" type="button" data-home-pathway="structure_function" style="--accent:#cc79a7">
+          <span>Pathway 4</span>
+          <strong>Structure, Function, and Evolution</strong>
+          <p>How does structure support function—and what does evolution preserve?</p>
+          <p class="journey">Overall fold → functional site → conserved residues → mutations → function</p>
+          <span class="atlas-home-action">Begin pathway</span>
+        </button>
+      </div>
+      <div class="atlas-home-workspace">
+        <div>
+          <h2>Open the Atlas Workspace</h2>
+          <p>Choose a protein, move freely among tools, or conduct an independent analysis.</p>
+          <button class="atlas-home-resume" type="button" id="resumeAtlasSession">Resume previous session</button>
+        </div>
+        <button type="button" id="enterAtlasWorkspace">Enter workspace</button>
+      </div>
+    </div>
+  </section>
   <main class="app">
     <section class="stage">
       <div id="viewer"></div>
@@ -2011,6 +2225,7 @@
       <h1>Biochemistry Visual Atlas</h1>
       <p class="subhead">Interactive exploration of protein structure, chemistry, evolution, and function.</p>
       <div class="split-reset-row">
+        <button id="atlasHomeButton" type="button">Atlas Home</button>
         <button id="resetSplitPane" type="button">Reset panel widths</button>
       </div>
       <div class="current-structure">
@@ -2049,12 +2264,29 @@
 
       <section class="pathway-panel hidden" id="pathwayPanel" aria-live="polite">
         <h2 id="pathwayTitle">Pathway</h2>
+        <p id="pathwayQuestion"></p>
         <p id="pathwaySummary"></p>
         <ol class="pathway-objectives" id="pathwayObjectives"></ol>
         <div class="pathway-progress" id="pathwayProgress"></div>
+        <div class="mini-card" id="pathwayStepFocus">
+          <h3>Current step</h3>
+          <p>Select a pathway to begin.</p>
+        </div>
+        <details id="pathwayWhyItMatters">
+          <summary>Why this matters</summary>
+          <p id="pathwayWhyText"></p>
+        </details>
+        <details id="pathwayExploreFurther">
+          <summary>Explore further</summary>
+          <p>Open the full workspace when you are ready to compare tools, change proteins, or conduct an independent analysis.</p>
+        </details>
         <div class="button-row">
-          <button type="button" id="returnToFrontDoor">Return to front door</button>
+          <button type="button" id="backPathwayStep">Back</button>
           <button type="button" id="continuePathway">Continue pathway</button>
+        </div>
+        <div class="button-row">
+          <button type="button" id="returnToFrontDoor">Pathway chooser</button>
+          <button type="button" id="pathwayToWorkspace">Open full workspace</button>
         </div>
       </section>
 
@@ -5281,9 +5513,39 @@ END
       }
     };
 
+    const ATLAS_HOME_PATHWAY_CONTENT = {
+      sequence_structure: {
+        displayTitle: 'Building Protein Structure',
+        question: 'How does an amino-acid sequence become a three-dimensional structure?',
+        why: 'Protein structure starts with chemical building blocks. Following the chain from residues to backbone angles helps students see folding as constrained molecular reasoning, not memorized shapes.'
+      },
+      folded_stability: {
+        displayTitle: 'Stabilizing the Fold',
+        question: 'What holds a protein together?',
+        why: 'A folded protein reflects many competing interactions. This pathway helps students weigh hydrogen bonds, side-chain contacts, hydrophobic burial, and solvent exposure as evidence.'
+      },
+      ph_effects: {
+        displayTitle: 'Protein Charge and pH',
+        question: 'How does pH change a protein?',
+        why: 'Changing pH changes protonation probabilities. Students can connect pKa, residue charge, net charge, and surface distribution without treating pH as an all-or-none switch.'
+      },
+      structure_function: {
+        displayTitle: 'Structure, Function, and Evolution',
+        question: 'How does structure support function—and what does evolution preserve?',
+        why: 'Functional sites, conserved positions, and mutations make the most sense when students connect molecular structure with biochemical role and evolutionary constraint.'
+      },
+      protein_evolution: {
+        displayTitle: 'Protein Evolution',
+        question: 'How can protein sequences reveal evolution?',
+        why: 'Evolutionary comparisons require careful identity, alignment, and residue mapping. This pathway keeps those assumptions visible before interpreting conservation colors.'
+      }
+    };
+
     const state = {
       viewer: null,
       model: null,
+      atlasInitialized: false,
+      atlasHomeActive: false,
       appStatus: APP_STATES.STARTING,
       structureStatus: APP_STATES.NO_STRUCTURE,
       viewerStatus: APP_STATES.STARTING,
@@ -6982,6 +7244,78 @@ END
       if (options.updateUrl !== false) writeStudentRoute(options.push !== false);
     }
 
+    function hasAtlasRouteParams(params = new URLSearchParams(window.location.search)) {
+      return ['student', 'tool', 'pathway', 'activity'].some(key => params.has(key));
+    }
+
+    function shouldShowAtlasHomeFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('home') === '1') return true;
+      return !hasAtlasRouteParams(params);
+    }
+
+    function setAtlasHomeActive(active, options = {}) {
+      state.atlasHomeActive = Boolean(active);
+      document.body.classList.toggle('atlas-home-active', state.atlasHomeActive);
+      const app = document.querySelector('.app');
+      const home = document.getElementById('atlasHome');
+      if (app) app.setAttribute('aria-hidden', state.atlasHomeActive ? 'true' : 'false');
+      if (home) home.setAttribute('aria-hidden', state.atlasHomeActive ? 'false' : 'true');
+      document.getElementById('resumeAtlasSession')?.classList.toggle('available', Boolean(state.atlasInitialized));
+      if (state.atlasHomeActive && options.focus !== false) {
+        document.getElementById('atlasHomeTitle')?.focus?.({ preventScroll: true });
+      }
+    }
+
+    function writeAtlasHomeRoute(push = true) {
+      const method = push ? 'pushState' : 'replaceState';
+      window.history[method]({ atlasHome: true }, '', `${window.location.pathname}${window.location.hash}`);
+    }
+
+    function showAtlasHome(options = {}) {
+      setAtlasHomeActive(true, { focus: options.restoreFocus !== false });
+      if (options.updateUrl !== false) writeAtlasHomeRoute(options.push !== false);
+    }
+
+    async function ensureAtlasStarted(options = {}) {
+      if (state.atlasInitialized) {
+        setAtlasHomeActive(false, { focus: false });
+        return true;
+      }
+      setAtlasHomeActive(false, { focus: false });
+      await startAtlasWorkspace(options);
+      return true;
+    }
+
+    async function openPathwayFromHome(pathwayId) {
+      const pathway = LEARNING_PATHWAYS[pathwayId];
+      if (!pathway) return;
+      state.studentMode = 'learn';
+      state.activePathway = pathwayId;
+      state.activePathwayStep = 0;
+      state.mode = pathway.steps[0].mode;
+      await ensureAtlasStarted({ readRoute: false });
+      enterPathway(pathwayId, 0, { restoreFocus: true, push: true });
+    }
+
+    async function openWorkspaceFromHome(options = {}) {
+      state.studentMode = options.resume && state.preservedProteinWorkspace?.studentMode
+        ? state.preservedProteinWorkspace.studentMode
+        : 'explore';
+      state.activePathway = options.resume && state.preservedProteinWorkspace?.activePathway
+        ? state.preservedProteinWorkspace.activePathway
+        : null;
+      state.activePathwayStep = options.resume && Number.isInteger(state.preservedProteinWorkspace?.activePathwayStep)
+        ? state.preservedProteinWorkspace.activePathwayStep
+        : 0;
+      state.mode = options.resume && state.preservedProteinWorkspace?.mode
+        ? state.preservedProteinWorkspace.mode
+        : 'overview';
+      await ensureAtlasStarted({ readRoute: false });
+      if (options.resume && state.preservedProteinWorkspace) returnToProteinWorkspace({ restoreFocus: true, push: true });
+      else setStudentMode(state.studentMode, { restoreFocus: true, push: true });
+    }
+
     function renderStudentModeControls() {
       const app = document.querySelector('.app');
       app?.classList.remove('student-mode-learn', 'student-mode-explore', 'student-mode-analyze', 'student-pathway-active');
@@ -7015,7 +7349,9 @@ END
       const panel = document.getElementById('pathwayPanel');
       const pathway = state.activePathway ? LEARNING_PATHWAYS[state.activePathway] : null;
       if (!panel || !pathway) return;
-      document.getElementById('pathwayTitle').textContent = `${pathway.letter}. ${pathway.title}`;
+      const homeContent = ATLAS_HOME_PATHWAY_CONTENT[state.activePathway] || {};
+      document.getElementById('pathwayTitle').textContent = homeContent.displayTitle || `${pathway.letter}. ${pathway.title}`;
+      document.getElementById('pathwayQuestion').textContent = homeContent.question || pathway.title;
       document.getElementById('pathwaySummary').textContent = pathway.summary;
       const objectives = document.getElementById('pathwayObjectives');
       objectives.innerHTML = pathway.objectives.map(objective => `<li>${objective}</li>`).join('');
@@ -7027,7 +7363,13 @@ END
         item.innerHTML = `<span class="step-number">${index + 1}</span><button type="button" data-pathway-step="${index}" aria-current="${index === state.activePathwayStep ? 'step' : 'false'}"><strong>${step.label}</strong><span>${step.prompt}</span></button>`;
         progress.appendChild(item);
       });
-      document.getElementById('continuePathway').textContent = state.activePathwayStep >= pathway.steps.length - 1 ? 'Restart pathway' : 'Continue pathway';
+      const currentStep = pathway.steps[state.activePathwayStep];
+      const finalStep = state.activePathwayStep >= pathway.steps.length - 1;
+      document.getElementById('pathwayStepFocus').innerHTML = `<h3>Step ${state.activePathwayStep + 1}: ${escapeHtml(currentStep.label)}</h3><p>${escapeHtml(currentStep.prompt)}</p>${finalStep ? '<p><strong>Synthesis challenge:</strong> Write one claim that connects molecular evidence from this pathway to a biological interpretation.</p>' : ''}`;
+      document.getElementById('pathwayWhyText').textContent = homeContent.why || 'This pathway connects structural evidence with chemical reasoning and biological interpretation.';
+      const backButton = document.getElementById('backPathwayStep');
+      if (backButton) backButton.disabled = state.activePathwayStep <= 0;
+      document.getElementById('continuePathway').textContent = finalStep ? 'Restart pathway' : 'Continue pathway';
       updateLearningContext();
     }
 
@@ -14847,9 +15189,9 @@ END
       return state.viewer;
     }
 
-    function initializeCoreInterface() {
+    function initializeCoreInterface(options = {}) {
       state.initializedCore = true;
-      readStudentRouteFromUrl();
+      if (options.readRoute !== false) readStudentRouteFromUrl();
       renderFrontDoor();
       renderStudentModeControls();
       renderPathwayPanel();
@@ -14861,6 +15203,31 @@ END
       renderAtlasDatasetRegistrySummary();
       applyMode();
       writeStudentRoute(false);
+    }
+
+    async function startAtlasWorkspace(options = {}) {
+      if (state.atlasInitialized) return;
+      initializeCoreInterface({ readRoute: options.readRoute !== false });
+      try {
+        initializeViewerSubsystem();
+      } catch (error) {
+        console.warn(error);
+        markViewerUnavailable(error);
+      }
+      try {
+        await loadInitialStructure();
+        state.atlasInitialized = true;
+        setAtlasHomeActive(false, { focus: false });
+      } catch (error) {
+        state.atlasInitialized = true;
+        console.error(error);
+        state.structureStatus = error?.message?.includes('No standard amino-acid residues') ? APP_STATES.PARSING_FAILED : APP_STATES.RETRIEVAL_FAILED;
+        state.appStatus = state.structureStatus;
+        state.lastStructureError = error?.message || 'Could not load the structure files.';
+        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, and guided text tools. Use Reload Structure Coordinates when ready.', { viewer: false });
+        updateSystemStatus();
+        applyMode();
+      }
     }
 
     async function retryViewer() {
@@ -14882,24 +15249,12 @@ END
     }
 
     async function init() {
-      initializeCoreInterface();
-      try {
-        initializeViewerSubsystem();
-      } catch (error) {
-        console.warn(error);
-        markViewerUnavailable(error);
+      if (shouldShowAtlasHomeFromUrl()) {
+        setAtlasHomeActive(true, { focus: false });
+        writeAtlasHomeRoute(false);
+        return;
       }
-      try {
-        await loadInitialStructure();
-      } catch (error) {
-        console.error(error);
-        state.structureStatus = error?.message?.includes('No standard amino-acid residues') ? APP_STATES.PARSING_FAILED : APP_STATES.RETRIEVAL_FAILED;
-        state.appStatus = state.structureStatus;
-        state.lastStructureError = error?.message || 'Could not load the structure files.';
-        showViewerFallback('Structure unavailable', 'The atlas could not load the starting coordinates. You can still use pH, buffer, amino-acid, and guided text tools. Use Reload Structure Coordinates when ready.', { viewer: false });
-        updateSystemStatus();
-        applyMode();
-      }
+      await startAtlasWorkspace({ readRoute: true });
     }
 
     document.getElementById('modeTabs').addEventListener('click', event => {
@@ -14913,6 +15268,27 @@ END
       writeStudentRoute(true);
     });
     document.getElementById('modeTabs').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('atlasHome').addEventListener('click', event => {
+      const pathwayButton = event.target.closest('button[data-home-pathway]');
+      if (pathwayButton) {
+        openPathwayFromHome(pathwayButton.dataset.homePathway);
+        return;
+      }
+      if (event.target.closest('#enterAtlasWorkspace')) {
+        openWorkspaceFromHome();
+        return;
+      }
+      if (event.target.closest('#resumeAtlasSession')) {
+        openWorkspaceFromHome({ resume: true });
+      }
+    });
+
+    document.getElementById('atlasHome').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('atlasHomeButton').addEventListener('click', () => {
+      showAtlasHome({ restoreFocus: true, push: true });
+    });
 
     document.getElementById('studentModeSwitch').addEventListener('click', event => {
       const button = event.target.closest('button[data-student-mode]');
@@ -14950,7 +15326,25 @@ END
       activatePathwayStep(next, { restoreFocus: true, push: true });
     });
 
+    document.getElementById('backPathwayStep').addEventListener('click', () => {
+      if (!state.activePathway || state.activePathwayStep <= 0) return;
+      activatePathwayStep(state.activePathwayStep - 1, { restoreFocus: true, push: true });
+    });
+
+    document.getElementById('pathwayToWorkspace').addEventListener('click', () => {
+      setStudentMode('explore', { restoreFocus: true, push: true });
+    });
+
     window.addEventListener('popstate', () => {
+      if (shouldShowAtlasHomeFromUrl()) {
+        showAtlasHome({ restoreFocus: true, updateUrl: false });
+        return;
+      }
+      if (!state.atlasInitialized) {
+        startAtlasWorkspace({ readRoute: true });
+        return;
+      }
+      setAtlasHomeActive(false, { focus: false });
       readStudentRouteFromUrl();
       renderStudentModeControls();
       renderPathwayPanel();

@@ -29,18 +29,30 @@ function bodyOf(functionName) {
 }
 
 test('normal initialization separates core UI, viewer startup, and structure loading', () => {
-  const init = bodyOf('init');
-  assert(init.indexOf('initializeCoreInterface()') < init.indexOf('initializeViewerSubsystem()'));
-  assert(init.includes('await loadInitialStructure()'));
+  const startupStart = html.indexOf('async function startAtlasWorkspace');
+  const startupEnd = html.indexOf('async function retryViewer', startupStart);
+  const startup = html.slice(startupStart, startupEnd);
+  assert(startup.indexOf('initializeCoreInterface') < startup.indexOf('initializeViewerSubsystem()'));
+  assert(startup.includes('await loadInitialStructure()'));
   assert(html.includes('APP_STATES.VIEWER_READY'));
 });
 
 test('failed WebGL initialization is caught and converted to degraded mode', () => {
-  const init = bodyOf('init');
+  const startupStart = html.indexOf('async function startAtlasWorkspace');
+  const startupEnd = html.indexOf('async function retryViewer', startupStart);
+  const startup = html.slice(startupStart, startupEnd);
   const viewer = bodyOf('initializeViewerSubsystem');
-  assert(init.includes('markViewerUnavailable(error)'));
+  assert(startup.includes('markViewerUnavailable(error)'));
   assert(viewer.includes('3Dmol.js did not load'));
   assert(html.includes('APP_STATES.COORDINATES_WITHOUT_3D'));
+});
+
+test('root homepage does not start the viewer or load the default structure', () => {
+  const init = bodyOf('init');
+  assert(init.includes('shouldShowAtlasHomeFromUrl()'));
+  assert(init.includes('setAtlasHomeActive(true'));
+  assert(init.includes('return;'));
+  assert(init.indexOf('setAtlasHomeActive(true') < init.indexOf('startAtlasWorkspace'));
 });
 
 test('failed remote PDB retrieval can use the bundled myoglobin fallback', () => {

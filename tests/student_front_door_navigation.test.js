@@ -29,9 +29,26 @@ function bodyOf(functionName) {
 }
 
 test('front door asks the student-centered investigation question', () => {
+  assert(html.includes('id="atlasHome"'));
+  assert(html.includes('See how protein structure emerges—and how it makes biology possible.'));
+  assert(html.includes('Open the Atlas Workspace'));
   assert(html.includes('What would you like to investigate?'));
   assert(html.includes('id="frontDoor"'));
   assert(html.includes('id="pathwayGrid"'));
+});
+
+test('outer Atlas Home offers four quiet primary pathways and workspace entry', () => {
+  [
+    'Building Protein Structure',
+    'Stabilizing the Fold',
+    'Protein Charge and pH',
+    'Structure, Function, and Evolution'
+  ].forEach(label => assert(html.includes(label), `${label} missing from Atlas Home`));
+  assert(html.includes('data-home-pathway="sequence_structure"'));
+  assert(html.includes('data-home-pathway="folded_stability"'));
+  assert(html.includes('data-home-pathway="ph_effects"'));
+  assert(html.includes('data-home-pathway="structure_function"'));
+  assert(html.includes('id="enterAtlasWorkspace"'));
 });
 
 test('Learn Explore Analyze modes are primary navigation tabs', () => {
@@ -67,6 +84,24 @@ test('students can enter each pathway through generated pathway cards', () => {
   assert(render.includes('button.dataset.pathway = id'));
   assert(html.includes('state.activePathway = pathwayId'));
   assert(html.includes('state.mode = pathway.steps[state.activePathwayStep].mode'));
+});
+
+test('outer homepage gates scientific workspace initialization', () => {
+  const init = bodyOf('init');
+  const startupStart = html.indexOf('async function startAtlasWorkspace');
+  const startupEnd = html.indexOf('async function retryViewer', startupStart);
+  const startup = html.slice(startupStart, startupEnd);
+  assert(init.includes('shouldShowAtlasHomeFromUrl()'));
+  assert(init.includes('writeAtlasHomeRoute(false)'));
+  assert(startup.includes('initializeViewerSubsystem()'));
+  assert(startup.includes('await loadInitialStructure()'));
+  assert(html.includes('body.atlas-home-active .app'));
+});
+
+test('active pathway shell hides the internal pathway chooser', () => {
+  assert(html.includes('.student-mode-learn .front-door.hidden'));
+  assert(html.includes('.student-mode-learn .pathway-panel.hidden'));
+  assert(html.includes("document.getElementById('pathwayStepFocus')") || html.includes('id="pathwayStepFocus"'));
 });
 
 test('returning to the front door keeps structure and residue state untouched', () => {
@@ -112,6 +147,7 @@ test('direct links into pathways are parsed without needing server routing', () 
 
 test('student navigation supports Enter and Space keyboard activation', () => {
   assert(html.includes('function activateButtonFromKeyboard('));
+  assert(html.includes("document.getElementById('atlasHome').addEventListener('keydown', activateButtonFromKeyboard)"));
   assert(html.includes("document.getElementById('studentModeSwitch').addEventListener('keydown', activateButtonFromKeyboard)"));
   assert(html.includes("document.getElementById('pathwayGrid').addEventListener('keydown', activateButtonFromKeyboard)"));
   assert(html.includes("document.getElementById('pathwayProgress').addEventListener('keydown', activateButtonFromKeyboard)"));
