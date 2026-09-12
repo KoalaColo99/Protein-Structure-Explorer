@@ -6403,6 +6403,34 @@ END
       proteinPreset: ''
     };
 
+    const GUIDED_SESSION_KEY = 'bva.guidedPathway.sessionState';
+
+    function saveGuidedSessionState() {
+      try {
+        sessionStorage.setItem(GUIDED_SESSION_KEY, JSON.stringify({
+          guidedEvidence: state.guidedEvidence,
+          guidedSelectedAminoAcids: Array.from(state.guidedSelectedAminoAcids || []),
+          guidedPeptideBondPrediction: state.guidedPeptideBondPrediction,
+          guidedBackboneModel: state.guidedBackboneModel,
+          guidedSecondaryHintLevel: state.guidedSecondaryHintLevel
+        }));
+      } catch (error) {}
+    }
+
+    function restoreGuidedSessionState() {
+      try {
+        const raw = sessionStorage.getItem(GUIDED_SESSION_KEY);
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object') return;
+        if (parsed.guidedEvidence && typeof parsed.guidedEvidence === 'object') state.guidedEvidence = parsed.guidedEvidence;
+        if (Array.isArray(parsed.guidedSelectedAminoAcids)) state.guidedSelectedAminoAcids = new Set(parsed.guidedSelectedAminoAcids);
+        if (parsed.guidedPeptideBondPrediction && typeof parsed.guidedPeptideBondPrediction === 'object') state.guidedPeptideBondPrediction = { ...state.guidedPeptideBondPrediction, ...parsed.guidedPeptideBondPrediction };
+        if (parsed.guidedBackboneModel && typeof parsed.guidedBackboneModel === 'object') state.guidedBackboneModel = { ...state.guidedBackboneModel, ...parsed.guidedBackboneModel };
+        if (Number.isInteger(parsed.guidedSecondaryHintLevel)) state.guidedSecondaryHintLevel = Math.max(0, Math.min(3, parsed.guidedSecondaryHintLevel));
+      } catch (error) {}
+    }
+
     const residueNames = {
       ALA: 'Ala', ARG: 'Arg', ASN: 'Asn', ASP: 'Asp', CYS: 'Cys', GLN: 'Gln',
       GLU: 'Glu', GLY: 'Gly', HIS: 'His', ILE: 'Ile', LEU: 'Leu', LYS: 'Lys',
@@ -8606,6 +8634,7 @@ END
         prediction.feedback = '<strong>Almost.</strong> Select both N-Cα and Cα-C′ as substantially rotatable backbone bonds, and leave peptide C′-N unselected because resonance restricts that bond.';
       }
       state.guidedPeptideBondPrediction = prediction;
+      saveGuidedSessionState();
       const feedback = document.getElementById('guidedPeptidePredictionFeedback');
       if (feedback) feedback.innerHTML = prediction.feedback;
     }
@@ -8616,6 +8645,7 @@ END
       if (!Number.isFinite(numeric)) return;
       state.guidedBackboneModel[angle] = numeric;
       state.guidedBackboneModel.activeAxis = angle;
+      saveGuidedSessionState();
       document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
@@ -8626,11 +8656,13 @@ END
 
     function resetGuidedBackboneAngles() {
       state.guidedBackboneModel = { phi: -60, psi: -45, omega: 180, activeAxis: 'phi' };
+      saveGuidedSessionState();
       document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
     function showNextGuidedSecondaryHint() {
       state.guidedSecondaryHintLevel = Math.min(3, (state.guidedSecondaryHintLevel || 0) + 1);
+      saveGuidedSessionState();
       document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
@@ -8668,6 +8700,7 @@ END
         response,
         feedback
       };
+      saveGuidedSessionState();
       const feedbackBox = customStep4Response
         ? document.getElementById('guidedPeptideEvidenceFeedback')
         : document.getElementById('guidedStepFeedback');
@@ -8683,6 +8716,7 @@ END
       if (!state.guidedSelectedAminoAcids) state.guidedSelectedAminoAcids = new Set();
       if (state.guidedSelectedAminoAcids.has(code) && state.guidedSelectedAminoAcids.size > 1) state.guidedSelectedAminoAcids.delete(code);
       else state.guidedSelectedAminoAcids.add(code);
+      saveGuidedSessionState();
       document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
@@ -16536,6 +16570,7 @@ END
 
     function initializeCoreInterface(options = {}) {
       state.initializedCore = true;
+      restoreGuidedSessionState();
       if (options.readRoute !== false) readStudentRouteFromUrl();
       renderFrontDoor();
       renderStudentModeControls();
@@ -16600,6 +16635,7 @@ END
         return;
       }
       if (shouldShowGuidedPathwayFromUrl()) {
+        restoreGuidedSessionState();
         readStudentRouteFromUrl();
         enterGuidedPathway(state.activePathway, state.activePathwayStep, { restoreFocus: false, push: false });
         return;
@@ -16677,6 +16713,7 @@ END
       const axisButton = event.target.closest('button[data-guided-axis]');
       if (axisButton) {
         state.guidedBackboneModel.activeAxis = axisButton.dataset.guidedAxis;
+        saveGuidedSessionState();
         document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
         return;
       }

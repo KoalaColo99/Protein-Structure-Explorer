@@ -240,6 +240,21 @@ test('Step 7 secondary-structure feedback uses progressive hints and specific co
   assert(html.includes('function showNextGuidedSecondaryHint()'));
 });
 
+test('guided pathway evidence persists through session refresh', () => {
+  assert(html.includes("const GUIDED_SESSION_KEY = 'bva.guidedPathway.sessionState'"));
+  assert(html.includes('function saveGuidedSessionState()'));
+  assert(html.includes('function restoreGuidedSessionState()'));
+  const saveResponse = bodyOf('saveGuidedStepResponse');
+  const setAngle = bodyOf('setGuidedBackboneAngle');
+  const init = bodyOf('init');
+  assert(html.includes('state.initializedCore = true;'));
+  assert(html.includes('restoreGuidedSessionState();'));
+  assert(init.includes('restoreGuidedSessionState();'));
+  assert(init.indexOf('restoreGuidedSessionState();') < init.indexOf('readStudentRouteFromUrl();'));
+  assert(saveResponse.includes('saveGuidedSessionState()'));
+  assert(setAngle.includes('saveGuidedSessionState()'));
+});
+
 test('active pathway shell hides the internal pathway chooser', () => {
   assert(html.includes('.student-mode-learn .front-door.hidden'));
   assert(html.includes('.student-mode-learn .pathway-panel.hidden'));
