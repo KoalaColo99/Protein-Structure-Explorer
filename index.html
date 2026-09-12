@@ -1128,6 +1128,13 @@
       width: 100%;
     }
 
+    .atlas-target-highlight {
+      outline: 3px solid var(--gold);
+      outline-offset: 4px;
+      border-radius: 8px;
+      transition: outline-color 0.2s ease;
+    }
+
     .learning-context {
       display: grid;
       gap: 7px;
@@ -2765,7 +2772,7 @@
             </details>
             <details id="guidedExploreFurther">
               <summary>Explore further</summary>
-              <p id="guidedExploreText"></p>
+              <div id="guidedExploreText"></div>
             </details>
           </div>
         </section>
@@ -2906,6 +2913,12 @@
           </div>
         </div>
         <div class="atlas-group" data-student-area="analyze">
+          <h2>Curated Case Studies</h2>
+          <div class="atlas-tools">
+            <button data-mode="sequence">Rubisco Visual Evolution Explorer</button>
+          </div>
+        </div>
+        <div class="atlas-group" data-student-area="analyze">
           <h2>Analyze &amp; Advanced Tools</h2>
           <div class="atlas-tools">
             <button data-mode="gallery">Custom PDB Loading</button>
@@ -2930,7 +2943,6 @@
           <h2>Development Roadmap</h2>
           <div class="atlas-tools">
             <button disabled>AlphaFold<span class="coming-soon">Coming soon</span></button>
-            <button disabled>Rubisco Evolution Case Study<span class="coming-soon">Future development</span></button>
           </div>
         </div>
       </div>
@@ -2941,6 +2953,91 @@
         <details class="mini-card" id="atlasDatasetRegistrySummary" aria-live="polite">
           <summary><strong>Atlas Dataset Registry</strong></summary>
           <p>Loading dataset registry...</p>
+        </details>
+      </section>
+
+      <section class="section" data-student-area="analyze" id="allAtlasToolsIndex" aria-labelledby="allAtlasToolsTitle">
+        <h2 id="allAtlasToolsTitle">All Atlas Tools</h2>
+        <p>A compact index of preserved Atlas tools. Each entry opens the existing tool; it does not create a duplicate module.</p>
+        <details open>
+          <summary>Current Protein</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="explore"><strong>Structure / Orientation</strong><span>Inspect the whole fold, cofactors, and structure overview. Requires loaded coordinates; viewer improves interpretation.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="structureSequencePanel"><strong>Structure Sequence</strong><span>Read residues parsed from the loaded coordinate file. Requires loaded coordinates.</span></button>
+            <button type="button" data-atlas-tool="torsions" data-atlas-tool-mode="explore"><strong>Ramachandran / Backbone Rotation</strong><span>Inspect phi/psi angles and hypothetical backbone rotations. Requires loaded coordinates; 2D tools remain useful without WebGL.</span></button>
+            <button type="button" data-atlas-tool="hbonds" data-atlas-tool-mode="explore"><strong>Backbone H-bonds</strong><span>Find repeated backbone donor-acceptor patterns. Requires loaded coordinates and works best with the viewer.</span></button>
+            <button type="button" data-atlas-tool="tertiary" data-atlas-tool-mode="explore"><strong>Side-chain Interactions</strong><span>Inspect salt bridges, side-chain hydrogen bonds, hydrophobic contacts, and heme contacts. Requires loaded coordinates and a selected context.</span></button>
+            <button type="button" data-atlas-tool="helixPatterns" data-atlas-tool-mode="explore"><strong>Helix Patterns</strong><span>Summarize helical segments and candidate helix hydrogen-bond patterns. Requires loaded coordinates.</span></button>
+            <button type="button" data-atlas-tool="betaTopology" data-atlas-tool-mode="explore"><strong>Beta / Topology</strong><span>Inspect beta-sheet topology when beta features are present. Requires loaded coordinates.</span></button>
+            <button type="button" data-atlas-tool="solvent" data-atlas-tool-mode="explore"><strong>Solvent Access</strong><span>Compare exposed and buried residues through SASA-style estimates. Requires loaded coordinates.</span></button>
+            <button type="button" data-atlas-tool="hydrophobic" data-atlas-tool-mode="explore"><strong>Hydrophobic Core</strong><span>Identify nonpolar residues likely buried in the fold interior. Requires loaded coordinates.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Chemical Properties</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="ph" data-atlas-tool-mode="explore"><strong>pH &amp; Charge</strong><span>Connect pH, pKa, fractional protonation, and net charge. Uses pH input; loaded-protein mode uses coordinates.</span></button>
+            <button type="button" data-atlas-tool="ph" data-atlas-tool-mode="explore" data-atlas-target="aminoAcidSelect"><strong>Amino Acid Charge Explorer</strong><span>Estimate charge for a free amino acid at the selected pH. Requires pH input, not a selected protein.</span></button>
+            <button type="button" data-atlas-tool="ph" data-atlas-tool-mode="explore" data-atlas-target="peptideSequenceInput"><strong>Peptide / Protein Charge</strong><span>Use peptide and loaded-protein accounting modes. Requires pH input; protein mode uses loaded coordinates.</span></button>
+            <button type="button" data-atlas-tool="ph" data-atlas-tool-mode="explore" data-atlas-target="bufferPkaSlider"><strong>Buffer Explorer</strong><span>Explore buffer effectiveness from pH and buffer pKa. Requires pH and pKa input only.</span></button>
+            <button type="button" data-atlas-tool="chemistry" data-atlas-tool-mode="explore"><strong>Chemistry Lens</strong><span>Inspect functional groups, electron-rich atoms, resonance, and charge-pairing examples. Uses loaded coordinates for structure context.</span></button>
+            <button type="button" data-atlas-tool="chargeSurface" data-atlas-tool-mode="explore"><strong>Charge Surface</strong><span>Color likely acidic, basic, and neutral surface regions at the current pH. Requires loaded coordinates and viewer support.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Structure, Function, and Evolution</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="ligands" data-atlas-tool-mode="analyze"><strong>Ligand Explorer</strong><span>Classify ligands, cofactors, ions, waters, and additives. Requires loaded coordinates; no network is required for built-in data.</span></button>
+            <button type="button" data-atlas-tool="activeSite" data-atlas-tool-mode="analyze"><strong>Active-Site Explorer</strong><span>Use curated role annotations where available, without inferring active sites from proximity alone. Requires loaded coordinates for context.</span></button>
+            <button type="button" data-atlas-tool="conservation" data-atlas-tool-mode="analyze"><strong>Conservation Analysis</strong><span>Analyze identity, homologous sequences, alignment, and conservation for the currently loaded protein. Uses current-protein datasets and may use source-labeled external database concepts.</span></button>
+            <button type="button" data-atlas-tool="mutation" data-atlas-tool-mode="analyze"><strong>Mutation Sandbox</strong><span>Compare residue substitutions qualitatively. Requires loaded coordinates for contact evidence and selected residue context.</span></button>
+            <button type="button" data-atlas-tool="comparison" data-atlas-tool-mode="analyze"><strong>Structure Comparison</strong><span>Compare related experimental or predicted structures when comparison data are available. May need network access for remote comparisons.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Measurements</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="torsions" data-atlas-tool-mode="analyze"><strong>φ/ψ</strong><span>Report backbone dihedral measurements for residues with required atoms. Requires loaded coordinates and residue selection for focused interpretation.</span></button>
+            <button type="button" data-atlas-tool="solvent" data-atlas-tool-mode="analyze"><strong>SASA</strong><span>Report solvent-accessibility estimates. Requires loaded coordinates and is most useful with a selected residue.</span></button>
+            <button type="button" data-atlas-tool="tertiary" data-atlas-tool-mode="analyze"><strong>Contacts</strong><span>Report nearby residue and cofactor contacts. Requires loaded coordinates and a selected residue or feature.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Curated Case Studies</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="sequence" data-atlas-tool-mode="analyze"><strong>Rubisco Visual Evolution Explorer</strong><span>Explore curated RbcL reference sequences and alignment as a separate case study. Does not map onto the currently loaded structure.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Evidence and Export</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="molecularEvidenceCard"><strong>Molecular Evidence Card</strong><span>Capture structure provenance, observations, claim, evidence, reasoning, and assumptions. Stored locally unless exported.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="createActivityLink"><strong>Activity Link</strong><span>Create a safe instructor starting-state link. Does not encode student responses automatically.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="downloadViewerImage"><strong>Viewer Image</strong><span>Download a PNG of the current molecular view. Requires viewer availability.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="downloadPlotSvg"><strong>Plot SVG</strong><span>Download an SVG when an eligible 2D plot is available.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="downloadMeasurementsCsv"><strong>Measurements CSV</strong><span>Download selected residue and measurement data when available.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="downloadMarkdownSummary"><strong>Markdown Summary</strong><span>Download a text-based analysis summary with visual evidence described in words.</span></button>
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="downloadCerReport"><strong>Printable CER</strong><span>Download an answer-neutral claim-evidence-reasoning report for submission.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Data and Provenance</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="overview" data-atlas-tool-mode="analyze" data-atlas-target="atlasDatasetRegistrySummary"><strong>Data Sources and Dataset Registry</strong><span>Inspect dataset status, capability availability, provenance notes, and explicit unavailable boundaries.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Advanced Structure Selection</summary>
+          <div class="list">
+            <button type="button" data-atlas-tool="gallery" data-atlas-tool-mode="analyze"><strong>Structure Gallery / Custom PDB Loading</strong><span>Choose teaching structures or enter a PDB ID. Network access may be needed for remote structure retrieval.</span></button>
+          </div>
+        </details>
+        <details>
+          <summary>Legacy and Under Review</summary>
+          <div class="list">
+            <div class="structure-pill"><span><strong>Legacy Guided Lesson</strong><br>Implementation is preserved for instructor review but intentionally hidden from student navigation during the new guided-pathway rollout.</span></div>
+            <div class="structure-pill"><span><strong>AlphaFold roadmap</strong><br>Unavailable in this static Atlas build until a reviewed predicted-structure workflow is added.</span></div>
+          </div>
         </details>
       </section>
 
@@ -6200,6 +6297,66 @@ END
       }
     };
 
+    const modeDisplayNames = {
+      overview: 'Structure / Orientation',
+      hbonds: 'Backbone H-bonds',
+      helixPatterns: 'Helix Patterns',
+      torsions: 'Ramachandran / Backbone Rotation',
+      tertiary: 'Side-chain Interactions',
+      chemistry: 'Chemistry Lens',
+      ph: 'pH & Charge',
+      solvent: 'Solvent Access',
+      hydrophobic: 'Hydrophobic Core',
+      chargeSurface: 'Charge Surface',
+      conservation: 'Conservation Analysis',
+      mutation: 'Mutation Sandbox',
+      ligands: 'Ligand Explorer',
+      activeSite: 'Active-Site Explorer',
+      comparison: 'Structure Comparison',
+      lesson: 'Legacy Guided Lesson',
+      gallery: 'Structure Gallery / Custom PDB Loading',
+      betaTopology: 'Beta / Topology',
+      sequence: 'Rubisco Visual Evolution Explorer'
+    };
+
+    const PATHWAY_EXPLORE_FURTHER_TOOLS = {
+      sequence_structure: [
+        { toolMode: 'torsions', toolName: 'Ramachandran' },
+        { toolMode: 'hbonds', toolName: 'Backbone H-bonds' },
+        { toolMode: 'helixPatterns', toolName: 'Helix Patterns' },
+        { toolMode: 'betaTopology', toolName: 'Beta / Topology' }
+      ],
+      folded_stability: [
+        { toolMode: 'hbonds', toolName: 'Backbone H-bonds' },
+        { toolMode: 'tertiary', toolName: 'Side-chain Interactions' },
+        { toolMode: 'hydrophobic', toolName: 'Hydrophobic Core' },
+        { toolMode: 'solvent', toolName: 'Solvent Access' },
+        { toolMode: 'helixPatterns', toolName: 'Helix Patterns' },
+        { toolMode: 'betaTopology', toolName: 'Beta / Topology' }
+      ],
+      ph_effects: [
+        { toolMode: 'ph', toolName: 'pH & Charge' },
+        { toolMode: 'ph', toolName: 'Amino Acid Charge Explorer', targetId: 'aminoAcidSelect' },
+        { toolMode: 'ph', toolName: 'Peptide/Protein Charge', targetId: 'peptideSequenceInput' },
+        { toolMode: 'ph', toolName: 'Buffer Explorer', targetId: 'bufferPkaSlider' },
+        { toolMode: 'chargeSurface', toolName: 'Charge Surface' }
+      ],
+      structure_function: [
+        { toolMode: 'ligands', toolName: 'Ligand Explorer' },
+        { toolMode: 'activeSite', toolName: 'Active-Site Explorer' },
+        { toolMode: 'chemistry', toolName: 'Chemistry Lens' },
+        { toolMode: 'conservation', toolName: 'Conservation Analysis' },
+        { toolMode: 'mutation', toolName: 'Mutation Sandbox' },
+        { toolMode: 'comparison', toolName: 'Structure Comparison' },
+        { toolMode: 'sequence', toolName: 'Rubisco Visual Evolution Explorer' },
+        { toolMode: 'overview', toolName: 'Molecular Evidence Card', studentMode: 'analyze', targetId: 'molecularEvidenceCard' }
+      ],
+      protein_evolution: [
+        { toolMode: 'conservation', toolName: 'Conservation Analysis' },
+        { toolMode: 'sequence', toolName: 'Rubisco Visual Evolution Explorer' }
+      ]
+    };
+
     const state = {
       viewer: null,
       model: null,
@@ -7856,7 +8013,7 @@ END
         lesson: 'Guided lesson',
         gallery: 'Structure gallery',
         betaTopology: 'Beta sheet topology',
-        sequence: 'Inactive sequence case study'
+        sequence: 'Rubisco Visual Evolution Explorer'
       };
       if (state.appStatus === APP_STATES.COORDINATES_LOADING) status.textContent = `Loading ${state.structureId} coordinates...`;
       else if (state.appStatus === APP_STATES.RETRIEVAL_FAILED) status.textContent = `Structure retrieval failed. ${state.lastStructureError || 'Check the PDB ID or network connection.'}`;
@@ -7890,6 +8047,17 @@ END
       const secondaryLabel = document.getElementById('contextSecondaryLabel');
       const tertiaryLabel = document.getElementById('contextTertiaryLabel');
       const modeLabel = document.getElementById('contextModeLabel');
+      if (state.mode === 'sequence') {
+        if (primaryLabel) primaryLabel.textContent = 'Case study';
+        if (secondaryLabel) secondaryLabel.textContent = 'Reference sequence';
+        if (tertiaryLabel) tertiaryLabel.textContent = 'Structure workspace preserved';
+        if (modeLabel) modeLabel.textContent = 'Case study';
+        document.getElementById('contextStructure').textContent = 'Rubisco RbcL Evolution';
+        document.getElementById('contextChain').textContent = rubiscoReferenceSequenceLabel();
+        document.getElementById('contextResidue').textContent = `${state.structureLabel} (${state.structureId})`;
+        document.getElementById('contextPathway').textContent = 'Rubisco RbcL Evolution';
+        return;
+      }
       if (primaryLabel) primaryLabel.textContent = 'Structure';
       if (secondaryLabel) secondaryLabel.textContent = 'Chain';
       if (tertiaryLabel) tertiaryLabel.textContent = 'Selected residue';
@@ -8511,9 +8679,9 @@ END
         { toolMode: 'solvent', toolName: 'Solvent Access', note: 'Use the preserved SASA view to compare exposed surfaces with buried residues.' }
       ],
       ph_effects: [
-        { toolMode: 'ph', toolName: 'Amino Acid Charge Explorer within pH & Charge', note: 'Use the preserved amino-acid charge explorer to compare pH, pKa, protonation probability, and formal charge icons.' },
-        { toolMode: 'ph', toolName: 'Loaded Protein pH Example', note: 'Use the preserved protein pH example to inspect a selected ionizable residue from the loaded structure.' },
-        { toolMode: 'ph', toolName: 'pH & Charge protein/peptide accounting', note: 'Use the preserved accounting tables to reason from individual groups to net charge.' },
+        { toolMode: 'ph', toolName: 'Amino Acid Charge Explorer within pH & Charge', targetId: 'aminoAcidSelect', note: 'Use the preserved amino-acid charge explorer to compare pH, pKa, protonation probability, and formal charge icons.' },
+        { toolMode: 'ph', toolName: 'Loaded Protein pH Example', targetId: 'ionResidue', note: 'Use the preserved protein pH example to inspect a selected ionizable residue from the loaded structure.' },
+        { toolMode: 'ph', toolName: 'pH & Charge protein/peptide accounting', targetId: 'peptideSequenceInput', note: 'Use the preserved accounting tables to reason from individual groups to net charge.' },
         { toolMode: 'chargeSurface', toolName: 'Charge Surface', note: 'Use the preserved charge-surface view to locate acidic and basic surface regions at the current pH.' }
       ],
       structure_function: [
@@ -8576,7 +8744,7 @@ END
           <p><strong>Intended learning objective:</strong> ${escapeHtml(objective)}</p>
           <p><strong>Guided activity coming next.</strong> This temporary scaffold intentionally does not substitute an unrelated activity.</p>
           <p>${escapeHtml(tool.note)}</p>
-          <div class="guided-step-controls">${tools.map(item => `<button type="button" data-open-guided-tool="${escapeHtml(item.toolMode)}" data-open-guided-student-mode="${escapeHtml(item.studentMode || '')}">Open the existing ${escapeHtml(item.toolName)} in the full workspace</button>`).join('')}</div>
+          <div class="guided-step-controls">${tools.map(item => `<button type="button" data-open-guided-tool="${escapeHtml(item.toolMode)}" data-open-guided-student-mode="${escapeHtml(item.studentMode || '')}" data-open-guided-target="${escapeHtml(item.targetId || '')}">Open the existing ${escapeHtml(item.toolName)} in the full workspace</button>`).join('')}</div>
         </div>
       </div>`;
     }
@@ -8588,12 +8756,34 @@ END
         : 'explore';
     }
 
-    async function openGuidedPlaceholderTool(mode, preferredStudentMode = '') {
+    function renderExploreFurtherToolLinks(pathwayId) {
+      const tools = PATHWAY_EXPLORE_FURTHER_TOOLS[pathwayId] || [];
+      if (!tools.length) return '<p>Open the full workspace when you want the full tool set, custom structures, measurements, or exports.</p>';
+      return `<p>Open preserved workspace tools when you are ready to extend this pathway.</p><div class="guided-step-controls">${tools.map(item => `<button type="button" data-open-guided-tool="${escapeHtml(item.toolMode)}" data-open-guided-student-mode="${escapeHtml(item.studentMode || '')}" data-open-guided-target="${escapeHtml(item.targetId || '')}">${escapeHtml(item.toolName)}</button>`).join('')}</div>`;
+    }
+
+    function highlightWorkspaceTarget(targetId) {
+      const target = targetId ? document.getElementById(targetId) : null;
+      if (!target) return;
+      const focusTarget = typeof target.focus === 'function' ? target : target.querySelector?.('button, input, select, textarea, [tabindex]');
+      target.classList.add('atlas-target-highlight');
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      setTimeout(() => focusTarget?.focus?.({ preventScroll: true }), 50);
+      window.setTimeout(() => target.classList.remove('atlas-target-highlight'), 2600);
+    }
+
+    async function openWorkspaceTool(mode, preferredStudentMode = '', targetId = '') {
       if (!mode || !document.getElementById(`${mode}Panel`)) return;
+      if (mode === 'sequence') preserveProteinWorkspace();
       state.mode = mode;
       await ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' });
       setGuidedPathwayActive(false, { focus: false });
       setStudentMode(studentModeForWorkspaceTool(mode, preferredStudentMode), { restoreFocus: true, push: true });
+      highlightWorkspaceTarget(targetId);
+    }
+
+    async function openGuidedPlaceholderTool(mode, preferredStudentMode = '', targetId = '') {
+      await openWorkspaceTool(mode, preferredStudentMode, targetId);
     }
 
     function guidedVisualizationMarkup(pathwayId, stepIndex, step) {
@@ -8664,9 +8854,7 @@ END
         element.setAttribute('aria-hidden', isPeptideRigidityStep ? 'true' : 'false');
       });
       document.getElementById('guidedWhyText').textContent = homeContent.why || 'This step connects molecular evidence with chemical reasoning.';
-      document.getElementById('guidedExploreText').textContent = guidedStepNeedsViewer(step)
-        ? 'Open the full workspace to use the complete molecular viewer, measurements, and analysis tools for this step.'
-        : 'Open the full workspace when you want the full tool set, custom structures, measurements, or exports.';
+      document.getElementById('guidedExploreText').innerHTML = renderExploreFurtherToolLinks(state.activePathway);
       document.getElementById('guidedBackStep').disabled = state.activePathwayStep <= 0;
       document.getElementById('guidedContinueStep').textContent = finalStep ? 'Restart pathway' : 'Continue';
       const fill = document.getElementById('guidedProgressFill');
@@ -8849,6 +9037,11 @@ END
       const finalStep = state.activePathwayStep >= pathway.steps.length - 1;
       document.getElementById('pathwayStepFocus').innerHTML = `<h3>Step ${state.activePathwayStep + 1}: ${escapeHtml(currentStep.label)}</h3><p>${escapeHtml(currentStep.prompt)}</p>${finalStep ? '<p><strong>Synthesis challenge:</strong> Write one claim that connects molecular evidence from this pathway to a biological interpretation.</p>' : ''}`;
       document.getElementById('pathwayWhyText').textContent = homeContent.why || 'This pathway connects structural evidence with chemical reasoning and biological interpretation.';
+      const exploreFurther = document.getElementById('pathwayExploreFurther');
+      if (exploreFurther) {
+        const summary = exploreFurther.querySelector('summary')?.outerHTML || '<summary>Explore further</summary>';
+        exploreFurther.innerHTML = `${summary}${renderExploreFurtherToolLinks(state.activePathway)}`;
+      }
       const backButton = document.getElementById('backPathwayStep');
       if (backButton) backButton.disabled = state.activePathwayStep <= 0;
       document.getElementById('continuePathway').textContent = finalStep ? 'Restart pathway' : 'Continue pathway';
@@ -8902,8 +9095,12 @@ END
       } else {
         state.activePathway = null;
       }
-      if (!hasPathway && mode && mode !== 'sequence' && document.getElementById(`${mode}Panel`)) {
+      if (!hasPathway && mode && document.getElementById(`${mode}Panel`)) {
         state.mode = mode;
+        if (mode === 'sequence') {
+          preserveProteinWorkspace();
+          state.studentMode = 'analyze';
+        }
       }
     }
 
@@ -8958,7 +9155,6 @@ END
 
     function safeMode(value) {
       const mode = String(value || '');
-      if (mode === 'sequence') return null;
       return document.getElementById(`${mode}Panel`) ? mode : null;
     }
 
@@ -9783,7 +9979,7 @@ END
     }
 
     function applyMode(options = {}) {
-      if (state.mode === 'sequence' || !document.getElementById(`${state.mode}Panel`)) {
+      if (!document.getElementById(`${state.mode}Panel`)) {
         state.mode = 'overview';
         state.activePathway = null;
       }
@@ -9801,6 +9997,17 @@ END
         if (selected) button.setAttribute('aria-current', 'page');
         else button.removeAttribute('aria-current');
       });
+
+      if (state.mode === 'sequence') {
+        hideViewerFallback();
+        renderCuratedSequencePanel();
+        updateSequenceStageOverview();
+        updateLearningContext();
+        updateSystemStatus();
+        renderMolecularEvidenceCard();
+        if (options.restoreFocus) focusActivePanel();
+        return;
+      }
 
       if (!hasParsedCoordinates() && modeNeedsViewer(state.mode)) {
         showViewerFallback('No structure coordinates available', viewerUnavailableMessage(), { viewer: false });
@@ -16753,6 +16960,7 @@ END
     document.getElementById('modeTabs').addEventListener('click', event => {
       const button = event.target.closest('button[data-mode]');
       if (!button) return;
+      if (button.dataset.mode === 'sequence') preserveProteinWorkspace();
       state.activePathway = null;
       state.mode = button.dataset.mode;
       if (state.mode !== 'hbonds') state.selectedHbond = null;
@@ -16761,6 +16969,13 @@ END
       writeStudentRoute(true);
     });
     document.getElementById('modeTabs').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('allAtlasToolsIndex')?.addEventListener('click', event => {
+      const button = event.target.closest('button[data-atlas-tool]');
+      if (!button) return;
+      openWorkspaceTool(button.dataset.atlasTool, button.dataset.atlasToolMode, button.dataset.atlasTarget);
+    });
+    document.getElementById('allAtlasToolsIndex')?.addEventListener('keydown', activateButtonFromKeyboard);
 
     document.getElementById('atlasHome').addEventListener('click', event => {
       const pathwayButton = event.target.closest('button[data-home-pathway]');
@@ -16804,7 +17019,7 @@ END
     document.getElementById('guidedPathwayActions').addEventListener('click', event => {
       const toolButton = event.target.closest('button[data-open-guided-tool]');
       if (toolButton) {
-        openGuidedPlaceholderTool(toolButton.dataset.openGuidedTool, toolButton.dataset.openGuidedStudentMode);
+        openGuidedPlaceholderTool(toolButton.dataset.openGuidedTool, toolButton.dataset.openGuidedStudentMode, toolButton.dataset.openGuidedTarget);
         return;
       }
       const advancedButton = event.target.closest('button[data-guided-advanced-evolution]');
@@ -16838,7 +17053,7 @@ END
       }
       const placeholderToolButton = event.target.closest('button[data-open-guided-tool]');
       if (placeholderToolButton) {
-        openGuidedPlaceholderTool(placeholderToolButton.dataset.openGuidedTool, placeholderToolButton.dataset.openGuidedStudentMode);
+        openGuidedPlaceholderTool(placeholderToolButton.dataset.openGuidedTool, placeholderToolButton.dataset.openGuidedStudentMode, placeholderToolButton.dataset.openGuidedTarget);
         return;
       }
       const angleStepButton = event.target.closest('button[data-guided-angle-step]');

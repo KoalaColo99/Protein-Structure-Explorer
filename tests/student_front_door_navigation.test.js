@@ -189,8 +189,10 @@ test('non-sequence guided pathways use honest placeholders mapped to existing to
   assert(placeholder.includes('data-open-guided-tool'));
   assert(placeholder.includes('data-open-guided-student-mode'));
   assert(html.includes("event.target.closest('button[data-open-guided-tool]')"));
-  assert(openTool.includes("ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' })"));
-  assert(openTool.includes('setStudentMode(studentModeForWorkspaceTool(mode, preferredStudentMode)'));
+  assert(openTool.includes('openWorkspaceTool(mode, preferredStudentMode, targetId)'));
+  const sharedOpenTool = bodyOf('openWorkspaceTool');
+  assert(sharedOpenTool.includes("ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' })"));
+  assert(sharedOpenTool.includes('setStudentMode(studentModeForWorkspaceTool(mode, preferredStudentMode)'));
 });
 
 test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagram labels', () => {
@@ -351,7 +353,8 @@ test('direct links into pathways are parsed without needing server routing', () 
   assert(read.includes('state.activePathwayStep'));
   assert(read.includes('state.mode = pathwaySteps[state.activePathwayStep].mode'));
   assert(read.includes("if (['learn', 'explore', 'analyze'].includes(studentMode)) state.studentMode = studentMode"));
-  assert(read.includes("if (!hasPathway && mode && mode !== 'sequence' && document.getElementById(`${mode}Panel`))"));
+  assert(read.includes("if (!hasPathway && mode && document.getElementById(`${mode}Panel`))"));
+  assert(read.includes("if (mode === 'sequence')"));
   assert(html.includes('<button data-mode="conservation">Conservation Analysis</button>'));
 });
 
@@ -371,16 +374,15 @@ test('direct access to individual expert tools remains available in Explore or A
   ['overview', 'torsions', 'hbonds', 'tertiary', 'ph', 'conservation', 'gallery'].forEach(mode => {
     assert(html.includes(`data-mode="${mode}"`), `${mode} direct tool missing`);
   });
-  assert(!html.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
+  assert(html.includes('data-mode="sequence">Rubisco Visual Evolution Explorer</button>'));
 });
 
 test('unfinished modules are moved out of primary Learn and Explore navigation', () => {
   const roadmapStart = html.indexOf('<h2>Development Roadmap</h2>');
   assert(roadmapStart > 0, 'Development Roadmap is missing');
   const roadmap = html.slice(roadmapStart, html.indexOf('</div>', roadmapStart + 300));
-  ['AlphaFold', 'Rubisco Evolution Case Study'].forEach(label => {
-    assert(roadmap.includes(label), `${label} should be in the roadmap area`);
-  });
+  assert(roadmap.includes('AlphaFold'), 'AlphaFold should be in the roadmap area');
+  assert(!roadmap.includes('Rubisco Evolution Case Study'), 'Rubisco should be restored as a curated case study, not roadmap-only');
 });
 
 test('Analyze includes data and image export affordances', () => {

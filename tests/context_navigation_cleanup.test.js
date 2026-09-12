@@ -30,18 +30,19 @@ function bodyOf(functionName) {
   return html.slice(start, next >= 0 ? next : start + 5000);
 }
 
-test('Rubisco has no active navigation route or tool button', () => {
-  assert(!html.includes('data-mode="sequence">Open Rubisco Evolution Case Study</button>'));
-  assert(!html.includes('data-mode="sequence">Sequence Data</button>'));
+test('Rubisco is restored only as a curated case-study route', () => {
+  assert(html.includes('data-mode="sequence">Rubisco Visual Evolution Explorer</button>'));
   const currentProteinGroup = sliceBetween('<h2>Explore Current Protein</h2>', '<h2>Explore Chemical Properties</h2>');
   assert(!currentProteinGroup.includes('Rubisco'));
+  const caseStudies = sliceBetween('<h2>Curated Case Studies</h2>', '<h2>Analyze &amp; Advanced Tools</h2>');
+  assert(caseStudies.includes('Rubisco Visual Evolution Explorer'));
   const analyze = sliceBetween('<h2>Analyze &amp; Advanced Tools</h2>', '<h2>Data &amp; Export Readiness</h2>');
-  assert(!analyze.includes('Rubisco'));
+  assert(!analyze.includes('Rubisco Visual Evolution Explorer'));
 });
 
-test('Rubisco appears only as a disabled future case study in the roadmap', () => {
+test('Rubisco is no longer treated as a disabled future-only roadmap item', () => {
   const roadmap = html.slice(html.indexOf('<h2>Development Roadmap</h2>'), html.indexOf('</div>', html.indexOf('<h2>Development Roadmap</h2>') + 350));
-  assert(roadmap.includes('<button disabled>Rubisco Evolution Case Study<span class="coming-soon">Future development</span></button>'));
+  assert(!roadmap.includes('Rubisco Evolution Case Study<span class="coming-soon">Future development</span>'));
   assert(!roadmap.includes('data-mode="sequence"'));
 });
 
@@ -55,14 +56,17 @@ test('evolution pathway is current-protein centered', () => {
   assert(!pathwayBlock.includes("mode: 'sequence'"));
 });
 
-test('sequence route is rejected by URL and activity-state validation', () => {
+test('sequence route is accepted only as a curated case-study workspace mode', () => {
   const safeMode = bodyOf('safeMode');
-  assert(safeMode.includes("if (mode === 'sequence') return null"));
+  assert(!safeMode.includes("if (mode === 'sequence') return null"));
   const read = bodyOf('readStudentRouteFromUrl');
-  assert(read.includes("mode !== 'sequence'"));
+  assert(!read.includes("mode !== 'sequence'"));
+  assert(read.includes("if (mode === 'sequence')"));
+  assert(read.includes("state.studentMode = 'analyze'"));
   const apply = bodyOf('applyMode');
-  assert(apply.includes("state.mode === 'sequence'"));
-  assert(apply.includes("state.mode = 'overview'"));
+  assert(!apply.includes("state.mode === 'sequence' || !document.getElementById"));
+  assert(apply.includes("if (state.mode === 'sequence')"));
+  assert(apply.includes('renderCuratedSequencePanel()'));
 });
 
 test('current-protein evolution identity model clears stale conservation state', () => {
