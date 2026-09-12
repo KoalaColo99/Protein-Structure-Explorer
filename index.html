@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="atlas-build" content="2026-09-12-homolog-1">
   <title>Biochemistry Visual Atlas</title>
   <script src="./3Dmol-min.js"></script>
   <script src="./curated_sequence_validation.js"></script>
@@ -2870,6 +2871,7 @@
   <section class="atlas-home" id="atlasHome" aria-labelledby="atlasHomeTitle">
     <div class="atlas-home-shell">
       <p class="atlas-home-eyebrow">Biochemistry Visual Atlas</p>
+      <p class="method-note">Build: 2026-09-12-homolog-1</p>
       <h1 id="atlasHomeTitle">See how protein structure emerges—and how it makes biology possible.</h1>
       <p class="atlas-home-intro">Choose a guided pathway to investigate one central question. Each pathway connects molecular structure, chemical reasoning, and biological function through a sequence of interactive explorations.</p>
       <div class="atlas-home-grid" aria-label="Guided protein-structure pathways">
@@ -4166,6 +4168,14 @@ rotation axis B—C</div>
         <div class="mini-card" id="currentProteinEvolutionContext" aria-live="polite">
           <h3>Current Protein Context</h3>
           <p>Resolving the loaded structure and chain...</p>
+        </div>
+        <div class="mini-card" id="conservationProteinWorkspace" aria-live="polite">
+          <h3>Conservation Protein Workspace</h3>
+          <p id="conservationProteinContextLine">Current structure: Myoglobin (1MBN), chain A.</p>
+          <div class="button-row">
+            <button type="button" id="openConservationProteinChooser" aria-expanded="false" aria-controls="conservationProteinChooser">Change Protein</button>
+          </div>
+          <div id="conservationProteinChooser" class="hidden"></div>
         </div>
         <div class="mini-card">
           <h3>Source-Labeled Workflow</h3>
@@ -6346,6 +6356,8 @@ END
 
   <script>
     const ATLAS_VERSION = '2026.08-phase4';
+    const ATLAS_BUILD_ID = '2026-09-12-homolog-1';
+    window.BIOCHEMISTRY_VISUAL_ATLAS_BUILD = ATLAS_BUILD_ID;
     const PALETTES = {
       classic: {
         hbond: '#0891b2',
@@ -6713,7 +6725,11 @@ END
       lastViewerError: '',
       initializedCore: false,
       pendingActivityState: null,
+      pendingRouteProtein: null,
       activityValidationWarnings: [],
+      structureLoadToken: 0,
+      evolutionIdentityToken: 0,
+      conservationProteinChooserOpen: false,
       structureId: '1MBN',
       structureLabel: 'Myoglobin',
       structureSource: 'embedded local myoglobin',
@@ -8300,7 +8316,11 @@ END
     }
 
     function modeNeedsViewer(mode = state.mode) {
-      return !['sequence', 'ph', 'gallery'].includes(mode);
+      return !['sequence', 'ph', 'gallery', 'conservation'].includes(mode);
+    }
+
+    function modeNeedsCoordinates(mode = state.mode) {
+      return ['conservation'].includes(mode);
     }
 
     function viewerUnavailableMessage() {
@@ -8646,15 +8666,30 @@ END
     async function ensureAtlasStarted(options = {}) {
       if (state.atlasInitialized) {
         showFocusedWorkspaceSurface();
-        if (options.viewerTargetId && state.viewerTargetId !== options.viewerTargetId) {
+        if (options.viewerTargetId && (!hasViewer() || state.viewerTargetId !== options.viewerTargetId)) {
           initializeViewerSubsystem(options.viewerTargetId);
-          renderCurrentModel();
+          if (hasParsedCoordinates()) renderCurrentModel();
         }
         return true;
       }
       if (options.viewerTargetId) state.viewerTargetId = options.viewerTargetId;
       showFocusedWorkspaceSurface();
       await startAtlasWorkspace(options);
+      return true;
+    }
+
+    async function ensureCoordinatesStarted(options = {}) {
+      if (!state.initializedCore) initializeCoreInterface({ readRoute: options.readRoute !== false });
+      else if (options.readRoute !== false) readStudentRouteFromUrl();
+      showFocusedWorkspaceSurface();
+      const requested = state.pendingRouteProtein;
+      const needsRequestedStructure = requested?.pdbId && safePdbId(requested.pdbId) !== safePdbId(state.structureId);
+      const needsRequestedChain = requested?.chain && hasParsedCoordinates() && normalizeProteinChainId(requested.chain) !== normalizeProteinChainId(state.activeChain);
+      if (!hasParsedCoordinates() || needsRequestedStructure || needsRequestedChain) {
+        await loadInitialStructure();
+      }
+      state.atlasInitialized = true;
+      applyMode({ restoreFocus: false });
       return true;
     }
 
@@ -8675,6 +8710,7 @@ END
 
     async function ensureWorkspaceToolReady(mode, options = {}) {
       if (modeNeedsViewer(mode)) return ensureAtlasStarted(options);
+      if (modeNeedsCoordinates(mode)) return ensureCoordinatesStarted(options);
       return ensureCoreInterfaceStarted(options);
     }
 
@@ -9612,10 +9648,28 @@ END
       updateLearningContext();
     }
 
+    function routeProteinFromParams(params) {
+      const pdbId = safePdbId(params.get('pdb'));
+      const chain = normalizeProteinChainId(params.get('chain') || '');
+      if (!pdbId) return null;
+      return { pdbId, chain: chain || 'A' };
+    }
+
+    function shouldPersistProteinInRoute() {
+      return Boolean(state.structureId && !state.atlasHomeActive && (state.atlasInitialized || state.mode === 'conservation' || state.pendingRouteProtein));
+    }
+
     function writeStudentRoute(push = true) {
       const params = new URLSearchParams(window.location.search);
       params.set('student', state.studentMode);
       params.set('tool', state.mode);
+      if (shouldPersistProteinInRoute()) {
+        params.set('pdb', safePdbId(state.structureId) || '1MBN');
+        params.set('chain', normalizeProteinChainId(state.activeChain || state.pendingRouteProtein?.chain || 'A'));
+      } else {
+        params.delete('pdb');
+        params.delete('chain');
+      }
       if (state.activePathway) {
         params.set('pathway', state.activePathway);
         params.set('step', String(state.activePathwayStep));
@@ -9633,11 +9687,24 @@ END
 
     function readStudentRouteFromUrl() {
       const params = new URLSearchParams(window.location.search);
+      const routeProtein = routeProteinFromParams(params);
+      if (routeProtein) {
+        state.pendingRouteProtein = routeProtein;
+        state.structureId = routeProtein.pdbId;
+        state.activeChain = routeProtein.chain;
+        state.structureLabel = selectedPresetLabel(routeProtein.pdbId);
+      }
       const decodedActivity = decodeActivityState(params.get('activity'));
       state.activityValidationWarnings = decodedActivity.warnings;
       if (decodedActivity.state) {
         state.pendingActivityState = decodedActivity.state;
         restoreSessionState(decodedActivity.state);
+        if (routeProtein) {
+          state.pendingRouteProtein = routeProtein;
+          state.structureId = routeProtein.pdbId;
+          state.activeChain = routeProtein.chain;
+          state.structureLabel = selectedPresetLabel(routeProtein.pdbId);
+        }
         return;
       }
       const studentMode = params.get('student');
@@ -10628,6 +10695,7 @@ END
         if (state.mode === 'activeSite') drawActiveSiteExplorer();
         if (state.mode === 'mutation') drawMutation();
         if (state.mode === 'comparison') drawStructureComparison();
+        if (state.mode === 'conservation') drawConservation();
         if (state.mode === 'ph') drawPhMode();
         if (state.mode === 'gallery') drawGalleryBuilder();
         if (state.mode === 'lesson') drawLesson();
@@ -15736,6 +15804,14 @@ END
       const source = requested === 'canonical' && canonical ? 'canonical' : requested === 'auto' && hasStrongCanonical ? 'canonical' : 'coordinate';
       const sequence = source === 'canonical' ? canonical : chain?.sequence || '';
       const usableLength = sequence.replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '').length;
+      const expectedStructure = state.pendingRouteProtein?.pdbId || state.structureId || '';
+      const expectedChain = normalizeProteinChainId(state.pendingRouteProtein?.chain || state.activeChain || '');
+      if (!error && expectedStructure && state.structureId && safePdbId(expectedStructure) !== safePdbId(state.structureId)) {
+        error = `Internal state mismatch: Conservation Analysis route requests ${expectedStructure}, but the current structure is ${state.structureId}. Reload the requested structure before searching.`;
+      }
+      if (!error && expectedChain && selectedChain && normalizeProteinChainId(expectedChain) !== selectedChain) {
+        error = `Internal state mismatch: Conservation Analysis route requests chain ${expectedChain}, but the homolog reference is chain ${selectedChain}. Select the matching chain before searching.`;
+      }
       if (!error && usableLength < 10) error = 'The selected chain does not contain a usable amino-acid sequence.';
       if (chain && canonical && !hasStrongCanonical) warnings.push('Canonical UniProt sequence is available, but the length differs enough that the coordinate-derived chain sequence is safer by default.');
       if (source === 'canonical' && canonical && !hasStrongCanonical) warnings.push('You selected the complete UniProt canonical sequence even though it differs substantially from the experimentally represented coordinate segment. Use this for precursor/family searches, not direct residue mapping without a validated alignment.');
@@ -17842,6 +17918,9 @@ END
     async function resolveCurrentProteinEvolutionIdentity(force = false) {
       ensureEvolutionStateFresh();
       if (!force && ['loading', 'complete', 'partial'].includes(state.evolutionIdentity.status)) return;
+      const identityToken = ++state.evolutionIdentityToken;
+      const identityReferenceKey = currentEvolutionReferenceKey();
+      const identityStillCurrent = () => identityToken === state.evolutionIdentityToken && identityReferenceKey === currentEvolutionReferenceKey();
       state.evolutionIdentity.status = 'loading';
       state.evolutionIdentity.errors = [];
       state.evolutionIdentity.identity = null;
@@ -17854,9 +17933,11 @@ END
       renderCurrentProteinEvolution();
       try {
         const identity = await fetchRcsbCurrentProteinIdentity();
+        if (!identityStillCurrent()) return;
         state.evolutionIdentity.identity = identity;
         setEvolutionStage('identity', 'success', `${identity.proteinName}; organism ${identity.sourceOrganism}; ${identity.modeledResidues} modeled residues in chain ${identity.chain}.`);
       } catch (error) {
+        if (!identityStillCurrent()) return;
         state.evolutionIdentity.errors.push(error.message);
         setEvolutionStage('identity', 'failed', `RCSB identity lookup failed: ${error.message}`);
       }
@@ -17868,9 +17949,12 @@ END
         setEvolutionStage('uniprot', 'loading', `Fetching UniProt ${accession}.`);
         renderCurrentProteinEvolution();
         try {
-          state.evolutionIdentity.uniprot = await fetchUniprotCurrentProtein(accession);
+          const uniprot = await fetchUniprotCurrentProtein(accession);
+          if (!identityStillCurrent()) return;
+          state.evolutionIdentity.uniprot = uniprot;
           setEvolutionStage('uniprot', state.evolutionIdentity.uniprot ? 'success' : 'unavailable', state.evolutionIdentity.uniprot ? `${state.evolutionIdentity.uniprot.name}; ${state.evolutionIdentity.uniprot.reviewed ? 'reviewed' : 'unreviewed'} record.` : 'No UniProt record was available.');
         } catch (error) {
+          if (!identityStillCurrent()) return;
           state.evolutionIdentity.errors.push(error.message);
           setEvolutionStage('uniprot', 'failed', `UniProt lookup failed: ${error.message}`);
         }
@@ -17878,9 +17962,12 @@ END
         setEvolutionStage('interpro', 'loading', `Fetching InterPro annotations for ${accession}.`);
         renderCurrentProteinEvolution();
         try {
-          state.evolutionIdentity.interpro = await fetchInterproCurrentProtein(accession);
+          const interpro = await fetchInterproCurrentProtein(accession);
+          if (!identityStillCurrent()) return;
+          state.evolutionIdentity.interpro = interpro;
           setEvolutionStage('interpro', state.evolutionIdentity.interpro?.length ? 'success' : 'unavailable', state.evolutionIdentity.interpro?.length ? `${state.evolutionIdentity.interpro.length} InterPro annotations returned.` : 'No InterPro family/domain annotations were returned.');
         } catch (error) {
+          if (!identityStillCurrent()) return;
           state.evolutionIdentity.errors.push(error.message);
           setEvolutionStage('interpro', 'failed', `InterPro lookup failed: ${error.message}`);
         }
@@ -17890,6 +17977,7 @@ END
       }
 
       setEvolutionStage('cdd', 'unavailable', 'CDD is listed as a conserved-domain reference, but this static page does not run a live whole-protein CD-Search.');
+      if (!identityStillCurrent()) return;
       const teachingDataset = currentProteinMyoglobinDataset();
       const teachingValidation = validateCurrentProteinMyoglobinDataset(teachingDataset);
       if (teachingDataset && teachingValidation.valid) {
@@ -17902,6 +17990,70 @@ END
       setEvolutionStage('conservation', 'disabled', 'Residue conservation mapping is disabled until homolog discovery, MSA, and residue mapping are all ready for the current protein.');
       state.evolutionIdentity.status = state.evolutionIdentity.errors.length ? 'partial' : 'complete';
       renderCurrentProteinEvolution();
+    }
+
+    function renderConservationProteinWorkspace() {
+      const contextLine = document.getElementById('conservationProteinContextLine');
+      const chooser = document.getElementById('conservationProteinChooser');
+      const toggle = document.getElementById('openConservationProteinChooser');
+      if (!contextLine || !chooser || !toggle) return;
+      const chain = normalizeProteinChainId(state.activeChain || currentEvolutionChain() || 'A');
+      const accession = state.evolutionIdentity.identity?.uniprotAccession || state.evolutionIdentity.uniprot?.accession || 'not resolved yet';
+      contextLine.innerHTML = `<strong>Current structure:</strong> ${escapeHtml(state.structureLabel || selectedPresetLabel(state.structureId))} (${escapeHtml(state.structureId || 'none')}), chain ${escapeHtml(chain)}. <strong>UniProt:</strong> ${escapeHtml(accession)}.`;
+      toggle.setAttribute('aria-expanded', String(Boolean(state.conservationProteinChooserOpen)));
+      chooser.classList.toggle('hidden', !state.conservationProteinChooserOpen);
+      if (!state.conservationProteinChooserOpen) {
+        chooser.innerHTML = '';
+        return;
+      }
+      const currentChain = normalizeProteinChainId(state.activeChain || 'A');
+      const chainOptions = homologChainSummaries().map(item => `<option value="${escapeHtml(item.chain)}" ${item.chain === currentChain ? 'selected' : ''}>Chain ${escapeHtml(item.chain)} (${item.length} residues)</option>`).join('');
+      chooser.innerHTML = `
+        <fieldset>
+          <legend>Choose a protein for Conservation Analysis</legend>
+          <p>This changes only the current protein workspace. Previous homolog candidates, alignments, mapping, and conservation colors are cleared when the structure changes.</p>
+          <label for="conservationProteinPreset">Gallery protein</label>
+          <select id="conservationProteinPreset">${galleryOptionsMarkup(state.structureId)}</select>
+          <label for="conservationCustomPdb">Or enter a PDB ID</label>
+          <input id="conservationCustomPdb" maxlength="4" value="" placeholder="1CA2">
+          <label for="conservationTargetChain">Preferred chain</label>
+          <select id="conservationTargetChain">${chainOptions || `<option value="${escapeHtml(currentChain)}">Chain ${escapeHtml(currentChain)}</option>`}</select>
+          <div class="button-row">
+            <button type="button" data-conservation-protein-action="load">Load in Conservation Analysis</button>
+            <button type="button" data-conservation-protein-action="cancel">Cancel</button>
+          </div>
+        </fieldset>
+      `;
+    }
+
+    async function changeConservationProtein(pdbId, chain = '') {
+      const code = safePdbId(pdbId);
+      if (!code) {
+        state.homologWorkflow.status = 'Enter a valid four-character PDB ID.';
+        renderCurrentProteinEvolution();
+        return false;
+      }
+      const requestedChain = normalizeProteinChainId(chain || 'A');
+      state.studentMode = 'analyze';
+      state.mode = 'conservation';
+      state.activePathway = null;
+      state.pendingRouteProtein = { pdbId: code, chain: requestedChain };
+      state.conservationProteinChooserOpen = false;
+      await loadStructureById(code, selectedPresetLabel(code), {
+        chain: requestedChain,
+        modeAfterLoad: 'conservation',
+        updateRoute: false,
+        statusTargetId: 'conservationProteinContextLine'
+      });
+      state.studentMode = 'analyze';
+      state.mode = 'conservation';
+      state.activePathway = null;
+      state.homologWorkflow.active = true;
+      state.homologWorkflow.stage = 'reference';
+      writeStudentRoute(true);
+      applyMode({ restoreFocus: false });
+      document.getElementById('currentProteinEvolutionContext')?.focus?.();
+      return true;
     }
 
     function evolutionStatusClass(status) {
@@ -17940,6 +18092,7 @@ END
       const teachingDataset = currentProteinMyoglobinDataset();
       const chain = currentEvolutionChain() || 'not selected';
       const modeledResidues = identity?.modeledResidues ?? (state.residues.filter(residue => residue.chain === chain).length || state.residues.length || 'not parsed');
+      renderConservationProteinWorkspace();
       context.innerHTML = `
         <h3>Current Protein Context</h3>
         <p><strong>Protein:</strong> ${escapeHtml(identity?.proteinName || state.structureLabel || state.structureId)}</p>
@@ -19276,6 +19429,19 @@ END
       return id;
     }
 
+    function selectedPresetCategory(id) {
+      const code = safePdbId(id);
+      return proteinPresetClasses[code] || Object.keys(galleryClasses)[0];
+    }
+
+    function galleryOptionsMarkup(selectedId = state.structureId) {
+      return Object.entries(galleryClasses).map(([groupKey, group]) => `
+        <optgroup label="${escapeHtml(groupKey.replace(/\b\w/g, char => char.toUpperCase()))}">
+          ${group.examples.map(example => `<option value="${escapeHtml(example.id)}" ${example.id === selectedId ? 'selected' : ''}>${escapeHtml(example.label)}</option>`).join('')}
+        </optgroup>
+      `).join('');
+    }
+
     function resetStructureState() {
       state.selectedHbond = null;
       state.selectedContact = null;
@@ -19294,11 +19460,27 @@ END
       resetCurrentProteinEvolution('Loaded structure changed; previous evolution state was cleared.');
     }
 
-    function applyParsedStructure(pdb, id = '1MBN', label = 'Myoglobin', source = 'unknown coordinate source') {
+    function beginStructureLoad(pdbId, chain = '') {
+      const token = ++state.structureLoadToken;
+      state.pendingRouteProtein = {
+        pdbId: safePdbId(pdbId) || safePdbId(state.structureId) || '1MBN',
+        chain: normalizeProteinChainId(chain || state.activeChain || 'A')
+      };
+      return token;
+    }
+
+    function structureLoadStillCurrent(token) {
+      return token === state.structureLoadToken;
+    }
+
+    function applyParsedStructure(pdb, id = '1MBN', label = 'Myoglobin', source = 'unknown coordinate source', options) {
+      options = options || {};
+      if (options.token && !structureLoadStillCurrent(options.token)) return false;
       state.pdb = pdb;
       state.structureId = id.toUpperCase();
       state.structureLabel = label;
       state.structureSource = source;
+      if (options.chain) state.activeChain = normalizeProteinChainId(options.chain);
       try {
         const parsed = parsePdb(state.pdb);
         if (!parsed.residues.length) throw new Error('No standard amino-acid residues were found in this coordinate file.');
@@ -19318,6 +19500,8 @@ END
         state.structureStatus = APP_STATES.COORDINATES_PARSED;
         state.lastStructureError = '';
         resetStructureState();
+        state.homologWorkflow.referenceChain = normalizeProteinChainId(state.activeChain || parsedProteinChains[0] || 'A');
+        state.pendingRouteProtein = { pdbId: state.structureId, chain: state.homologWorkflow.referenceChain };
         document.getElementById('structureTitle').textContent = `${state.structureLabel} (${state.structureId})`;
         document.getElementById('structureSubtitle').textContent = `${state.residues.length} amino-acid residues detected; features recomputed from loaded coordinates`;
         document.getElementById('currentStructureLabel').textContent = `${state.structureLabel} (${state.structureId})`;
@@ -19391,17 +19575,24 @@ END
 
     async function loadInitialStructure() {
       const activity = state.pendingActivityState;
-      const requestedId = safePdbId(activity?.pdbId) || '1MBN';
+      const routeProtein = state.pendingRouteProtein;
+      const requestedId = safePdbId(routeProtein?.pdbId || activity?.pdbId) || '1MBN';
+      const requestedChain = normalizeProteinChainId(routeProtein?.chain || activity?.chain || state.activeChain || 'A');
       if (requestedId !== '1MBN') {
-        await loadStructureById(requestedId, requestedId);
+        await loadStructureById(requestedId, selectedPresetLabel(requestedId), { chain: requestedChain, modeAfterLoad: state.mode, updateRoute: false });
         restoreSessionState(activity);
+        state.structureId = requestedId;
+        state.activeChain = requestedChain;
+        state.pendingRouteProtein = { pdbId: requestedId, chain: requestedChain };
         renderStudentModeControls();
         renderPathwayPanel();
         applyMode();
         return;
       }
+      const token = beginStructureLoad('1MBN', requestedChain);
       state.structureId = '1MBN';
       state.structureLabel = 'Myoglobin';
+      state.activeChain = requestedChain;
       state.structureStatus = APP_STATES.COORDINATES_LOADING;
       state.appStatus = APP_STATES.COORDINATES_LOADING;
       updateSystemStatus();
@@ -19410,32 +19601,40 @@ END
         if (!response.ok) throw new Error(`Local myoglobin file returned ${response.status}`);
         return response.text();
       });
-      applyParsedStructure(pdb, '1MBN', 'Myoglobin', embeddedPdb ? 'embedded teaching PDB' : 'local bundled PDB');
+      if (!structureLoadStillCurrent(token)) return;
+      applyParsedStructure(pdb, '1MBN', 'Myoglobin', embeddedPdb ? 'embedded teaching PDB' : 'local bundled PDB', { token, chain: requestedChain });
       if (activity) restoreSessionState(activity);
       state.appStatus = hasViewer() ? APP_STATES.VIEWER_READY : APP_STATES.COORDINATES_WITHOUT_3D;
       renderCurrentModel();
     }
 
-    async function loadStructureById(id, label = id) {
+    async function loadStructureById(id, label = id, options) {
+      options = options || {};
       const code = id.trim().toUpperCase();
       if (!/^[A-Z0-9]{4}$/.test(code)) {
         document.getElementById('galleryNote').innerHTML = '<strong>Check the PDB ID</strong>Use a 4-character PDB ID, such as 1MBN or 1CA2.';
         return;
       }
+      const token = beginStructureLoad(code, options.chain || state.activeChain || 'A');
       state.structureId = code;
       state.structureLabel = label || selectedPresetLabel(code);
+      state.activeChain = normalizeProteinChainId(options.chain || state.activeChain || 'A');
       state.structureStatus = APP_STATES.COORDINATES_LOADING;
       state.appStatus = APP_STATES.COORDINATES_LOADING;
       updateSystemStatus();
       document.getElementById('galleryNote').innerHTML = `<strong>Loading ${code}</strong>Fetching coordinates from RCSB PDB and recomputing structural features.`;
       try {
         const result = await fetchStructureCoordinates(code);
-        applyParsedStructure(result.pdb, code, label || selectedPresetLabel(code), result.source);
-        state.mode = 'overview';
+        if (!structureLoadStillCurrent(token)) return false;
+        applyParsedStructure(result.pdb, code, label || selectedPresetLabel(code), result.source, { token, chain: options.chain });
+        state.mode = options.modeAfterLoad || 'overview';
         renderCurrentModel();
         const fallbackText = result.source === 'local fallback' ? ' RCSB was unavailable, so the bundled local myoglobin file was used.' : '';
         document.getElementById('galleryNote').innerHTML = `<strong>${code} loaded</strong>${fallbackText} The atlas recomputed residues, backbone hydrogen bonds, phi/psi values, side-chain contacts, SASA, hydrophobic regions, charge surfaces, beta sheets, ligand/cofactor contacts, and helix-pattern candidates from the loaded structure. Conservation still needs a biologically related comparison set for newly loaded proteins.`;
+        if (options.updateRoute !== false) writeStudentRoute(false);
+        return true;
       } catch (error) {
+        if (!structureLoadStillCurrent(token)) return false;
         state.structureStatus = APP_STATES.RETRIEVAL_FAILED;
         state.appStatus = APP_STATES.RETRIEVAL_FAILED;
         state.lastStructureError = error?.message || `Could not retrieve ${code}.`;
@@ -19536,6 +19735,11 @@ END
         return;
       }
       const routeMode = routeToolFromUrl();
+      if (routeMode && modeNeedsCoordinates(routeMode)) {
+        await ensureCoordinatesStarted({ readRoute: true });
+        applyMode({ restoreFocus: false });
+        return;
+      }
       if (routeMode && !modeNeedsViewer(routeMode)) {
         ensureCoreInterfaceStarted({ readRoute: true });
         applyMode({ restoreFocus: false });
@@ -20641,10 +20845,36 @@ END
       });
     });
 
+    document.getElementById('conservationProteinWorkspace')?.addEventListener('click', event => {
+      if (event.target.closest('#openConservationProteinChooser')) {
+        state.conservationProteinChooserOpen = !state.conservationProteinChooserOpen;
+        renderCurrentProteinEvolution();
+        return;
+      }
+      const actionButton = event.target.closest('button[data-conservation-protein-action]');
+      if (!actionButton) return;
+      if (actionButton.dataset.conservationProteinAction === 'cancel') {
+        state.conservationProteinChooserOpen = false;
+        renderCurrentProteinEvolution();
+        return;
+      }
+      const custom = document.getElementById('conservationCustomPdb')?.value.trim();
+      const preset = document.getElementById('conservationProteinPreset')?.value || state.structureId;
+      const chain = document.getElementById('conservationTargetChain')?.value || state.activeChain || 'A';
+      changeConservationProtein(custom || preset, chain).catch(error => {
+        state.homologWorkflow.status = `Could not change protein: ${error.message}`;
+        renderCurrentProteinEvolution();
+      });
+    });
+
+    document.getElementById('conservationProteinWorkspace')?.addEventListener('keydown', activateButtonFromKeyboard);
+
     document.getElementById('evolutionCandidatePanel').addEventListener('change', event => {
       const chain = event.target.closest('input[name="homologReferenceChain"]');
       if (chain) {
         if (homologSearchIsRunning()) cancelHomologSearch('Search cancelled because the reference chain changed.');
+        state.activeChain = normalizeProteinChainId(chain.value);
+        state.pendingRouteProtein = { pdbId: state.structureId, chain: state.activeChain };
         state.homologWorkflow.referenceChain = chain.value;
         state.homologWorkflow.candidates = [];
         state.homologWorkflow.selectedAccessions = [];
@@ -20653,6 +20883,7 @@ END
         state.homologWorkflow.mappedMetrics = [];
         state.homologWorkflow.searchReferenceKey = '';
         state.homologWorkflow.status = homologReferenceReadyText();
+        writeStudentRoute(false);
         renderCurrentProteinEvolution();
         return;
       }
