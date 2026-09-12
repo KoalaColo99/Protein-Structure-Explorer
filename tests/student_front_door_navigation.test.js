@@ -132,6 +132,7 @@ test('non-viewer guided steps render focused activities without booting the work
   const visual = bodyOf('guidedVisualizationMarkup');
   const viewerReady = bodyOf('ensureGuidedViewerStepReady');
   assert(render.includes('if (guidedStepNeedsViewer(step)) ensureGuidedViewerStepReady()'));
+  assert(visual.includes("if (pathwayId !== 'sequence_structure') return renderGuidedPlaceholderView(pathwayId, stepIndex, step)"));
   assert(visual.includes('renderGuidedSequenceView()'));
   assert(visual.includes('renderGuidedPropertyView()'));
   assert(visual.includes('renderGuidedPeptideRigidityView()'));
@@ -141,6 +142,33 @@ test('non-viewer guided steps render focused activities without booting the work
   assert(visual.includes('renderGuidedSynthesisView()'));
   assert(viewerReady.includes("state.viewerTargetId = 'guidedViewer'"));
   assert(viewerReady.includes('startAtlasWorkspace({ readRoute: false })'));
+});
+
+test('non-sequence guided pathways use honest placeholders mapped to existing tools', () => {
+  const placeholder = bodyOf('renderGuidedPlaceholderView');
+  const openTool = bodyOf('openGuidedPlaceholderTool');
+  assert(html.includes('const GUIDED_WORKSPACE_TOOL_MAP = {'));
+  [
+    'Backbone H-bonds',
+    'Side-chain Interactions',
+    'Hydrophobic Core',
+    'Solvent Access',
+    'Amino Acid Charge Explorer within pH & Charge',
+    'Loaded Protein pH Example',
+    'pH & Charge protein/peptide accounting',
+    'Charge Surface',
+    'Orientation/Structure',
+    'Active-Site Explorer',
+    'Side-chain Interactions/Chemistry Lens',
+    'Mutation Sandbox',
+    'Conservation Analysis'
+  ].forEach(label => assert(html.includes(label), `${label} tool mapping missing`));
+  assert(placeholder.includes('Guided activity coming next'));
+  assert(placeholder.includes('does not substitute an unrelated activity'));
+  assert(placeholder.includes('data-open-guided-tool'));
+  assert(html.includes("event.target.closest('button[data-open-guided-tool]')"));
+  assert(openTool.includes("ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' })"));
+  assert(openTool.includes('setStudentMode(studentModeForWorkspaceTool(mode)'));
 });
 
 test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagram labels', () => {

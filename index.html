@@ -8498,7 +8498,75 @@ END
       </div>`;
     }
 
-    function guidedVisualizationMarkup(stepIndex, step) {
+    const GUIDED_WORKSPACE_TOOL_MAP = {
+      folded_stability: [
+        { toolMode: 'hbonds', toolName: 'Backbone H-bonds', note: 'Use the preserved hydrogen-bond list and structure view to inspect repeated backbone C=O...N contacts.' },
+        { toolMode: 'tertiary', toolName: 'Side-chain Interactions', note: 'Use the preserved contact overlay to compare salt bridges, side-chain hydrogen bonds, hydrophobic contacts, and heme contacts.' },
+        { toolMode: 'hydrophobic', toolName: 'Hydrophobic Core', note: 'Use the preserved hydrophobic-core view to compare buried and exposed nonpolar residues.' },
+        { toolMode: 'solvent', toolName: 'Solvent Access', note: 'Use the preserved SASA view to compare exposed surfaces with buried residues.' }
+      ],
+      ph_effects: [
+        { toolMode: 'ph', toolName: 'Amino Acid Charge Explorer within pH & Charge', note: 'Use the preserved amino-acid charge explorer to compare pH, pKa, protonation probability, and formal charge icons.' },
+        { toolMode: 'ph', toolName: 'Loaded Protein pH Example', note: 'Use the preserved protein pH example to inspect a selected ionizable residue from the loaded structure.' },
+        { toolMode: 'ph', toolName: 'pH & Charge protein/peptide accounting', note: 'Use the preserved accounting tables to reason from individual groups to net charge.' },
+        { toolMode: 'chargeSurface', toolName: 'Charge Surface', note: 'Use the preserved charge-surface view to locate acidic and basic surface regions at the current pH.' }
+      ],
+      structure_function: [
+        { toolMode: 'overview', toolName: 'Orientation/Structure', note: 'Use the preserved structure orientation tools to inspect the overall fold and visible cofactors.' },
+        { toolMode: 'activeSite', toolName: 'Active-Site Explorer', note: 'Use the preserved active-site and ligand tools to inspect curated functional-site evidence when available.' },
+        { toolMode: 'tertiary', toolName: 'Side-chain Interactions/Chemistry Lens', note: 'Use the preserved interaction and chemistry views to reason about contacts near a residue or cofactor.' },
+        { toolMode: 'mutation', toolName: 'Mutation Sandbox', note: 'Use the preserved mutation sandbox to compare qualitative chemical changes.' }
+      ],
+      protein_evolution: [
+        { toolMode: 'conservation', toolName: 'Conservation Analysis', note: 'Use the preserved current-protein conservation workflow to inspect identity, alignment, and mapping evidence.' },
+        { toolMode: 'conservation', toolName: 'Conservation Analysis', note: 'Use the preserved family/domain evidence panels to inspect source-labeled annotations.' },
+        { toolMode: 'conservation', toolName: 'Conservation Analysis', note: 'Use the preserved homolog-readiness panels to evaluate alignment prerequisites.' },
+        { toolMode: 'conservation', toolName: 'Conservation Analysis', note: 'Use the preserved conservation mapping panels to interpret boundaries and uncertainty.' }
+      ]
+    };
+
+    function guidedWorkspaceToolFor(pathwayId, stepIndex, step) {
+      const mapped = GUIDED_WORKSPACE_TOOL_MAP[pathwayId]?.[stepIndex];
+      if (mapped) return mapped;
+      return {
+        toolMode: step?.mode || 'overview',
+        toolName: modeDisplayNames[step?.mode] || 'Full Atlas Workspace',
+        note: 'Use the preserved full workspace tool for this step while the focused guided activity is being developed.'
+      };
+    }
+
+    function renderGuidedPlaceholderView(pathwayId, stepIndex, step) {
+      const pathway = LEARNING_PATHWAYS[pathwayId];
+      const tool = guidedWorkspaceToolFor(pathwayId, stepIndex, step);
+      const objective = step?.objective || step?.focus || step?.prompt || 'Use the existing workspace tool to gather molecular evidence for this pathway step.';
+      return `<div class="guided-visual-placeholder guided-tool-placeholder" data-guided-placeholder="${escapeHtml(pathwayId)}:${stepIndex}">
+        <div>
+          <p class="eyebrow">${escapeHtml(pathway?.title || 'Guided pathway')}</p>
+          <h3>${escapeHtml(step?.label || 'Guided step')}</h3>
+          <p><strong>Intended learning objective:</strong> ${escapeHtml(objective)}</p>
+          <p><strong>Guided activity coming next.</strong> This temporary scaffold intentionally does not substitute an unrelated activity.</p>
+          <p>${escapeHtml(tool.note)}</p>
+          <button type="button" data-open-guided-tool="${escapeHtml(tool.toolMode)}">Open the existing ${escapeHtml(tool.toolName)} in the full workspace</button>
+        </div>
+      </div>`;
+    }
+
+    function studentModeForWorkspaceTool(mode) {
+      return ['ligands', 'activeSite', 'mutation', 'conservation', 'comparison'].includes(mode)
+        ? 'analyze'
+        : 'explore';
+    }
+
+    async function openGuidedPlaceholderTool(mode) {
+      if (!mode || !document.getElementById(`${mode}Panel`)) return;
+      state.mode = mode;
+      await ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' });
+      setGuidedPathwayActive(false, { focus: false });
+      setStudentMode(studentModeForWorkspaceTool(mode), { restoreFocus: true, push: true });
+    }
+
+    function guidedVisualizationMarkup(pathwayId, stepIndex, step) {
+      if (pathwayId !== 'sequence_structure') return renderGuidedPlaceholderView(pathwayId, stepIndex, step);
       if (stepIndex === 0) return renderGuidedSequenceView();
       if (stepIndex === 1) return renderGuidedPropertyView();
       if (stepIndex === 2) return `${renderGuidedBackboneDiagram()}${renderGuidedViewerView(step)}`;
@@ -8583,7 +8651,7 @@ END
         ? 'Why is the peptide bond rigid?'
         : 'Focused activity';
       document.getElementById('guidedVisualTitle').textContent = guidedStepNeedsViewer(step) ? 'Molecular view' : focusedTitle;
-      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, step);
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, step);
       if (guidedStepNeedsViewer(step)) ensureGuidedViewerStepReady();
     }
 
@@ -8646,7 +8714,7 @@ END
       state.guidedBackboneModel[angle] = numeric;
       state.guidedBackboneModel.activeAxis = angle;
       saveGuidedSessionState();
-      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
     function stepGuidedBackboneAngle(angle, delta) {
@@ -8657,13 +8725,13 @@ END
     function resetGuidedBackboneAngles() {
       state.guidedBackboneModel = { phi: -60, psi: -45, omega: 180, activeAxis: 'phi' };
       saveGuidedSessionState();
-      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
     function showNextGuidedSecondaryHint() {
       state.guidedSecondaryHintLevel = Math.min(3, (state.guidedSecondaryHintLevel || 0) + 1);
       saveGuidedSessionState();
-      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
     function guidedSecondaryFeedback(text) {
@@ -8707,7 +8775,7 @@ END
       if (feedbackBox) feedbackBox.innerHTML = feedback;
       (customStep4Response ? document.getElementById('guidedPeptideReasoningBox') : document.getElementById('guidedResponseBox'))?.classList.toggle('saved', Boolean(response.trim()));
       if (state.activePathwayStep === LEARNING_PATHWAYS[state.activePathway].steps.length - 1) {
-        document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+        document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
       }
     }
 
@@ -8717,7 +8785,7 @@ END
       if (state.guidedSelectedAminoAcids.has(code) && state.guidedSelectedAminoAcids.size > 1) state.guidedSelectedAminoAcids.delete(code);
       else state.guidedSelectedAminoAcids.add(code);
       saveGuidedSessionState();
-      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
     function renderPathwayPanel() {
@@ -16714,7 +16782,12 @@ END
       if (axisButton) {
         state.guidedBackboneModel.activeAxis = axisButton.dataset.guidedAxis;
         saveGuidedSessionState();
-        document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+        document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathway, state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+        return;
+      }
+      const placeholderToolButton = event.target.closest('button[data-open-guided-tool]');
+      if (placeholderToolButton) {
+        openGuidedPlaceholderTool(placeholderToolButton.dataset.openGuidedTool);
         return;
       }
       const angleStepButton = event.target.closest('button[data-guided-angle-step]');
