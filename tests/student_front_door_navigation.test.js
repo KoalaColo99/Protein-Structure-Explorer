@@ -186,6 +186,60 @@ test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagra
   assert(html.includes("document.getElementById('guidedPeptideReasoningResponse')"));
 });
 
+test('Steps 5 and 6 use synchronized moving phi psi model and recognizable Ramachandran plot', () => {
+  const phiPsi = bodyOf('renderGuidedPhiPsiView');
+  const steric = bodyOf('renderGuidedStericView');
+  const controls = bodyOf('renderGuidedAngleControls');
+  const movingSvg = bodyOf('renderGuidedMovingPeptideSvg');
+  const ramaSvg = bodyOf('renderGuidedRamaPlotSvg');
+  const setAngle = bodyOf('setGuidedBackboneAngle');
+  assert(phiPsi.includes('Move φ or ψ and watch the peptide geometry change'));
+  assert(phiPsi.includes('renderGuidedMovingPeptideSvg()'));
+  assert(controls.includes('id="guidedPhiSlider"'));
+  assert(controls.includes('id="guidedPsiSlider"'));
+  assert(controls.includes('guidedPhiReadout'));
+  assert(controls.includes('guidedPsiReadout'));
+  assert(controls.includes('data-guided-angle-step="phi:-10"'));
+  assert(controls.includes('id="guidedAngleReset"'));
+  assert(movingSvg.includes("activeAxis === 'phi'"));
+  assert(movingSvg.includes('N-terminal portion moves when φ changes'));
+  assert(movingSvg.includes('C-terminal portion moves when ψ changes'));
+  assert(movingSvg.includes('ω around peptide C′(i)-N(i+1) remains fixed'));
+  assert(setAngle.includes('state.guidedBackboneModel[angle] = numeric'));
+  assert(steric.includes('A Ramachandran plot maps combinations of the two principal backbone torsion angles'));
+  assert(steric.includes('simplified teaching schematic'));
+  assert(steric.includes('renderGuidedAngleControls()'));
+  assert(ramaSvg.includes('φ angle (degrees)'));
+  assert(ramaSvg.includes('ψ angle (degrees)'));
+  assert(ramaSvg.includes('right-handed α'));
+  assert(ramaSvg.includes('β / extended'));
+  assert(ramaSvg.includes('left-handed α'));
+  assert(ramaSvg.includes('guidedRamaPoint(phi, psi)'));
+  assert(steric.includes('favored'));
+  assert(steric.includes('allowed'));
+  assert(steric.includes('disfavored'));
+  assert(html.includes("event.target.matches('#guidedPhiSlider')"));
+  assert(html.includes("event.target.matches('#guidedPsiSlider')"));
+});
+
+test('Step 7 secondary-structure feedback uses progressive hints and specific comparison targets', () => {
+  const secondary = bodyOf('renderGuidedSecondaryStructureView');
+  const feedback = bodyOf('guidedSecondaryFeedback');
+  assert(secondary.includes("id=\"guidedSecondaryUnsure\""));
+  assert(secondary.includes('Hint 1: Look at where the C=O and N-H groups'));
+  assert(secondary.includes('Hint 2: In an α-helix'));
+  assert(secondary.includes('Hint 3: In an α-helix'));
+  assert(secondary.includes('C=O(i) to H-N(i+4)'));
+  assert(secondary.includes('between neighboring extended strands'));
+  assert(secondary.includes('antiparallel beta sheet'));
+  assert(feedback.includes('within one continuous segment'));
+  assert(feedback.includes('neighboring extended strands'));
+  assert(feedback.includes('You are noticing the angle or direction'));
+  assert(feedback.includes('I may not be reading your explanation as you intended'));
+  assert(html.includes("event.target.closest('#guidedSecondaryUnsure')"));
+  assert(html.includes('function showNextGuidedSecondaryHint()'));
+});
+
 test('active pathway shell hides the internal pathway chooser', () => {
   assert(html.includes('.student-mode-learn .front-door.hidden'));
   assert(html.includes('.student-mode-learn .pathway-panel.hidden'));
