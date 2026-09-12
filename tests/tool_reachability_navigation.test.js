@@ -111,7 +111,7 @@ test('pathway Explore Further links cover preserved workspace tools and pH subto
 test('All Atlas Tools buttons open existing tools and highlight embedded subsections', () => {
   const open = bodyOf('openWorkspaceTool');
   assert(open.includes("if (mode === 'sequence') preserveProteinWorkspace()"));
-  assert(open.includes('ensureAtlasStarted({ readRoute: false, viewerTargetId:'));
+  assert(open.includes('ensureWorkspaceToolReady(mode, { readRoute: false, viewerTargetId:'));
   assert(open.includes('highlightWorkspaceTarget(targetId)'));
   const highlight = bodyOf('highlightWorkspaceTarget');
   assert(highlight.includes('scrollIntoView'));

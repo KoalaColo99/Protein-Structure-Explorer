@@ -191,7 +191,7 @@ test('non-sequence guided pathways use honest placeholders mapped to existing to
   assert(html.includes("event.target.closest('button[data-open-guided-tool]')"));
   assert(openTool.includes('openWorkspaceTool(mode, preferredStudentMode, targetId)'));
   const sharedOpenTool = bodyOf('openWorkspaceTool');
-  assert(sharedOpenTool.includes("ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' })"));
+  assert(sharedOpenTool.includes("ensureWorkspaceToolReady(mode, { readRoute: false, viewerTargetId: 'viewer' })"));
   assert(sharedOpenTool.includes('setStudentMode(studentModeForWorkspaceTool(mode, preferredStudentMode)'));
 });
 

@@ -48,6 +48,22 @@ test('opening the Atlas Workspace shows the hub without starting the viewer', ()
   assert(!firstBranch.includes('startAtlasWorkspace'));
 });
 
+test('non-viewer focused tools use core-only startup paths', () => {
+  const readyStart = html.indexOf('async function ensureWorkspaceToolReady');
+  const readyEnd = html.indexOf('async function openPathwayFromHome', readyStart);
+  const ready = html.slice(readyStart, readyEnd);
+  assert(ready.includes('modeNeedsViewer(mode)'));
+  assert(ready.includes('ensureAtlasStarted(options)'));
+  assert(ready.includes('ensureCoreInterfaceStarted(options)'));
+  const open = bodyOf('openWorkspaceTool');
+  assert(open.includes('await ensureWorkspaceToolReady(mode'));
+  assert(!open.includes('await ensureAtlasStarted({ readRoute: false, viewerTargetId: \'viewer\' })'));
+  const init = bodyOf('init');
+  assert(init.includes('const routeMode = routeToolFromUrl()'));
+  assert(init.includes('routeMode && !modeNeedsViewer(routeMode)'));
+  assert(init.includes('ensureCoreInterfaceStarted({ readRoute: true })'));
+});
+
 test('hub groups expose the requested tool families and actions', () => {
   [
     'Examine Structure',
@@ -92,6 +108,7 @@ test('legacy direct links bypass the hub and open focused tools', () => {
   const init = bodyOf('init');
   assert(init.includes('shouldShowWorkspaceHubFromUrl()'));
   assert(init.includes('await startAtlasWorkspace({ readRoute: true })'));
+  assert(init.includes('routeMode && !modeNeedsViewer(routeMode)'));
   const read = bodyOf('readStudentRouteFromUrl');
   assert(read.includes('params.get(\'tool\')'));
   assert(read.includes('document.getElementById(`${mode}Panel`)'));

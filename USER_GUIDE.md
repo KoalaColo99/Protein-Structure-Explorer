@@ -282,6 +282,17 @@ Conservation is meaningful only when the comparison structures are homologous or
 
 Not every course protein currently has a prebuilt suggested comparison set. If the checklist says no curated set is available yet, students can manually add 4-6 related PDB IDs. Conservation quality depends on choosing biologically related structures with comparable sequences, structures, and functions.
 
+The **Find homologs automatically** workflow under Candidate Homolog Set is a staged import workflow for manually loaded structures:
+
+1. Choose one reference chain. Chains are not concatenated.
+2. Review whether the query is the coordinate-derived chain sequence or a strongly mapped UniProt canonical sequence.
+3. Choose conservative homolog-search criteria.
+4. Review candidate homologous sequences before alignment.
+5. Load a genuine multiple-sequence alignment, currently through pasted prealigned FASTA or imported accessions when live service retrieval is available.
+6. Map the reference alignment row back to coordinate residues before conservation coloring.
+
+Important limitation: the static GitHub Pages build does not silently run or fake BLAST/Clustal jobs when an official browser-accessible service stage is unavailable. It reports the blocked service stage, keeps manual accession and FASTA import available, and never substitutes unrelated bundled sequences for a failed homolog search.
+
 The course list includes a validation check that flags duplicate PDB IDs or important code/name mismatches for review. In the current list, `1LYZ` is Lysozyme and `1BNA` is DNA Double Helix.
 
 To compute conservation from a selected comparison set:
