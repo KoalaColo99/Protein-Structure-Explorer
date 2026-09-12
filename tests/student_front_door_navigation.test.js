@@ -110,19 +110,20 @@ test('guided pathway is a top-level state separate from the full workspace', () 
   assert(!homeEntry.includes('ensureAtlasStarted({ readRoute: false })'));
 });
 
-test('Building Protein Structure uses seven focused guided steps', () => {
+test('Building Protein Structure uses eight focused guided steps', () => {
   [
     'Read the Sequence',
-    'Compare Side-Chain Properties',
-    'Trace the Peptide Backbone',
-    'Rotate the Backbone',
-    'Discover Conformational Constraints',
+    'Compare Side-Chain Chemistry',
+    'Find the Repeating Backbone',
+    'Explain Peptide-Bond Rigidity',
+    'Rotate φ and ψ',
+    'Discover Steric Constraints',
     'Recognize Secondary Structure',
-    'Synthesize the Pathway'
+    'Build the Explanation'
   ].forEach(label => assert(html.includes(`label: '${label}'`), `${label} guided step missing`));
   const sequenceBlock = html.slice(html.indexOf('sequence_structure:'), html.indexOf('folded_stability:', html.indexOf('sequence_structure:')));
-  assert((sequenceBlock.match(/requiresViewer: true/g) || []).length === 4);
-  assert((sequenceBlock.match(/requiresViewer: false/g) || []).length === 3);
+  assert((sequenceBlock.match(/requiresViewer: true/g) || []).length === 2);
+  assert((sequenceBlock.match(/requiresViewer: false/g) || []).length === 6);
   assert(!sequenceBlock.includes("label: 'Amino acids', mode: 'ph'"));
 });
 
@@ -133,6 +134,10 @@ test('non-viewer guided steps render focused activities without booting the work
   assert(render.includes('if (guidedStepNeedsViewer(step)) ensureGuidedViewerStepReady()'));
   assert(visual.includes('renderGuidedSequenceView()'));
   assert(visual.includes('renderGuidedPropertyView()'));
+  assert(visual.includes('renderGuidedPeptideRigidityView()'));
+  assert(visual.includes('renderGuidedPhiPsiView()'));
+  assert(visual.includes('renderGuidedStericView()'));
+  assert(visual.includes('renderGuidedSecondaryStructureView()'));
   assert(visual.includes('renderGuidedSynthesisView()'));
   assert(viewerReady.includes("state.viewerTargetId = 'guidedViewer'"));
   assert(viewerReady.includes('startAtlasWorkspace({ readRoute: false })'));

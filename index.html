@@ -436,6 +436,139 @@
       margin-bottom: 4px;
     }
 
+    .guided-response {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .guided-response textarea {
+      min-height: 82px;
+    }
+
+    .guided-feedback {
+      background: #f8fafc;
+      border: 1px solid #d8e2ec;
+      border-radius: 8px;
+      color: var(--muted);
+      padding: 10px;
+    }
+
+    .guided-response.saved .guided-feedback {
+      border-color: rgba(0, 158, 115, .35);
+      color: var(--ink);
+    }
+
+    .aa-comparison-grid {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .aa-choice {
+      background: #fff;
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      display: grid;
+      gap: 6px;
+      padding: 12px;
+      text-align: left;
+    }
+
+    .aa-choice.selected {
+      border-color: var(--safe-blue);
+      box-shadow: 0 0 0 3px rgba(0,114,178,.13);
+    }
+
+    .aa-code {
+      align-items: baseline;
+      display: flex;
+      gap: 8px;
+    }
+
+    .aa-code strong {
+      font-size: 20px;
+    }
+
+    .aa-property-list {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .guided-svg {
+      background: #fff;
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      width: 100%;
+    }
+
+    .guided-atom {
+      fill: #fff;
+      stroke: #334155;
+      stroke-width: 2;
+    }
+
+    .guided-atom.backbone { fill: #e0f2fe; }
+    .guided-atom.sidechain { fill: #fef3c7; }
+    .guided-atom.clash { fill: #fee2e2; stroke: #dc2626; stroke-width: 3; }
+    .guided-bond { stroke: #64748b; stroke-linecap: round; stroke-width: 4; }
+    .guided-bond.peptide { stroke: #7c3aed; stroke-dasharray: 8 5; }
+    .guided-bond.rotate { stroke: #0072b2; stroke-width: 6; }
+    .guided-label { fill: #17202a; font: 700 13px system-ui; text-anchor: middle; }
+    .guided-small-label { fill: #475569; font: 600 11px system-ui; text-anchor: middle; }
+
+    .mini-rama {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: minmax(240px, .9fr) minmax(280px, 1.1fr);
+    }
+
+    .mini-rama-plot {
+      aspect-ratio: 1;
+      background:
+        radial-gradient(ellipse at 32% 70%, rgba(0,158,115,.28) 0 18%, transparent 19%),
+        radial-gradient(ellipse at 70% 28%, rgba(86,180,233,.22) 0 15%, transparent 16%),
+        linear-gradient(#fff, #f8fafc);
+      border: 1px solid #d8e2ec;
+      border-radius: 10px;
+      position: relative;
+    }
+
+    .mini-rama-point {
+      background: #d55e00;
+      border: 3px solid #fff;
+      border-radius: 99px;
+      box-shadow: 0 0 0 2px #d55e00;
+      height: 16px;
+      left: var(--x);
+      position: absolute;
+      top: var(--y);
+      transform: translate(-50%, -50%);
+      width: 16px;
+    }
+
+    .secondary-model {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .evidence-checklist {
+      display: grid;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .evidence-checklist label {
+      background: #f8fafc;
+      border: 1px solid #d8e2ec;
+      border-radius: 8px;
+      padding: 10px;
+    }
+
     .backbone-diagram {
       display: grid;
       gap: 12px;
@@ -2433,6 +2566,9 @@
       .guided-step-tabs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
       .guided-main,
       .guided-main.single-column { grid-template-columns: 1fr; }
+      .aa-comparison-grid,
+      .mini-rama,
+      .secondary-model { grid-template-columns: 1fr; }
       .guided-visual-placeholder,
       .guided-viewer #guidedViewer { min-height: 260px; }
       .property-grid,
@@ -2503,7 +2639,7 @@
         <span class="guided-kicker" id="guidedStructureContext">Guided pathway</span>
       </div>
       <header class="guided-header">
-        <span class="guided-kicker" id="guidedStepCount">Step 1 of 7</span>
+        <span class="guided-kicker" id="guidedStepCount">Step 1 of 8</span>
         <h1 id="guidedPathwayTitle" tabindex="-1">Building Protein Structure</h1>
         <p class="guided-question" id="guidedLearningQuestion">How does an amino-acid sequence become a three-dimensional structure?</p>
       </header>
@@ -2518,6 +2654,12 @@
           <div class="guided-prompt">
             <strong>Observation prompt</strong>
             <p id="guidedStepPrompt"></p>
+          </div>
+          <div class="guided-response" id="guidedResponseBox">
+            <label for="guidedStepResponse"><strong>Your response</strong></label>
+            <textarea id="guidedStepResponse" placeholder="Write a short prediction, observation, or explanation for this step."></textarea>
+            <button type="button" id="guidedSaveResponse">Save response for final explanation</button>
+            <div class="guided-feedback" id="guidedStepFeedback" aria-live="polite">Your saved response will appear as evidence in the final step.</div>
           </div>
           <div class="guided-details">
             <details id="guidedWhyItMatters">
@@ -5793,50 +5935,73 @@ END
             label: 'Read the Sequence',
             mode: 'overview',
             requiresViewer: false,
-            focus: 'Proteins are ordered polymers built from chemically different amino acids.',
-            prompt: 'What evidence tells you this protein is a chain with a specific residue order rather than a random collection of parts?'
+            question: 'What information is repeated, and what information varies, along a protein sequence?',
+            objective: 'Identify order, N-to-C directionality, and residue identity in the resolved myoglobin structure sequence.',
+            focus: 'Proteins are ordered polymers. The backbone pattern repeats, while amino-acid identities vary at each position.',
+            prompt: 'Choose one short stretch. What shows directionality, and what shows chemical variation from residue to residue?'
           },
           {
-            label: 'Compare Side-Chain Properties',
+            label: 'Compare Side-Chain Chemistry',
             mode: 'chemistry',
             requiresViewer: false,
-            focus: 'Selected side chains differ in polarity, charge tendency, size, aromaticity, and hydrogen-bonding capacity.',
-            prompt: 'Choose two side chains from the comparison view. Which chemical difference would most affect how each residue behaves in water or inside a folded protein?'
+            question: 'How can residues in the same chain behave differently?',
+            objective: 'Compare Gly, Pro, Ser, Phe, Asp, and Lys using chemical features rather than memorized categories.',
+            focus: 'Side chains differ in size, polarity, likely charge near neutral pH, aromaticity, hydrogen-bonding capacity, and structural constraints.',
+            prompt: 'Select at least two amino acids. Which chemical difference would most affect how they behave in water or in a folded protein?'
           },
           {
-            label: 'Trace the Peptide Backbone',
+            label: 'Find the Repeating Backbone',
             mode: 'overview',
             requiresViewer: true,
-            focus: 'Recognize the repeating backbone, peptide bonds, side chains, and N-to-C directionality.',
-            prompt: 'Follow the repeating N-Cα-C pattern. Which atoms belong to the backbone, and where do the side chains branch away?'
+            question: 'What part of the chain repeats no matter which amino acid is present?',
+            objective: 'Distinguish backbone atoms, side chains, peptide bonds, and N-to-C direction in a peptide and in myoglobin.',
+            focus: 'Every residue contributes a repeating N-Cα-C backbone unit. Side chains branch from Cα, and peptide bonds connect residues.',
+            prompt: 'Trace N-Cα-C across two residues. Where does the side chain branch away, and where is the peptide bond?'
           },
           {
-            label: 'Rotate the Backbone',
-            mode: 'torsions',
-            requiresViewer: true,
-            focus: 'Explore phi and psi as the principal backbone rotations.',
-            prompt: 'Predict what will move when phi or psi changes. Which bonds define the rotation?'
+            label: 'Explain Peptide-Bond Rigidity',
+            mode: 'chemistry',
+            requiresViewer: false,
+            question: 'Why does the peptide bond rotate much less freely than nearby backbone bonds?',
+            objective: 'Explain peptide-bond partial double-bond character, approximate planarity, and the omega torsion.',
+            focus: 'Resonance gives the peptide C-N bond partial double-bond character, making the peptide unit approximately planar while φ and ψ remain the main rotations.',
+            prompt: 'Before revealing the answer, predict which backbone bonds can rotate substantially: N-Cα, Cα-C, or peptide C-N.'
           },
           {
-            label: 'Discover Conformational Constraints',
+            label: 'Rotate φ and ψ',
             mode: 'torsions',
-            requiresViewer: true,
-            focus: 'Connect steric interference with allowed and disallowed Ramachandran regions.',
-            prompt: 'When a conformation is disfavored, is it forbidden by rule or made unlikely by atom crowding?'
+            requiresViewer: false,
+            question: 'What moves when φ or ψ changes?',
+            objective: 'Distinguish φ and ψ rotations while keeping ω fixed in a short-peptide model.',
+            focus: 'φ rotates around N-Cα and ψ rotates around Cα-C. A change can reposition a connected part of the chain while the peptide bond remains approximately fixed.',
+            prompt: 'Predict whether changing φ or ψ will move the N-terminal side, the C-terminal side, or both in this simplified model.'
+          },
+          {
+            label: 'Discover Steric Constraints',
+            mode: 'torsions',
+            requiresViewer: false,
+            question: 'Why are some φ/ψ combinations favored and others disfavored?',
+            objective: 'Connect atom crowding with favored, allowed, and disfavored Ramachandran regions.',
+            focus: 'Allowed regions are empirical conformational tendencies, not inviolable laws. Gly and Pro differ because their side chains change steric freedom.',
+            prompt: 'Compare the favorable and crowded conformations. What physical evidence makes one conformation less likely?'
           },
           {
             label: 'Recognize Secondary Structure',
             mode: 'hbonds',
             requiresViewer: true,
-            focus: 'Relate repeated backbone conformations and backbone hydrogen bonding to alpha helices and beta sheets.',
-            prompt: 'Look for a repeated pattern. How do backbone angles and hydrogen bonds work together in a helix or sheet?'
+            question: 'How do repeated backbone conformations become recognizable structures?',
+            objective: 'Relate recurring φ/ψ values and backbone hydrogen bonding to alpha helices and beta sheets.',
+            focus: 'Myoglobin provides an authentic alpha-helix example. A simplified antiparallel beta sheet shows a different recurring backbone pattern; myoglobin does not represent every secondary-structure class.',
+            prompt: 'How is hydrogen bonding within an alpha helix different from hydrogen bonding between neighboring beta strands?'
           },
           {
-            label: 'Synthesize the Pathway',
+            label: 'Build the Explanation',
             mode: 'overview',
             requiresViewer: false,
-            focus: 'Explain how sequence chemistry and backbone constraints make some structures more favorable than others.',
-            prompt: 'Write one claim connecting sequence chemistry, backbone rotations, steric constraints, and secondary structure.'
+            question: 'How can a chemically varied amino-acid sequence produce an ordered protein structure even though the backbone has conformational flexibility?',
+            objective: 'Build a claim-evidence-reasoning explanation using evidence from sequence chemistry, peptide rigidity, φ/ψ constraints, and secondary structure.',
+            focus: 'Sequence chemistry and backbone constraints make some structures more favorable in a molecular environment, but they do not mechanically guarantee one inevitable structure by themselves.',
+            prompt: 'Write a concise claim, then support it with one piece of evidence from each required category.'
           }
         ]
       },
@@ -5942,6 +6107,8 @@ END
       guidedPathwayActive: false,
       guidedViewerActive: false,
       viewerTargetId: 'viewer',
+      guidedEvidence: {},
+      guidedSelectedAminoAcids: new Set(['GLY', 'ASP']),
       appStatus: APP_STATES.STARTING,
       structureStatus: APP_STATES.NO_STRUCTURE,
       viewerStatus: APP_STATES.STARTING,
@@ -6131,6 +6298,12 @@ END
       GLU: 'Glu', GLY: 'Gly', HIS: 'His', ILE: 'Ile', LEU: 'Leu', LYS: 'Lys',
       MET: 'Met', PHE: 'Phe', PRO: 'Pro', SER: 'Ser', THR: 'Thr', TRP: 'Trp',
       TYR: 'Tyr', VAL: 'Val'
+    };
+    const aaOne = {
+      ALA: 'A', ARG: 'R', ASN: 'N', ASP: 'D', CYS: 'C', GLN: 'Q',
+      GLU: 'E', GLY: 'G', HIS: 'H', ILE: 'I', LEU: 'L', LYS: 'K',
+      MET: 'M', PHE: 'F', PRO: 'P', SER: 'S', THR: 'T', TRP: 'W',
+      TYR: 'Y', VAL: 'V'
     };
     const hydrophobic = new Set(['ALA','VAL','LEU','ILE','MET','PHE','TRP','PRO','TYR']);
     const positive = new Set(['LYS','ARG','HIS']);
@@ -7787,40 +7960,194 @@ END
       window.history[method]({ guided: true, pathway: state.activePathway, step: state.activePathwayStep, mode: state.mode }, '', `${window.location.pathname}?${params.toString()}${window.location.hash}`);
     }
 
+    function guidedParsedResidues() {
+      if (state.residues.length) return state.residues;
+      const embeddedPdb = document.getElementById('embeddedPdb')?.textContent?.trim();
+      if (!embeddedPdb) return [];
+      try {
+        return parsePdb(embeddedPdb).residues;
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function residueOneLetter(resn) {
+      return aaOne[resn] || 'X';
+    }
+
     function renderGuidedSequenceView() {
-      const excerpt = ['VAL','LEU','SER','GLU','GLY','GLU','TRP','GLN','LEU','VAL','LEU','HIS','VAL','TRP','ALA'];
+      const residues = guidedParsedResidues();
+      const excerpt = residues.slice(0, 24);
+      const tokens = excerpt.map((residue, index) => `<button type="button" class="sequence-token" data-guided-sequence-residue="${index}" aria-label="${escapeHtml(residue.resn)} ${residueOneLetter(residue.resn)} residue ${residue.resi}"><strong>${escapeHtml(residueOneLetter(residue.resn))}</strong><br><span>${escapeHtml(residue.resn)}</span><br><small>${escapeHtml(String(residue.resi))}</small></button>`).join('');
       return `<div class="guided-visual-placeholder">
         <div>
-          <p><strong>Myoglobin chain A sequence excerpt</strong></p>
-          <div class="sequence-strip" aria-label="Sequence excerpt">${excerpt.map((residue, index) => `<span class="sequence-token">${residue}<br><small>${index + 1}</small></span>`).join('')}</div>
-          <p>Each token represents one residue in a defined N-to-C order. The full structure adds geometry to this chemical sequence.</p>
+          <p><strong>Resolved myoglobin structure sequence, chain A</strong></p>
+          <p><span class="guided-kicker">N-terminus</span> → <span class="guided-kicker">C-terminus</span></p>
+          <div class="sequence-strip" aria-label="Resolved myoglobin sequence excerpt from N to C terminus">${tokens}</div>
+          <p>This structure sequence shows residues resolved in the coordinate file. In other proteins, unresolved residues or tags can make the coordinate sequence differ from the complete biological sequence.</p>
+          <div class="chem-note" id="guidedSequenceSelection"><strong>Focus a residue</strong>Select or tab to a token to see its one-letter and three-letter identities together. Memorizing codes is not the goal; use them to track order and chemical identity.</div>
         </div>
       </div>`;
     }
 
+    const guidedAminoAcidComparison = {
+      GLY: { one: 'G', name: 'Glycine', size: 'smallest', polarity: 'mostly nonpolar backbone context', charge: 'neutral near pH 7', aromatic: 'no', hbond: 'backbone only', feature: 'no side-chain carbon; unusually flexible', myoglobin: 'Gly 5 is resolved near the N-terminal sequence excerpt.' },
+      PRO: { one: 'P', name: 'Proline', size: 'medium cyclic', polarity: 'nonpolar side chain', charge: 'neutral near pH 7', aromatic: 'no', hbond: 'limited backbone donor ability', feature: 'side chain bonds back to backbone N; restricts φ', myoglobin: 'Pro 37 and Pro 88 are resolved in myoglobin.' },
+      SER: { one: 'S', name: 'Serine', size: 'small', polarity: 'polar', charge: 'usually neutral near pH 7', aromatic: 'no', hbond: 'donor and acceptor', feature: 'hydroxyl can interact with water or polar groups', myoglobin: 'Ser 3 appears in the resolved N-terminal excerpt.' },
+      PHE: { one: 'F', name: 'Phenylalanine', size: 'large', polarity: 'hydrophobic', charge: 'neutral', aromatic: 'yes', hbond: 'poor side-chain donor/acceptor', feature: 'bulky aromatic ring favors nonpolar packing', myoglobin: 'Phe residues appear later in the myoglobin fold.' },
+      ASP: { one: 'D', name: 'Aspartate', size: 'small/medium', polarity: 'polar acidic', charge: 'often negative near pH 7', aromatic: 'no', hbond: 'acceptor when deprotonated', feature: 'carboxylate charge is resonance-stabilized; protonation is probabilistic', myoglobin: 'Asp residues provide acidic positions in the folded protein.' },
+      LYS: { one: 'K', name: 'Lysine', size: 'long flexible', polarity: 'polar basic', charge: 'often positive near pH 7', aromatic: 'no', hbond: 'donor when protonated', feature: 'long side chain can reach solvent or acidic partners', myoglobin: 'Lys residues often occur on solvent-facing regions.' }
+    };
+
     function renderGuidedPropertyView() {
-      const examples = [
-        ['Asp/Glu', 'Often negatively charged near neutral pH; good hydrogen-bond acceptors.'],
-        ['Lys/Arg', 'Often positively charged; frequently solvent exposed or paired with acidic groups.'],
-        ['Leu/Ile/Val', 'Nonpolar, branched side chains; common in buried packing.'],
-        ['Phe/Tyr/Trp', 'Aromatic side chains; bulky, hydrophobic, and sometimes hydrogen-bonding.']
-      ];
+      const selected = state.guidedSelectedAminoAcids || new Set(['GLY', 'ASP']);
+      const cards = Object.entries(guidedAminoAcidComparison).map(([code, aa]) => `
+        <button type="button" class="aa-choice${selected.has(code) ? ' selected' : ''}" data-guided-aa="${code}" aria-pressed="${selected.has(code) ? 'true' : 'false'}">
+          <span class="aa-code"><strong>${aa.one}</strong><span>${code}</span><span>${aa.name}</span></span>
+          <ul class="aa-property-list">
+            <li>Size: ${aa.size}</li>
+            <li>Polarity/charge: ${aa.polarity}; ${aa.charge}</li>
+            <li>Aromatic: ${aa.aromatic}; H-bonding: ${aa.hbond}</li>
+          </ul>
+        </button>`).join('');
+      const comparison = [...selected].map(code => guidedAminoAcidComparison[code]).filter(Boolean)
+        .map(aa => `${aa.name}: ${aa.feature} ${aa.myoglobin}`).join(' ');
       return `<div class="guided-visual-placeholder">
-        <div class="property-grid">${examples.map(([label, text]) => `<div class="property-card"><strong>${label}</strong><span>${text}</span></div>`).join('')}</div>
+        <div>
+          <div class="aa-comparison-grid" aria-label="Focused amino acid chemistry comparison">${cards}</div>
+          <div class="chem-note" id="guidedAaComparison"><strong>Comparison evidence</strong>${escapeHtml(comparison || 'Select two or more amino acids to compare chemical behavior in context.')}</div>
+          <p>These are useful tendencies, not rigid labels. A residue's behavior also depends on solvent exposure, neighbors, pH, and folded-protein context.</p>
+        </div>
       </div>`;
     }
 
     function renderGuidedBackboneDiagram() {
       return `<div class="guided-visual-placeholder">
         <div>
-          <div class="backbone-diagram" aria-label="Backbone repeat diagram">
-            <span class="backbone-node">N</span>
-            <span class="backbone-node">Cα<br><small>R group</small></span>
-            <span class="backbone-node">C=O</span>
-            <span class="backbone-node">N</span>
-            <span class="backbone-node">Cα</span>
+          <svg class="guided-svg" viewBox="0 0 760 260" role="img" aria-label="Short peptide model showing repeating backbone, side chains, peptide bonds, and N to C direction">
+            <path class="guided-bond" d="M80 130 L170 130 L260 130 L350 130 L440 130 L530 130 L620 130" />
+            <path class="guided-bond peptide" d="M260 130 L350 130" />
+            <path class="guided-bond peptide" d="M530 130 L620 130" />
+            <path class="guided-bond" d="M170 130 L170 62 M440 130 L440 62" />
+            <circle class="guided-atom backbone" cx="80" cy="130" r="24" /><text class="guided-label" x="80" y="135">N</text>
+            <circle class="guided-atom backbone" cx="170" cy="130" r="24" /><text class="guided-label" x="170" y="135">Cα</text>
+            <circle class="guided-atom backbone" cx="260" cy="130" r="24" /><text class="guided-label" x="260" y="135">C</text>
+            <circle class="guided-atom backbone" cx="350" cy="130" r="24" /><text class="guided-label" x="350" y="135">N</text>
+            <circle class="guided-atom backbone" cx="440" cy="130" r="24" /><text class="guided-label" x="440" y="135">Cα</text>
+            <circle class="guided-atom backbone" cx="530" cy="130" r="24" /><text class="guided-label" x="530" y="135">C</text>
+            <circle class="guided-atom backbone" cx="620" cy="130" r="24" /><text class="guided-label" x="620" y="135">N</text>
+            <circle class="guided-atom sidechain" cx="170" cy="62" r="22" /><text class="guided-label" x="170" y="67">R</text>
+            <circle class="guided-atom sidechain" cx="440" cy="62" r="22" /><text class="guided-label" x="440" y="67">R</text>
+            <text class="guided-small-label" x="350" y="184">peptide bond connects residues</text>
+            <text class="guided-small-label" x="350" y="222">N-terminus → C-terminus</text>
+          </svg>
+          <p>First trace the simplified peptide. Then use the molecular view to find the same repeating backbone pattern in a short myoglobin segment, shown without the full cartoon at first.</p>
+        </div>
+      </div>`;
+    }
+
+    function renderGuidedPeptideRigidityView() {
+      return `<div class="guided-visual-placeholder">
+        <div>
+          <svg class="guided-svg" viewBox="0 0 760 270" role="img" aria-label="Peptide bond resonance model showing partial double bond character and approximate planarity">
+            <path class="guided-bond" d="M110 135 L230 135" />
+            <path class="guided-bond peptide" d="M230 135 L350 135" />
+            <path class="guided-bond" d="M350 135 L470 135" />
+            <path class="guided-bond rotate" d="M110 135 L230 135" />
+            <path class="guided-bond rotate" d="M350 135 L470 135" />
+            <circle class="guided-atom backbone" cx="110" cy="135" r="28" /><text class="guided-label" x="110" y="140">Cα</text>
+            <circle class="guided-atom backbone" cx="230" cy="135" r="28" /><text class="guided-label" x="230" y="140">C=O</text>
+            <circle class="guided-atom backbone" cx="350" cy="135" r="28" /><text class="guided-label" x="350" y="140">N</text>
+            <circle class="guided-atom backbone" cx="470" cy="135" r="28" /><text class="guided-label" x="470" y="140">Cα</text>
+            <rect x="198" y="82" width="184" height="106" rx="18" fill="rgba(124,58,237,.10)" stroke="#7c3aed" stroke-dasharray="8 5" />
+            <text class="guided-small-label" x="290" y="72">approximately planar peptide unit</text>
+            <text class="guided-small-label" x="290" y="214">ω: peptide C-N torsion, usually near planar</text>
+            <text class="guided-small-label" x="110" y="42">φ rotation</text>
+            <text class="guided-small-label" x="470" y="42">ψ rotation</text>
+          </svg>
+          <p>The peptide C-N bond has partial double-bond character because electron density is delocalized across the amide. That makes the peptide unit approximately planar and makes ω much less freely rotating than φ or ψ.</p>
+        </div>
+      </div>`;
+    }
+
+    function renderGuidedPhiPsiView() {
+      return `<div class="guided-visual-placeholder">
+        <div>
+          <svg class="guided-svg" viewBox="0 0 760 290" role="img" aria-label="Simplified phi and psi rotation model with omega fixed">
+            <path class="guided-bond" d="M80 150 L180 150 L280 150 L380 150 L480 150 L580 150" />
+            <path class="guided-bond peptide" d="M280 150 L380 150" />
+            <path class="guided-bond rotate" d="M80 150 L180 150" />
+            <path class="guided-bond rotate" d="M180 150 L280 150" />
+            <circle class="guided-atom backbone" cx="80" cy="150" r="24" /><text class="guided-label" x="80" y="155">C</text>
+            <circle class="guided-atom backbone" cx="180" cy="150" r="24" /><text class="guided-label" x="180" y="155">N</text>
+            <circle class="guided-atom backbone" cx="280" cy="150" r="24" /><text class="guided-label" x="280" y="155">Cα</text>
+            <circle class="guided-atom backbone" cx="380" cy="150" r="24" /><text class="guided-label" x="380" y="155">C</text>
+            <circle class="guided-atom backbone" cx="480" cy="150" r="24" /><text class="guided-label" x="480" y="155">N</text>
+            <circle class="guided-atom backbone" cx="580" cy="150" r="24" /><text class="guided-label" x="580" y="155">Cα</text>
+            <path d="M280 150 C260 80 200 70 172 110" fill="none" stroke="#0072b2" stroke-width="4" stroke-dasharray="7 5" />
+            <path d="M280 150 C340 78 425 92 470 130" fill="none" stroke="#009e73" stroke-width="4" stroke-dasharray="7 5" />
+            <text class="guided-small-label" x="206" y="78">φ changes around N-Cα</text>
+            <text class="guided-small-label" x="420" y="78">ψ changes around Cα-C</text>
+            <text class="guided-small-label" x="380" y="214">ω peptide bond remains fixed at first</text>
+          </svg>
+          <div class="stats">
+            <div class="stat"><strong>φ -60°</strong><span>example alpha-like value</span></div>
+            <div class="stat"><strong>ψ -45°</strong><span>example alpha-like value</span></div>
           </div>
-          <p>The peptide backbone repeats N-Cα-C. Side chains attach at Cα, while peptide bonds connect one residue to the next.</p>
+          <p>This simplified model shows what changes. It is not the experimental myoglobin geometry; use the full manipulator under Explore further when you are ready for native-residue controls.</p>
+        </div>
+      </div>`;
+    }
+
+    function renderGuidedStericView() {
+      return `<div class="guided-visual-placeholder">
+        <div class="mini-rama">
+          <div>
+            <svg class="guided-svg" viewBox="0 0 420 280" role="img" aria-label="Favorable and crowded peptide conformations showing a steric clash">
+              <text class="guided-small-label" x="116" y="30">favored/allowed tendency</text>
+              <path class="guided-bond" d="M50 90 L120 90 L190 90" />
+              <circle class="guided-atom backbone" cx="50" cy="90" r="20" /><circle class="guided-atom backbone" cx="120" cy="90" r="20" /><circle class="guided-atom sidechain" cx="190" cy="90" r="20" />
+              <text class="guided-small-label" x="305" y="30">disfavored crowding</text>
+              <path class="guided-bond" d="M250 90 L315 90 L350 132" />
+              <circle class="guided-atom backbone" cx="250" cy="90" r="20" /><circle class="guided-atom clash" cx="315" cy="90" r="25" /><circle class="guided-atom clash" cx="350" cy="132" r="25" />
+              <line x1="315" y1="90" x2="350" y2="132" stroke="#dc2626" stroke-width="3" stroke-dasharray="5 4" />
+              <text class="guided-small-label" x="332" y="172">atoms too close</text>
+              <text class="guided-small-label" x="205" y="238">Gly has more freedom; Pro is more restricted near φ.</text>
+            </svg>
+          </div>
+          <div>
+            <div class="mini-rama-plot" aria-label="Teaching Ramachandran plot with favored allowed and disfavored regions">
+              <span class="mini-rama-point" style="--x:32%;--y:70%" aria-label="Favored alpha region point"></span>
+              <span class="mini-rama-point" style="--x:72%;--y:28%;background:#0072b2;box-shadow:0 0 0 2px #0072b2" aria-label="Allowed beta region point"></span>
+            </div>
+            <p><strong>Ramachandran regions:</strong> favored and allowed regions summarize observed tendencies. Disfavored regions are not magic walls; they often reflect atom crowding or unusual residue context.</p>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    function renderGuidedSecondaryStructureView() {
+      return `<div class="guided-visual-placeholder">
+        <div class="secondary-model">
+          <div>
+            <h3>Myoglobin alpha helix</h3>
+            <svg class="guided-svg" viewBox="0 0 360 220" role="img" aria-label="Alpha helix with internal backbone hydrogen bonds">
+              <path d="M70 170 C120 45 210 45 260 170" fill="none" stroke="#0072b2" stroke-width="18" stroke-linecap="round" />
+              <path d="M105 142 L210 84 M132 116 L235 116 M160 88 L250 146" stroke="#e69f00" stroke-width="4" stroke-dasharray="7 5" />
+              <text class="guided-small-label" x="180" y="202">H-bonds within one helix</text>
+            </svg>
+            <p>Myoglobin is a coherent real-protein case for alpha helices.</p>
+          </div>
+          <div>
+            <h3>Simplified antiparallel beta sheet</h3>
+            <svg class="guided-svg" viewBox="0 0 360 220" role="img" aria-label="Simplified antiparallel beta sheet with hydrogen bonds between neighboring strands">
+              <path d="M70 60 L290 60" stroke="#009e73" stroke-width="18" />
+              <path d="M290 150 L70 150" stroke="#009e73" stroke-width="18" />
+              <path d="M105 70 L105 140 M165 70 L165 140 M225 70 L225 140" stroke="#e69f00" stroke-width="4" stroke-dasharray="7 5" />
+              <text class="guided-small-label" x="180" y="202">H-bonds between neighboring strands</text>
+            </svg>
+            <p>Myoglobin is not used as evidence that beta sheets are unusual; this model simply introduces the contrasting pattern.</p>
+          </div>
         </div>
       </div>`;
     }
@@ -7833,24 +8160,32 @@ END
     }
 
     function renderGuidedSynthesisView() {
+      const evidence = state.guidedEvidence.sequence_structure || {};
+      const rows = [
+        ['Side-chain chemical diversity', evidence[1]?.response || 'Add evidence from Step 2.'],
+        ['Peptide-bond rigidity', evidence[3]?.response || 'Add evidence from Step 4.'],
+        ['φ/ψ conformational constraints', evidence[5]?.response || 'Add evidence from Step 6.'],
+        ['Secondary-structure pattern', evidence[6]?.response || 'Add evidence from Step 7.']
+      ];
       return `<div class="guided-visual-placeholder">
         <div>
           <p><strong>Build a claim from evidence.</strong></p>
-          <ul>
-            <li>Sequence provides residue order and side-chain chemistry.</li>
-            <li>Peptide-bond geometry makes the backbone a constrained chain.</li>
-            <li>Phi and psi rotations allow many possibilities, but not all are equally favorable.</li>
-            <li>Repeated favorable conformations support helices and sheets.</li>
-          </ul>
+          <div class="evidence-checklist">${rows.map(([label, text]) => `<label><input type="checkbox"> <strong>${escapeHtml(label)}</strong><br><span>${escapeHtml(text)}</span></label>`).join('')}</div>
+          <p><strong>CER scaffold:</strong> Claim: A protein sequence can support ordered structure because ____. Evidence: side-chain chemistry ____, peptide-bond rigidity ____, φ/ψ constraints ____, and secondary-structure pattern ____. Reasoning: These features make some conformations more favorable in context, without implying one inevitable structure.</p>
+          <p>Annotated visual to attach: choose one from this pathway, such as the sequence strip, peptide-bond resonance model, steric constraint model, or helix/beta comparison.</p>
         </div>
       </div>`;
     }
 
     function guidedVisualizationMarkup(stepIndex, step) {
-      if (guidedStepNeedsViewer(step)) return renderGuidedViewerView(step);
       if (stepIndex === 0) return renderGuidedSequenceView();
       if (stepIndex === 1) return renderGuidedPropertyView();
-      if (stepIndex === 2) return renderGuidedBackboneDiagram();
+      if (stepIndex === 2) return `${renderGuidedBackboneDiagram()}${renderGuidedViewerView(step)}`;
+      if (stepIndex === 3) return renderGuidedPeptideRigidityView();
+      if (stepIndex === 4) return renderGuidedPhiPsiView();
+      if (stepIndex === 5) return renderGuidedStericView();
+      if (stepIndex === 6) return `${renderGuidedSecondaryStructureView()}${renderGuidedViewerView(step)}`;
+      if (guidedStepNeedsViewer(step)) return renderGuidedViewerView(step);
       return renderGuidedSynthesisView();
     }
 
@@ -7878,14 +8213,21 @@ END
       const homeContent = ATLAS_HOME_PATHWAY_CONTENT[state.activePathway] || {};
       const finalStep = state.activePathwayStep >= pathway.steps.length - 1;
       document.getElementById('guidedPathwayTitle').textContent = homeContent.displayTitle || `${pathway.letter}. ${pathway.title}`;
-      document.getElementById('guidedLearningQuestion').textContent = homeContent.question || pathway.title;
+      document.getElementById('guidedLearningQuestion').textContent = step.question || homeContent.question || pathway.title;
       document.getElementById('guidedStepCount').textContent = `Step ${state.activePathwayStep + 1} of ${pathway.steps.length}`;
       document.getElementById('guidedStructureContext').textContent = state.atlasInitialized
         ? `${state.structureLabel} (${state.structureId}) context preserved`
         : 'Guided pathway';
       document.getElementById('guidedStepTitle').textContent = step.label;
-      document.getElementById('guidedStepOrientation').textContent = step.focus || step.prompt;
+      document.getElementById('guidedStepOrientation').textContent = step.objective ? `Objective: ${step.objective}` : step.focus || step.prompt;
       document.getElementById('guidedStepPrompt').textContent = step.prompt;
+      const response = document.getElementById('guidedStepResponse');
+      const feedback = document.getElementById('guidedStepFeedback');
+      const responseBox = document.getElementById('guidedResponseBox');
+      const saved = state.guidedEvidence[state.activePathway]?.[state.activePathwayStep];
+      if (response) response.value = saved?.response || '';
+      if (feedback) feedback.innerHTML = saved?.feedback || 'Your saved response will appear as evidence in the final step.';
+      responseBox?.classList.toggle('saved', Boolean(saved?.response));
       document.getElementById('guidedWhyText').textContent = homeContent.why || 'This step connects molecular evidence with chemical reasoning.';
       document.getElementById('guidedExploreText').textContent = guidedStepNeedsViewer(step)
         ? 'Open the full workspace to use the complete molecular viewer, measurements, and analysis tools for this step.'
@@ -7924,6 +8266,48 @@ END
       renderGuidedPathway();
       setGuidedPathwayActive(true, { focus: options.restoreFocus !== false });
       if (options.updateUrl !== false) writeGuidedRoute(options.push !== false);
+    }
+
+    function feedbackForGuidedResponse(stepIndex, text) {
+      const lower = text.toLowerCase();
+      if (!text.trim()) return '<strong>Add a response</strong>Write one sentence before saving evidence for the final explanation.';
+      const checks = [
+        [/order|direction|n-?termin|c-?termin|sequence|residue/, 'Good: you are using order and directionality as sequence evidence.'],
+        [/gly|pro|ser|phe|asp|lys|polar|charge|aromatic|hydrogen|size|side.?chain/, 'Good: you are comparing side-chain chemistry rather than memorizing names.'],
+        [/backbone|n.?c|cα|alpha|peptide|side.?chain/, 'Good: you distinguished the repeating backbone from variable side chains.'],
+        [/resonance|partial|double|planar|omega|ω|rigid/, 'Good: you connected peptide-bond resonance with restricted ω rotation.'],
+        [/phi|φ|psi|ψ|rotate|move|fixed|omega|ω/, 'Good: you identified φ/ψ rotation while keeping ω fixed at first.'],
+        [/steric|clash|crowd|favored|allowed|disfavored|gly|pro/, 'Good: you connected Ramachandran regions to molecular crowding and residue context.'],
+        [/helix|sheet|hydrogen|h.?bond|backbone|strand|alpha|beta/, 'Good: you compared recurring backbone patterns in helices and beta sheets.'],
+        [/claim|evidence|reason|sequence|rigid|constraint|secondary|environment|favorable/, 'Good: your synthesis names evidence categories and avoids one-factor explanations.']
+      ];
+      return `<strong>Feedback</strong>${checks[stepIndex]?.[0].test(lower) ? checks[stepIndex][1] : 'Try naming the molecular evidence from this step more directly, then connect it to the pathway question.'}`;
+    }
+
+    function saveGuidedStepResponse() {
+      if (!state.activePathway) return;
+      const response = document.getElementById('guidedStepResponse')?.value || '';
+      if (!state.guidedEvidence[state.activePathway]) state.guidedEvidence[state.activePathway] = {};
+      const feedback = feedbackForGuidedResponse(state.activePathwayStep, response);
+      state.guidedEvidence[state.activePathway][state.activePathwayStep] = {
+        label: LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep].label,
+        response,
+        feedback
+      };
+      const feedbackBox = document.getElementById('guidedStepFeedback');
+      if (feedbackBox) feedbackBox.innerHTML = feedback;
+      document.getElementById('guidedResponseBox')?.classList.toggle('saved', Boolean(response.trim()));
+      if (state.activePathwayStep === LEARNING_PATHWAYS[state.activePathway].steps.length - 1) {
+        document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
+      }
+    }
+
+    function toggleGuidedAminoAcid(code) {
+      if (!guidedAminoAcidComparison[code]) return;
+      if (!state.guidedSelectedAminoAcids) state.guidedSelectedAminoAcids = new Set();
+      if (state.guidedSelectedAminoAcids.has(code) && state.guidedSelectedAminoAcids.size > 1) state.guidedSelectedAminoAcids.delete(code);
+      else state.guidedSelectedAminoAcids.add(code);
+      document.getElementById('guidedVisualization').innerHTML = guidedVisualizationMarkup(state.activePathwayStep, LEARNING_PATHWAYS[state.activePathway].steps[state.activePathwayStep]);
     }
 
     function renderPathwayPanel() {
@@ -15904,6 +16288,24 @@ END
       enterGuidedPathway(state.activePathway, Number(button.dataset.guidedStep), { restoreFocus: true, push: true });
     });
     document.getElementById('guidedStepTabs').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('guidedVisualization').addEventListener('click', event => {
+      const aaButton = event.target.closest('button[data-guided-aa]');
+      if (aaButton) {
+        toggleGuidedAminoAcid(aaButton.dataset.guidedAa);
+        return;
+      }
+      const residueButton = event.target.closest('button[data-guided-sequence-residue]');
+      if (residueButton) {
+        const residues = guidedParsedResidues();
+        const residue = residues[Number(residueButton.dataset.guidedSequenceResidue)];
+        const note = document.getElementById('guidedSequenceSelection');
+        if (residue && note) note.innerHTML = `<strong>${escapeHtml(residue.resn)} ${escapeHtml(residueOneLetter(residue.resn))}, residue ${escapeHtml(String(residue.resi))}</strong>Three-letter and one-letter codes identify the same resolved residue. Use the code to track order and chemistry, not as a memorization exercise.`;
+      }
+    });
+    document.getElementById('guidedVisualization').addEventListener('keydown', activateButtonFromKeyboard);
+
+    document.getElementById('guidedSaveResponse').addEventListener('click', saveGuidedStepResponse);
 
     document.getElementById('guidedContinueStep').addEventListener('click', () => {
       if (!state.activePathway) return;
