@@ -165,6 +165,7 @@ test('automatic homolog search submits an official EMBL-EBI BLAST job and never 
   const params = bodyOf('homologSearchParameters');
   const submit = bodyOf('submitEbiBlastSearch');
   const poll = bodyOf('pollEbiBlastJob');
+  const results = bodyOf('fetchEbiBlastResults');
   const normalize = bodyOf('normalizeEbiBlastResults');
   const validate = bodyOf('validateAutomaticHomologCandidates');
   const align = bodyOf('alignSelectedHomologs');
@@ -175,6 +176,7 @@ test('automatic homolog search submits an official EMBL-EBI BLAST job and never 
   assert(params.includes('uniprotkb_swissprot'));
   assert(submit.includes(`${'${EVOLUTION_ENDPOINTS.ebiBlast}/run'}`));
   assert(poll.includes(`${'${EVOLUTION_ENDPOINTS.ebiBlast}/status/'}`));
+  assert(results.includes(`${'${EVOLUTION_ENDPOINTS.ebiBlast}/result/'}`));
   assert(poll.includes('timed out'));
   assert(searchAsync.includes('EMBL-EBI Job Dispatcher NCBI BLAST'));
   assert(searchAsync.includes("state.homologWorkflow.stage = 'candidates'"));
@@ -189,14 +191,54 @@ test('automatic homolog search submits an official EMBL-EBI BLAST job and never 
   assert(align.includes('Select at least three total sequences'));
 });
 
+test('invalid email and invalid query prevent submission with specific visible messages', () => {
+  const validEmail = bodyOf('validServiceContactEmail');
+  const validQuery = bodyOf('validProteinQuerySequence');
+  const criteria = bodyOf('homologCriteriaMarkup');
+  const searchAsync = bodyOf('runAutomaticHomologSearchAsync');
+  assert(validEmail.includes('[^@\\s]+@[^@\\s]+\\.[^@\\s]+'));
+  assert(validEmail.includes('/[<>\\s]/'));
+  assert(validQuery.includes('ACDEFGHIKLMNPQRSTVWY'));
+  assert(criteria.includes('Enter a valid contact email required by the search service.'));
+  assert(criteria.includes('!emailValid'));
+  assert(searchAsync.includes('Search was not submitted: the contact email is invalid.'));
+  assert(searchAsync.includes('Search was not submitted: the reference query sequence is empty or contains unsupported amino-acid symbols.'));
+});
+
+test('search status reports phases and service errors without hiding response bodies', () => {
+  const fetcher = bodyOf('fetchJsonWithExternalSignal');
+  const failure = bodyOf('searchFailureMessage');
+  const sanitizer = bodyOf('sanitizedServiceMessage');
+  const submit = bodyOf('submitEbiBlastSearch');
+  const poll = bodyOf('pollEbiBlastJob');
+  const results = bodyOf('fetchEbiBlastResults');
+  const searchAsync = bodyOf('runAutomaticHomologSearchAsync');
+  assert(fetcher.includes('error.status = response.status'));
+  assert(fetcher.includes('error.body = text'));
+  assert(sanitizer.includes('[redacted email]'));
+  assert(failure.includes('HTTP ${error.status}'));
+  assert(failure.includes('CORS'));
+  ['Validating query.', 'Submitting search.', 'Search queued:', 'Search running.', 'Retrieving results', 'Validating candidates.', 'Search complete:'].forEach(token => {
+    assert(html.includes(token), `${token} missing`);
+  });
+  assert(submit.includes('Search queued:'));
+  assert(poll.includes('Search running.'));
+  assert(results.includes('Retrieving results'));
+  assert(searchAsync.includes('The search completed but returned zero validated candidates under these criteria.'));
+});
+
 test('automatic homolog search has cancel, timeout, retry, and stale-reference boundaries', () => {
   const cancel = bodyOf('cancelHomologSearch');
   const criteria = bodyOf('homologCriteriaMarkup');
+  const hasJob = bodyOf('homologSearchHasJob');
   const events = html.slice(html.indexOf("document.getElementById('evolutionCandidatePanel').addEventListener('click'"));
   const chainChange = html.slice(html.indexOf("const chain = event.target.closest('input[name=\"homologReferenceChain\"]')"), html.indexOf("const checkbox = event.target.closest('input[data-myoglobin-candidate]')"));
   assert(cancel.includes('abort'));
+  assert(hasJob.includes('serviceStatus.jobId'));
+  assert(hasJob.includes('queued'));
   assert(criteria.includes('Cancel Search'));
   assert(criteria.includes('Search for Homologs'));
+  assert(criteria.includes('showCancel'));
   assert(events.includes("action === 'cancel-search'"));
   assert(events.includes('runAutomaticHomologSearch().finally'));
   assert(chainChange.includes('homologSearchIsRunning()'));
@@ -240,7 +282,10 @@ test('provenance and session-local save include reproducibility details and priv
     'conservationMethod'
   ].forEach(token => assert(provenance.includes(token), `${token} missing`));
   assert(save.includes('sessionStorage.setItem'));
+  assert(save.includes('serviceContactEmail'));
+  assert(save.includes('safeHomologWorkflow'));
   assert(save.includes('Session storage is not permanent'));
+  assert(!provenance.includes('serviceContactEmail'));
   assert(!provenance.includes('studentObservations'));
   assert(!provenance.includes('studentName'));
 });

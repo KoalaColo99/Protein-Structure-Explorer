@@ -15939,6 +15939,9 @@ END
 
     function homologCriteriaMarkup() {
       const criteria = homologCriteria();
+      const emailValid = validServiceContactEmail();
+      const searchBusy = homologSearchIsRunning();
+      const showCancel = homologSearchHasJob();
       return `
         <fieldset>
           <legend>2. Search criteria</legend>
@@ -15965,13 +15968,14 @@ END
           <label class="check-row"><input id="homologRequireDomain" type="checkbox" ${criteria.requireDomainArchitecture ? 'checked' : ''}> Require compatible domain architecture or warn</label>
           <label class="check-row"><input id="homologIncludeReference" type="checkbox" ${criteria.includeReference ? 'checked' : ''}> Include reference sequence in final alignment</label>
           <label for="homologServiceEmail">Service contact email for EMBL-EBI fair use</label>
-          <input id="homologServiceEmail" type="email" value="${escapeHtml(state.homologWorkflow.serviceContactEmail || '')}" autocomplete="email">
+          <input id="homologServiceEmail" type="email" value="${escapeHtml(state.homologWorkflow.serviceContactEmail || '')}" autocomplete="email" aria-describedby="homologServiceEmailHelp">
+          <p id="homologServiceEmailHelp" class="${emailValid ? 'method-note' : 'warning-text'}">${emailValid ? 'This contact is sent only to EMBL-EBI for responsible service use; it is not included in exports, URLs, or saved student evidence.' : 'Enter a valid contact email required by the search service.'}</p>
         </fieldset>
         <details class="chem-note"><summary>Why these defaults?</summary><p>A diverse but clearly homologous set is usually more informative than many nearly identical sequences. Low coverage can mean only one domain matches, especially for multidomain proteins.</p></details>
         ${homologManualImportMarkup()}
         <div class="button-row">
-          <button type="button" data-homolog-action="run-search" ${/running|queued|submitting|retrieving|preparing/.test(state.homologWorkflow.serviceStatus.search || '') ? 'disabled' : ''}>Search for Homologs</button>
-          ${/running|queued|submitting|retrieving|preparing/.test(state.homologWorkflow.serviceStatus.search || '') ? '<button type="button" data-homolog-action="cancel-search">Cancel Search</button>' : ''}
+          <button type="button" data-homolog-action="run-search" ${searchBusy || !emailValid ? 'disabled' : ''}>Search for Homologs</button>
+          ${showCancel ? '<button type="button" data-homolog-action="cancel-search">Cancel Search</button>' : ''}
           <button type="button" data-homolog-action="validate-imported">Validate Imported Sequences</button>
           <button type="button" data-homolog-action="help-criteria">I'm not sure</button>
           <button type="button" data-homolog-action="reference">Back</button>
@@ -16439,6 +16443,41 @@ END
       return /running|queued|submitting|retrieving|preparing/.test(state.homologWorkflow.serviceStatus.search || '');
     }
 
+    function homologSearchHasJob() {
+      return Boolean(state.homologWorkflow.serviceStatus.jobId)
+        && /running|queued|retrieving|validating/.test(state.homologWorkflow.serviceStatus.search || '');
+    }
+
+    function validServiceContactEmail(email = state.homologWorkflow.serviceContactEmail) {
+      const text = String(email || '').trim();
+      if (!text) return false;
+      if (/[<>\s]/.test(text)) return false;
+      return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(text);
+    }
+
+    function validProteinQuerySequence(sequence = '') {
+      return Boolean(sequence) && /^[ACDEFGHIKLMNPQRSTVWY]+$/.test(sequence);
+    }
+
+    function sanitizedServiceMessage(message = '') {
+      return String(message || '')
+        .replace(/[^\S\r\n]+/g, ' ')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/g, '[redacted email]')
+        .trim()
+        .slice(0, 500);
+    }
+
+    function searchFailureMessage(error, stage = 'search') {
+      const status = error?.status ? `HTTP ${error.status}` : '';
+      const body = sanitizedServiceMessage(error?.body || error?.message || String(error));
+      if (error?.name === 'AbortError') return 'Search cancelled.';
+      if (/Failed to fetch|NetworkError|Load failed/i.test(error?.message || '')) {
+        return `The browser could not complete the request during ${stage}. This may be a network or CORS failure.`;
+      }
+      return `EMBL-EBI rejected or failed the request during ${stage}${status ? `: ${status}` : ''}${body ? ` — ${body}` : ''}.`;
+    }
+
     function cancelHomologSearch(message = 'Search cancelled.') {
       if (state.homologWorkflow.searchAbortController) {
         state.homologWorkflow.searchAbortController.abort();
@@ -16475,8 +16514,14 @@ END
       delete fetchOptions.timeoutMs;
       try {
         const response = await fetch(url, fetchOptions);
-        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
         const text = await response.text();
+        if (!response.ok) {
+          const error = new Error(`${response.status} ${response.statusText}`);
+          error.status = response.status;
+          error.statusText = response.statusText;
+          error.body = text;
+          throw error;
+        }
         if (!text) return {};
         try {
           return JSON.parse(text);
@@ -16491,7 +16536,7 @@ END
 
     async function submitEbiBlastSearch(reference, criteria, signal) {
       state.homologWorkflow.serviceStatus.search = 'submitting EMBL-EBI BLAST job';
-      state.homologWorkflow.status = 'Submitting the current protein sequence to EMBL-EBI NCBI BLAST.';
+      state.homologWorkflow.status = 'Submitting search.';
       renderCurrentProteinEvolution();
       const payload = homologSearchParameters(reference, criteria);
       const result = await fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiBlast}/run`, {
@@ -16503,6 +16548,9 @@ END
       const jobId = typeof result === 'string' ? result.trim() : (result?.jobId || result?.jobID || result?.id || result?.job || '');
       if (!jobId) throw new Error('EMBL-EBI BLAST did not return a job id.');
       state.homologWorkflow.serviceStatus.jobId = jobId;
+      state.homologWorkflow.serviceStatus.search = 'queued EMBL-EBI BLAST job';
+      state.homologWorkflow.status = `Search queued: ${jobId}.`;
+      renderCurrentProteinEvolution();
       return jobId;
     }
 
@@ -16513,7 +16561,7 @@ END
         if (state.homologWorkflow.searchReferenceKey !== referenceKey) throw new Error('Search result ignored because the reference sequence changed.');
         state.homologWorkflow.serviceStatus.search = `running EMBL-EBI BLAST job (${poll}/24)`;
         state.homologWorkflow.serviceStatus.pollCount = poll;
-        state.homologWorkflow.status = `Searching UniProtKB/Swiss-Prot for homologs. EBI job ${jobId}; poll ${poll} of 24.`;
+        state.homologWorkflow.status = `Search running. EBI job ${jobId}; poll ${poll} of 24.`;
         renderCurrentProteinEvolution();
         const statusPayload = await fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiBlast}/status/${encodeURIComponent(jobId)}`, {
           headers: { Accept: 'text/plain, application/json' },
@@ -16537,7 +16585,7 @@ END
 
     async function fetchEbiBlastResults(jobId, signal) {
       state.homologWorkflow.serviceStatus.search = 'retrieving EMBL-EBI BLAST results';
-      state.homologWorkflow.status = `Retrieving EMBL-EBI BLAST TSV results for job ${jobId}.`;
+      state.homologWorkflow.status = `Retrieving results for job ${jobId}.`;
       renderCurrentProteinEvolution();
       return fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiBlast}/result/${encodeURIComponent(jobId)}/tsv`, {
         headers: { Accept: 'text/tab-separated-values, text/plain' },
@@ -16713,9 +16761,27 @@ END
       updateHomologCriteriaFromControls();
       const reference = selectedHomologReference();
       const criteria = homologCriteria();
+      state.homologWorkflow.stage = 'criteria';
+      state.homologWorkflow.serviceStatus.search = 'validating query';
+      state.homologWorkflow.status = 'Validating query.';
+      renderCurrentProteinEvolution();
       if (reference.validationStatus !== 'valid') {
         state.homologWorkflow.status = reference.error || 'Select a valid reference chain before searching.';
         state.homologWorkflow.stage = 'reference';
+        return;
+      }
+      if (!validProteinQuerySequence(reference.sequence)) {
+        state.homologWorkflow.serviceStatus.search = 'not submitted';
+        state.homologWorkflow.serviceStatus.lastError = 'Invalid query sequence';
+        state.homologWorkflow.status = 'Search was not submitted: the reference query sequence is empty or contains unsupported amino-acid symbols.';
+        state.homologWorkflow.stage = 'criteria';
+        return;
+      }
+      if (!validServiceContactEmail()) {
+        state.homologWorkflow.serviceStatus.search = 'not submitted';
+        state.homologWorkflow.serviceStatus.lastError = 'Invalid service contact email';
+        state.homologWorkflow.status = 'Search was not submitted: the contact email is invalid.';
+        state.homologWorkflow.stage = 'criteria';
         return;
       }
       if (homologSearchIsRunning()) cancelHomologSearch('Previous search cancelled before starting a new one.');
@@ -16730,8 +16796,7 @@ END
       state.homologWorkflow.serviceStatus.jobId = '';
       state.homologWorkflow.serviceStatus.pollCount = 0;
       state.homologWorkflow.warnings = [];
-      state.homologWorkflow.status = 'Preparing EMBL-EBI BLAST search for the selected reference sequence.';
-      state.homologWorkflow.stage = 'criteria';
+      state.homologWorkflow.status = 'Validating query.';
       state.homologWorkflow.provenance = homologProvenanceRecord({
         queryHash: sequenceHash(reference.sequence),
         searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
@@ -16743,6 +16808,9 @@ END
         const jobId = await submitEbiBlastSearch(reference, criteria, controller.signal);
         await pollEbiBlastJob(jobId, referenceKey, controller.signal);
         const payload = await fetchEbiBlastResults(jobId, controller.signal);
+        state.homologWorkflow.serviceStatus.search = 'validating candidates';
+        state.homologWorkflow.status = 'Validating candidates.';
+        renderCurrentProteinEvolution();
         const normalized = await normalizeEbiBlastResults(payload, reference, referenceKey);
         const validated = validateAutomaticHomologCandidates(normalized.candidates, referenceKey);
         state.homologWorkflow.searchAbortController = null;
@@ -16759,7 +16827,7 @@ END
           validatedCandidates: validated.length
         });
         if (!validated.length) {
-          state.homologWorkflow.status = 'Search completed, but no validated homolog candidates passed the current identity, coverage, and sequence checks.';
+          state.homologWorkflow.status = 'The search completed but returned zero validated candidates under these criteria.';
           state.homologWorkflow.stage = 'criteria';
           return;
         }
@@ -16770,8 +16838,9 @@ END
       } catch (error) {
         state.homologWorkflow.searchAbortController = null;
         const aborted = error?.name === 'AbortError';
+        const failedStage = state.homologWorkflow.serviceStatus.search || 'search';
         state.homologWorkflow.serviceStatus.search = aborted ? 'cancelled' : 'blocked or failed in static browser';
-        state.homologWorkflow.serviceStatus.lastError = error.message || String(error);
+        state.homologWorkflow.serviceStatus.lastError = sanitizedServiceMessage(error.body || error.message || String(error));
         state.homologWorkflow.serviceStatus.blockedReason = aborted ? '' : 'The official EMBL-EBI BLAST route could not be completed from this static browser context. A small serverless proxy may be required if this is due to CORS, fair-use contact, or service submission policy.';
         state.homologWorkflow.warnings = aborted
           ? ['Automatic search was cancelled. No candidate records were imported.']
@@ -16779,7 +16848,7 @@ END
               'Automatic live homolog search did not produce candidates. No unrelated bundled sequences were substituted.',
               'Use accession/FASTA import now, or add a small serverless proxy that submits and polls the official EMBL-EBI BLAST job.'
             ];
-        state.homologWorkflow.status = aborted ? 'Search cancelled.' : `Automatic search failed: ${state.homologWorkflow.serviceStatus.lastError}`;
+        state.homologWorkflow.status = aborted ? 'Search cancelled.' : searchFailureMessage(error, failedStage);
         state.homologWorkflow.provenance = homologProvenanceRecord({
           queryHash: sequenceHash(reference.sequence),
           searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
@@ -16972,8 +17041,9 @@ END
 
     function saveHomologWorkflowSession() {
       try {
+        const { serviceContactEmail, searchAbortController, ...safeHomologWorkflow } = state.homologWorkflow;
         sessionStorage.setItem(`bva.homologWorkflow.${homologCacheKey()}`, JSON.stringify({
-          homologWorkflow: state.homologWorkflow,
+          homologWorkflow: safeHomologWorkflow,
           conservation: state.conservation,
           conservationSources: state.conservationSources
         }));
