@@ -41,14 +41,16 @@ test('student route reads and writes pdb and chain parameters', () => {
   assert(write.includes("params.set('chain'"));
 });
 
-test('direct Conservation route loads coordinates without requiring viewer startup', () => {
+test('direct Conservation route enters viewer-aware workspace while 2D workflow can survive viewer failure', () => {
   const modeNeedsViewer = extractFunction('modeNeedsViewer');
   const ensureReady = extractFunction('ensureWorkspaceToolReady');
-  assert(modeNeedsViewer.includes("'conservation'"));
-  assert(ensureReady.includes('modeNeedsCoordinates(mode)'));
-  assert(ensureReady.includes('ensureCoordinatesStarted(options)'));
-  assert(html.includes('if (routeMode && modeNeedsCoordinates(routeMode))'));
-  assert(html.includes('await ensureCoordinatesStarted({ readRoute: true })'));
+  const map = extractFunction('mapHomologAlignmentToStructure');
+  assert(!modeNeedsViewer.includes("'conservation'"));
+  assert(ensureReady.includes('modeNeedsViewer(mode)'));
+  assert(ensureReady.includes('ensureAtlasStarted(options)'));
+  assert(html.includes('function ensureConservationViewerForMapping'));
+  assert(map.includes('ensureConservationViewerForMapping()'));
+  assert(html.includes('3D viewer unavailable'));
 });
 
 test('initial structure loader prefers explicit route protein over stale activity state', () => {

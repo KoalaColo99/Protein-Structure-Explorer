@@ -4165,10 +4165,6 @@ rotation axis B—C</div>
       <section class="section mode-panel hidden" id="conservationPanel">
         <h2>Evolutionary Analysis</h2>
         <p>Identify the currently loaded protein and chain, collect source-labeled family/domain evidence, and show what would be required before residue conservation can be mapped onto this structure.</p>
-        <div class="mini-card" id="currentProteinEvolutionContext" aria-live="polite">
-          <h3>Current Protein Context</h3>
-          <p>Resolving the loaded structure and chain...</p>
-        </div>
         <div class="mini-card" id="conservationProteinWorkspace" aria-live="polite">
           <h3>Conservation Protein Workspace</h3>
           <p id="conservationProteinContextLine">Current structure: Myoglobin (1MBN), chain A.</p>
@@ -4177,22 +4173,37 @@ rotation axis B—C</div>
           </div>
           <div id="conservationProteinChooser" class="hidden"></div>
         </div>
-        <div class="mini-card">
-          <h3>Source-Labeled Workflow</h3>
-          <div id="evolutionStageList" class="list" aria-live="polite"></div>
-          <div class="button-row">
-            <button type="button" id="refreshEvolutionIdentity">Refresh Current Protein Identity</button>
-            <button type="button" id="retryEvolutionStage">Retry Unavailable Sources</button>
-          </div>
-        </div>
-        <div class="mini-card" id="evolutionFamilyDomainPanel">
-          <h3>Family and Domain Evidence</h3>
-          <p>Family, domain, and site annotations appear here when public browser-accessible services return data for the loaded chain.</p>
-        </div>
         <div class="mini-card" id="evolutionCandidatePanel">
-          <h3>Candidate Myoglobin Sequence Set</h3>
+          <h3>Automatic Homolog Discovery and Sequence Import</h3>
           <p>Candidate sequences appear here after the current protein identity resolves.</p>
         </div>
+        <details class="mini-card" id="proteinIdentitySourceDetails">
+          <summary><strong>Protein identity and source details</strong></summary>
+          <div id="currentProteinEvolutionContext" aria-live="polite">
+            <h3>Current Protein Context</h3>
+            <p>Resolving the loaded structure and chain...</p>
+          </div>
+          <div>
+            <h3>Source-Labeled Workflow</h3>
+            <div id="evolutionStageList" class="list" aria-live="polite"></div>
+            <div class="button-row">
+              <button type="button" id="refreshEvolutionIdentity">Refresh Current Protein Identity</button>
+              <button type="button" id="retryEvolutionStage">Retry Unavailable Sources</button>
+            </div>
+          </div>
+          <div id="evolutionFamilyDomainPanel">
+            <h3>Family and Domain Evidence</h3>
+            <p>Family, domain, and site annotations appear here when public browser-accessible services return data for the loaded chain.</p>
+          </div>
+          <div id="evolutionHomologReadinessPanel">
+            <h3>Homolog-Set Readiness</h3>
+            <p>Residue conservation mapping is disabled until a homolog set, sequence alignment, residue mapping, and interpretation model are all available for the current protein and chain.</p>
+          </div>
+          <div id="evolutionMethodDisclosure">
+            <h3>Method Disclosure</h3>
+            <p>This static GitHub Pages workflow queries public browser-accessible services when available: RCSB PDB Data API for structure/entity identity, RCSB Sequence Coordinates for residue mapping when available, UniProt for canonical protein records, InterPro for family and domain annotations, and NCBI CDD/CD-Search only as a conserved-domain reference. It does not infer residue conservation from unrelated curated datasets.</p>
+          </div>
+        </details>
         <div class="mini-card" id="currentProteinAlignmentPanel">
           <h3>Validated Precomputed Alignment</h3>
           <p>The alignment appears here for the 1MBN/P02185 checkpoint dataset.</p>
@@ -4232,14 +4243,6 @@ rotation axis B—C</div>
             <button type="button" id="copyCurrentAlignmentText">Copy uncolored alignment</button>
           </div>
           <div class="warning-text" id="currentConservationExportMessage"></div>
-        </div>
-        <div class="mini-card" id="evolutionHomologReadinessPanel">
-          <h3>Homolog-Set Readiness</h3>
-          <p>Residue conservation mapping is disabled until a homolog set, sequence alignment, residue mapping, and interpretation model are all available for the current protein and chain.</p>
-        </div>
-        <div class="mini-card" id="evolutionMethodDisclosure">
-          <h3>Method Disclosure</h3>
-          <p>This static GitHub Pages workflow queries public browser-accessible services when available: RCSB PDB Data API for structure/entity identity, RCSB Sequence Coordinates for residue mapping when available, UniProt for canonical protein records, InterPro for family and domain annotations, and NCBI CDD/CD-Search only as a conserved-domain reference. It does not infer residue conservation from unrelated curated datasets.</p>
         </div>
         <div class="legacy-current-protein-conservation hidden" hidden aria-hidden="true">
         <div class="mini-card">
@@ -7686,6 +7689,7 @@ END
           resn: line.slice(17, 20).trim(),
           chain: line.slice(21, 22).trim() || 'A',
           resi: Number(line.slice(22, 26)),
+          icode: line.slice(26, 27).trim(),
           x: Number(line.slice(30, 38)),
           y: Number(line.slice(38, 46)),
           z: Number(line.slice(46, 54)),
@@ -7698,13 +7702,14 @@ END
       const residueMap = new Map();
       for (const atom of atoms) {
         if (atom.record !== 'ATOM' || !residueNames[atom.resn]) continue;
-        const key = `${atom.chain}:${atom.resi}`;
+        const key = `${atom.chain}:${atom.resi}${atom.icode || ''}`;
         if (!residueMap.has(key)) residueMap.set(key, {
           key,
           chain: atom.chain,
           resi: atom.resi,
+          icode: atom.icode || '',
           resn: atom.resn,
-          label: `${residueNames[atom.resn]} ${atom.resi}`,
+          label: `${residueNames[atom.resn]} ${atom.resi}${atom.icode || ''}`,
           atoms: [],
           byName: new Map()
         });
@@ -7713,7 +7718,7 @@ END
         residue.byName.set(atom.name, atom);
       }
 
-      const residues = [...residueMap.values()].sort((a, b) => a.resi - b.resi);
+      const residues = [...residueMap.values()].sort((a, b) => (a.resi - b.resi) || String(a.icode || '').localeCompare(String(b.icode || '')));
       return { atoms, residues, residueMap, sheets };
     }
 
@@ -8316,11 +8321,11 @@ END
     }
 
     function modeNeedsViewer(mode = state.mode) {
-      return !['sequence', 'ph', 'gallery', 'conservation'].includes(mode);
+      return !['sequence', 'ph', 'gallery'].includes(mode);
     }
 
     function modeNeedsCoordinates(mode = state.mode) {
-      return ['conservation'].includes(mode);
+      return [];
     }
 
     function viewerUnavailableMessage() {
@@ -15785,6 +15790,33 @@ END
       });
     }
 
+    function homologReferenceResidueMapping(chain, source) {
+      const residues = coordinateResiduesForChain(chain);
+      const localMapping = state.evolutionIdentity.mapping;
+      if (source === 'canonical' && localMapping?.valid && normalizeProteinChainId(localMapping.chain) === normalizeProteinChainId(chain)) {
+        return localMapping.canonicalToCoordinate
+          .filter(item => item.residueKey)
+          .map(item => ({
+            referencePosition: item.canonicalPosition,
+            chain: item.chain,
+            resi: item.resi,
+            icode: item.icode || '',
+            key: item.residueKey,
+            mappingMethod: localMapping.provenance,
+            status: item.status
+          }));
+      }
+      return residues.map((residue, index) => ({
+        referencePosition: index + 1,
+        chain: residue.chain,
+        resi: residue.resi,
+        icode: residue.icode || '',
+        key: residue.key,
+        mappingMethod: 'coordinate-derived chain sequence',
+        status: 'mapped to coordinate residue'
+      }));
+    }
+
     function buildHomologReference() {
       const chains = homologChainSummaries();
       const warnings = [];
@@ -15799,7 +15831,10 @@ END
       if (!error && chains.length > 1 && !state.homologWorkflow.referenceChain) error = 'More than one protein chain was detected. Select a reference chain.';
       if (!error && !chain) error = 'The selected chain does not contain a usable amino-acid sequence.';
       const canonical = state.evolutionIdentity.uniprot?.sequence || '';
-      const hasStrongCanonical = Boolean(chain?.uniprotAccession && canonical && Math.abs(canonical.length - chain.length) <= Math.max(3, chain.length * 0.08));
+      const localMapping = state.evolutionIdentity.mapping;
+      const hasStrongCanonical = Boolean(chain?.uniprotAccession && canonical && (
+        localMapping?.valid || Math.abs(canonical.length - chain.length) <= Math.max(3, chain.length * 0.08)
+      ));
       const requested = state.homologWorkflow.querySequenceSource;
       const source = requested === 'canonical' && canonical ? 'canonical' : requested === 'auto' && hasStrongCanonical ? 'canonical' : 'coordinate';
       const sequence = source === 'canonical' ? canonical : chain?.sequence || '';
@@ -15815,6 +15850,8 @@ END
       if (!error && usableLength < 10) error = 'The selected chain does not contain a usable amino-acid sequence.';
       if (chain && canonical && !hasStrongCanonical) warnings.push('Canonical UniProt sequence is available, but the length differs enough that the coordinate-derived chain sequence is safer by default.');
       if (source === 'canonical' && canonical && !hasStrongCanonical) warnings.push('You selected the complete UniProt canonical sequence even though it differs substantially from the experimentally represented coordinate segment. Use this for precursor/family searches, not direct residue mapping without a validated alignment.');
+      if (source === 'canonical' && localMapping?.valid) warnings.push(`Residue mapping uses ${localMapping.provenance}; missing canonical positions remain unmapped rather than shifting PDB residue numbers.`);
+      if (canonical && localMapping && !localMapping.valid) warnings.push(`Canonical-to-coordinate mapping was rejected: ${localMapping.reason}`);
       const comparison = compareCoordinateAndCanonicalSequences(chain?.sequence || '', canonical);
       return {
         structureId: state.structureId || '',
@@ -15826,10 +15863,11 @@ END
         coordinateResidueCount: chain?.length || 0,
         canonicalLength: canonical.length,
         sequenceComparison: comparison,
-        residueNumberMapping: (chain ? coordinateResiduesForChain(chain.chain) : []).map((residue, index) => ({ referencePosition: index + 1, chain: residue.chain, resi: residue.resi, key: residue.key })),
+        residueNumberMapping: chain ? homologReferenceResidueMapping(chain.chain, source) : [],
         resolvedUniprotAccession: chain?.uniprotAccession || state.evolutionIdentity.identity?.uniprotAccession || '',
         canonicalSequence: canonical,
-        mappingStatus: hasStrongCanonical ? 'strong canonical-coordinate length agreement' : canonical ? 'canonical available but coordinate sequence used by default' : 'coordinate-derived sequence only',
+        mappingStatus: localMapping?.valid ? `${localMapping.provenance}; ${localMapping.mappedCount}/${localMapping.coordinateResidueCount} coordinate residues mapped` : hasStrongCanonical ? 'strong canonical-coordinate length agreement' : canonical ? 'canonical available but coordinate sequence used by default' : 'coordinate-derived sequence only',
+        localMapping,
         validationStatus: error ? 'invalid' : 'valid',
         error,
         warnings,
@@ -15981,6 +16019,176 @@ END
       };
     }
 
+    function alignSequenceToReferenceWithIndices(referenceSequence = '', querySequence = '') {
+      const reference = String(referenceSequence || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+      const query = String(querySequence || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+      const m = reference.length;
+      const n = query.length;
+      const score = Array.from({ length: m + 1 }, () => Array(n + 1).fill(0));
+      const trace = Array.from({ length: m + 1 }, () => Array(n + 1).fill(''));
+      const gap = -2;
+      for (let i = 1; i <= m; i++) {
+        score[i][0] = i * gap;
+        trace[i][0] = 'up';
+      }
+      for (let j = 1; j <= n; j++) {
+        score[0][j] = j * gap;
+        trace[0][j] = 'left';
+      }
+      for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+          const match = reference[i - 1] === query[j - 1] ? 2 : -1;
+          const diag = score[i - 1][j - 1] + match;
+          const up = score[i - 1][j] + gap;
+          const left = score[i][j - 1] + gap;
+          const best = Math.max(diag, up, left);
+          score[i][j] = best;
+          trace[i][j] = best === diag ? 'diag' : best === up ? 'up' : 'left';
+        }
+      }
+      const mappings = Array.from({ length: m }, (_, index) => ({
+        canonicalPosition: index + 1,
+        referenceResidue: reference[index],
+        queryResidue: null,
+        queryIndex: null,
+        identical: false
+      }));
+      let i = m;
+      let j = n;
+      let extraQueryResidues = 0;
+      while (i > 0 || j > 0) {
+        const step = trace[i]?.[j] || (i > 0 ? 'up' : 'left');
+        if (step === 'diag' && i > 0 && j > 0) {
+          mappings[i - 1].queryResidue = query[j - 1];
+          mappings[i - 1].queryIndex = j;
+          mappings[i - 1].identical = reference[i - 1] === query[j - 1];
+          i -= 1;
+          j -= 1;
+        } else if (step === 'up' && i > 0) {
+          i -= 1;
+        } else if (j > 0) {
+          extraQueryResidues += 1;
+          j -= 1;
+        }
+      }
+      const mapped = mappings.filter(item => item.queryIndex !== null);
+      const identical = mapped.filter(item => item.identical).length;
+      const firstMapped = mappings.findIndex(item => item.queryIndex !== null);
+      const lastMapped = mappings.length - 1 - [...mappings].reverse().findIndex(item => item.queryIndex !== null);
+      const internalMissing = firstMapped < 0 ? 0 : mappings.slice(firstMapped, lastMapped + 1).filter(item => item.queryIndex === null).length;
+      return {
+        referenceLength: m,
+        queryLength: n,
+        mappedCount: mapped.length,
+        identicalCount: identical,
+        identityAcrossMapped: mapped.length ? identical / mapped.length : 0,
+        coordinateCoverage: n ? mapped.length / n : 0,
+        referenceCoverage: m ? mapped.length / m : 0,
+        missingNterminal: firstMapped < 0 ? m : firstMapped,
+        missingCterminal: lastMapped < 0 ? m : m - lastMapped - 1,
+        internalMissing,
+        extraQueryResidues,
+        mappings
+      };
+    }
+
+    function buildLocalSequenceMappingFallback(chain = currentEvolutionChain()) {
+      const residues = coordinateResiduesForChain(chain);
+      const coordinateSequence = sequenceFromResidues(residues);
+      const canonicalSequence = state.evolutionIdentity.uniprot?.sequence || '';
+      const result = {
+        method: 'local sequence-alignment fallback',
+        provenance: 'local sequence-alignment fallback',
+        chain: normalizeProteinChainId(chain),
+        referenceAccession: state.evolutionIdentity.identity?.uniprotAccession || state.evolutionIdentity.uniprot?.accession || '',
+        referenceHash: sequenceHash(canonicalSequence),
+        coordinateHash: sequenceHash(coordinateSequence),
+        coordinateResidueCount: residues.length,
+        canonicalLength: canonicalSequence.length,
+        mappedCount: 0,
+        coordinateCoverage: 0,
+        referenceCoverage: 0,
+        identityAcrossMapped: 0,
+        missingNterminal: 0,
+        missingCterminal: 0,
+        internalMissing: 0,
+        extraCoordinateResidues: 0,
+        valid: false,
+        confidence: 'unavailable',
+        reason: '',
+        canonicalToCoordinate: [],
+        coordinateToCanonical: []
+      };
+      if (!residues.length || !coordinateSequence) {
+        result.reason = 'No coordinate-derived sequence is available for the selected chain.';
+        return result;
+      }
+      if (!canonicalSequence) {
+        result.reason = 'No canonical UniProt sequence is available for local mapping.';
+        return result;
+      }
+      const alignment = alignSequenceToReferenceWithIndices(canonicalSequence, coordinateSequence);
+      result.mappedCount = alignment.mappedCount;
+      result.coordinateCoverage = alignment.coordinateCoverage;
+      result.referenceCoverage = alignment.referenceCoverage;
+      result.identityAcrossMapped = alignment.identityAcrossMapped;
+      result.missingNterminal = alignment.missingNterminal;
+      result.missingCterminal = alignment.missingCterminal;
+      result.internalMissing = alignment.internalMissing;
+      result.extraCoordinateResidues = alignment.extraQueryResidues;
+      result.canonicalToCoordinate = alignment.mappings.map(item => {
+        const residue = item.queryIndex == null ? null : residues[item.queryIndex - 1] || null;
+        return {
+          canonicalPosition: item.canonicalPosition,
+          referenceResidue: item.referenceResidue,
+          coordinateResidue: item.queryResidue,
+          coordinateIndex: item.queryIndex,
+          residueKey: residue?.key || '',
+          chain: residue?.chain || '',
+          resi: residue?.resi ?? null,
+          icode: residue?.icode || '',
+          residueLabel: residue?.label || '',
+          identical: item.identical,
+          status: residue ? 'mapped to coordinate residue' : 'reference residue absent from coordinates'
+        };
+      });
+      result.coordinateToCanonical = result.canonicalToCoordinate
+        .filter(item => item.residueKey)
+        .map(item => ({
+          residueKey: item.residueKey,
+          canonicalPosition: item.canonicalPosition,
+          referenceResidue: item.referenceResidue,
+          chain: item.chain,
+          resi: item.resi,
+          icode: item.icode
+        }));
+      const orderValid = result.coordinateToCanonical.every((item, index, list) => index === 0 || item.canonicalPosition > list[index - 1].canonicalPosition);
+      if (!orderValid) result.reason = 'Coordinate residues do not map in canonical sequence order.';
+      else if (result.coordinateCoverage < 0.95) result.reason = `Only ${Math.round(result.coordinateCoverage * 100)}% of coordinate residues could be aligned to the canonical sequence.`;
+      else if (result.identityAcrossMapped < 0.9) result.reason = `Identity across mapped residues is ${Math.round(result.identityAcrossMapped * 100)}%, below the validation threshold.`;
+      else if (result.extraCoordinateResidues > Math.max(2, Math.ceil(result.coordinateResidueCount * 0.02))) result.reason = `${result.extraCoordinateResidues} coordinate residues align outside the canonical sequence.`;
+      else {
+        result.valid = true;
+        result.confidence = result.identityAcrossMapped >= 0.98 && result.coordinateCoverage >= 0.98 ? 'high' : 'adequate';
+        result.reason = `Local mapping succeeded: ${result.mappedCount} of ${result.coordinateResidueCount} coordinate residues mapped.`;
+      }
+      if (!result.valid) result.confidence = 'rejected';
+      return result;
+    }
+
+    function localSequenceMappingSummary(mapping = state.evolutionIdentity.mapping) {
+      if (!mapping) return 'RCSB mapping service unavailable; local sequence mapping has not run yet.';
+      if (mapping.valid) {
+        const missing = [
+          mapping.missingNterminal ? `${mapping.missingNterminal} N-terminal canonical position${mapping.missingNterminal === 1 ? '' : 's'} absent` : '',
+          mapping.internalMissing ? `${mapping.internalMissing} internal canonical position${mapping.internalMissing === 1 ? '' : 's'} absent` : '',
+          mapping.missingCterminal ? `${mapping.missingCterminal} C-terminal canonical position${mapping.missingCterminal === 1 ? '' : 's'} absent` : ''
+        ].filter(Boolean).join('; ') || 'no canonical gaps detected';
+        return `${mapping.reason} Provenance: ${mapping.provenance}. Identity across mapped residues ${percentText(mapping.identityAcrossMapped)}; canonical coverage ${percentText(mapping.referenceCoverage)}; ${missing}.`;
+      }
+      return `Local mapping could not be validated: ${mapping.reason || 'unknown reason'}.`;
+    }
+
     function normalizeQuerySequenceWithReport(sequence = '') {
       const raw = String(sequence || '');
       const upper = raw.toUpperCase();
@@ -16058,7 +16266,7 @@ END
       if (!workflow.active) {
         return `
           <div class="mini-card homolog-workflow-card" id="homologImportWorkflow">
-            <h3>Candidate Homolog Set</h3>
+            <h3>Automatic Homolog Discovery and Sequence Import</h3>
             <p>No validated candidate table is bundled for this current protein yet. The workflow will not substitute unrelated sequences.</p>
             <div class="button-row"><button type="button" data-homolog-action="start">Find homologs automatically</button></div>
             <p class="warning-text">Homologs are evolutionarily related sequences. Conservation is calculated only after reviewed candidates have been aligned and mapped to the selected structure chain.</p>
@@ -16097,6 +16305,7 @@ END
           <div class="${reference.validationStatus === 'valid' ? 'chem-note' : 'warning-text'}">
             <strong>${reference.validationStatus === 'valid' ? 'Reference ready' : 'Reference needs attention'}</strong>
             ${reference.error ? escapeHtml(reference.error) : escapeHtml(homologReferenceReadyText(reference))}
+            ${reference.localMapping ? `<p><strong>Mapping provenance:</strong> ${escapeHtml(localSequenceMappingSummary(reference.localMapping))}</p>` : ''}
             ${reference.warnings.length ? `<ul>${reference.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>` : ''}
             ${reference.validationStatus === 'valid' ? '<div class="button-row"><button type="button" data-homolog-action="criteria">Continue to Search Criteria</button></div>' : ''}
           </div>
@@ -17354,6 +17563,38 @@ END
       }
     }
 
+    function residueMapForHomologReference(reference, residues) {
+      if (reference.source === 'canonical' && reference.localMapping?.valid) {
+        return new Map(reference.localMapping.canonicalToCoordinate
+          .filter(item => item.residueKey)
+          .map(item => {
+            const residue = state.residueMap.get(item.residueKey) || residues.find(candidate => candidate.key === item.residueKey) || null;
+            return [item.canonicalPosition, residue];
+          })
+          .filter(([, residue]) => Boolean(residue)));
+      }
+      return new Map(residues.map((residue, index) => [index + 1, residue]));
+    }
+
+    function ensureConservationViewerForMapping() {
+      if (hasViewer()) return true;
+      if (!hasParsedCoordinates()) {
+        state.homologWorkflow.warnings = [...(state.homologWorkflow.warnings || []), '3D coloring needs loaded coordinates. The alignment and 2D mapping remain available.'];
+        return false;
+      }
+      try {
+        initializeViewerSubsystem('viewer');
+        if (hasViewer()) {
+          renderCurrentModel();
+          return true;
+        }
+      } catch (error) {
+        markViewerUnavailable(error);
+      }
+      state.homologWorkflow.warnings = [...(state.homologWorkflow.warnings || []), `3D viewer unavailable: ${viewerUnavailableMessage()}`];
+      return false;
+    }
+
     function mapHomologAlignmentToStructure() {
       const records = state.homologWorkflow.alignmentRecords || [];
       const reference = selectedHomologReference();
@@ -17372,7 +17613,7 @@ END
         || records[0];
       const metrics = [];
       let refPosition = 0;
-      const residueByPosition = new Map(residues.map((residue, index) => [index + 1, residue]));
+      const residueByPosition = residueMapForHomologReference(reference, residues);
       for (let columnIndex = 0; columnIndex < referenceRecord.alignedSequence.length; columnIndex++) {
         const refChar = referenceRecord.alignedSequence[columnIndex];
         let residue = null;
@@ -17405,11 +17646,15 @@ END
       const confidence = mappedCount >= Math.max(3, residues.length * 0.5) ? 'adequate' : 'inadequate';
       state.homologWorkflow.mappedMetrics = metrics;
       state.homologWorkflow.mapping = {
-        method: 'reference alignment row to selected coordinate-derived chain sequence',
+        method: reference.source === 'canonical' && reference.localMapping?.valid
+          ? `reference alignment row to canonical sequence; ${reference.localMapping.provenance}`
+          : 'reference alignment row to selected coordinate-derived chain sequence',
         referenceRow: referenceRecord.accession || referenceRecord.id,
         chain: state.homologWorkflow.referenceChain,
         mappedCount,
         coordinateResidueCount: residues.length,
+        referenceSequenceLength: reference.sequence.length,
+        mappingProvenance: reference.source === 'canonical' && reference.localMapping?.valid ? reference.localMapping.provenance : 'coordinate-derived chain sequence',
         structuralResiduesOutsideAnalyzedSegment: Math.max(0, state.residues.length - residues.length),
         segmentSpecific: residues.length < state.residues.length || reference.source === 'coordinate',
         confidence,
@@ -17419,6 +17664,7 @@ END
       state.homologWorkflow.status = confidence === 'adequate' ? 'Alignment mapped to structure. Conservation coloring is available.' : 'Mapping confidence is inadequate; review reference row and chain.';
       state.homologWorkflow.provenance = homologProvenanceRecord();
       if (confidence === 'adequate') {
+        ensureConservationViewerForMapping();
         state.conservation = metrics.filter(metric => metric.residue).map(metric => ({
           residue: metric.residue,
           refChar: metric.referenceResidue,
@@ -17804,12 +18050,13 @@ END
       }
     }
 
-    function setEvolutionStage(id, status, message = '') {
+    function setEvolutionStage(id, status, message = '', source = '') {
       ensureEvolutionStateFresh();
       const stage = state.evolutionIdentity.stages.find(item => item.id === id);
       if (stage) {
         stage.status = status;
         stage.message = message;
+        if (source) stage.source = source;
       }
     }
 
@@ -17943,7 +18190,7 @@ END
       }
 
       const accession = state.evolutionIdentity.identity?.uniprotAccession;
-      setEvolutionStage('mapping', 'unavailable', 'Residue-level PDB-UniProt mapping is not displayed yet in this static atlas. Until this stage succeeds, conservation coloring remains disabled.');
+      setEvolutionStage('mapping', 'loading', 'RCSB mapping service unavailable; trying local sequence mapping...', 'RCSB Sequence Coordinates API; local fallback pending');
 
       if (accession) {
         setEvolutionStage('uniprot', 'loading', `Fetching UniProt ${accession}.`);
@@ -17953,10 +18200,18 @@ END
           if (!identityStillCurrent()) return;
           state.evolutionIdentity.uniprot = uniprot;
           setEvolutionStage('uniprot', state.evolutionIdentity.uniprot ? 'success' : 'unavailable', state.evolutionIdentity.uniprot ? `${state.evolutionIdentity.uniprot.name}; ${state.evolutionIdentity.uniprot.reviewed ? 'reviewed' : 'unreviewed'} record.` : 'No UniProt record was available.');
+          const mapping = buildLocalSequenceMappingFallback(currentEvolutionChain());
+          if (!identityStillCurrent()) return;
+          state.evolutionIdentity.mapping = mapping;
+          setEvolutionStage('mapping', mapping.valid ? 'success' : 'failed', mapping.valid
+            ? mapping.reason
+            : `Local mapping could not be validated: ${mapping.reason}`,
+            mapping.valid ? 'local sequence-alignment fallback' : 'RCSB Sequence Coordinates API; local fallback rejected');
         } catch (error) {
           if (!identityStillCurrent()) return;
           state.evolutionIdentity.errors.push(error.message);
           setEvolutionStage('uniprot', 'failed', `UniProt lookup failed: ${error.message}`);
+          setEvolutionStage('mapping', 'failed', `Local mapping could not be validated: UniProt lookup failed before the canonical sequence was available.`, 'RCSB Sequence Coordinates API; local fallback rejected');
         }
 
         setEvolutionStage('interpro', 'loading', `Fetching InterPro annotations for ${accession}.`);
@@ -17974,6 +18229,7 @@ END
       } else {
         setEvolutionStage('uniprot', 'unavailable', 'No UniProt accession was reported for the current PDB chain.');
         setEvolutionStage('interpro', 'unavailable', 'InterPro lookup requires a mapped UniProt accession.');
+        setEvolutionStage('mapping', 'unavailable', 'Local mapping requires a resolved UniProt canonical sequence.', 'RCSB Sequence Coordinates API; local fallback unavailable');
       }
 
       setEvolutionStage('cdd', 'unavailable', 'CDD is listed as a conserved-domain reference, but this static page does not run a live whole-protein CD-Search.');
@@ -18128,14 +18384,21 @@ END
         <p><strong>InterPro annotations:</strong></p>
         ${interproRows ? `<ul>${interproRows}</ul>` : '<p>No InterPro annotations are available yet.</p>'}
       `;
+      const mapping = state.evolutionIdentity.mapping;
+      const mappingLine = mapping
+        ? localSequenceMappingSummary(mapping)
+        : 'RCSB mapping service unavailable; local sequence mapping is waiting for identity and UniProt sequence evidence.';
+      const conservationLine = mapping?.valid
+        ? 'Mapping ready; conservation coloring awaits homolog discovery, a validated MSA, and Map and Color activation.'
+        : 'Conservation coloring remains unavailable because both authoritative and validated fallback residue mapping are not ready.';
       readinessPanel.innerHTML = `
         <h3>Homolog-Set Readiness</h3>
-        <p><strong>Status:</strong> ${teachingDataset ? 'Checkpoint ready through alignment; conservation colors intentionally not added yet.' : 'Not ready for residue conservation mapping.'}</p>
+        <p><strong>Status:</strong> ${mapping?.valid ? 'Residue mapping ready; complete the homolog workflow to calculate conservation.' : teachingDataset ? 'Checkpoint ready through alignment; mapping review in progress.' : 'Not ready for residue conservation mapping.'}</p>
         <ul>
-          <li>Related-protein discovery: ${teachingDataset ? 'validated local 1MBN myoglobin teaching set available.' : 'not implemented for the current protein in this static build.'}</li>
-          <li>Multiple sequence alignment: ${teachingDataset ? 'validated precomputed alignment rendered below.' : 'no current-protein MSA loaded.'}</li>
-          <li>Residue mapping: ${teachingDataset ? 'P02185 canonical positions 2-154 map to 1MBN residues 1-153; position 1 is absent from coordinates.' : 'no displayed PDB-to-canonical sequence coordinate map yet.'}</li>
-          <li>Conservation coloring: disabled for this checkpoint until identity, homologs, alignment, and numbering have been reviewed.</li>
+          <li>Related-protein discovery: ${teachingDataset ? 'validated local 1MBN myoglobin teaching set available.' : 'available through the automatic homolog workflow above or manual accession/FASTA import.'}</li>
+          <li>Multiple sequence alignment: ${teachingDataset ? 'validated precomputed alignment rendered below.' : 'load or generate an MSA in the workflow above.'}</li>
+          <li>Residue mapping: ${escapeHtml(mappingLine)}</li>
+          <li>Conservation coloring: ${escapeHtml(conservationLine)}</li>
         </ul>
       `;
       const computeButton = document.getElementById('computeConservation');
@@ -21049,16 +21312,19 @@ END
       }
       if (action === 'map-alignment') mapHomologAlignmentToStructure();
       if (action === 'color-imported') {
+        ensureConservationViewerForMapping();
         state.currentProteinConservationFilter = 'all';
         applyMode();
         return;
       }
       if (action === 'high-imported') {
+        ensureConservationViewerForMapping();
         state.currentProteinConservationFilter = 'high';
         applyMode();
         return;
       }
       if (action === 'variable-imported') {
+        ensureConservationViewerForMapping();
         state.currentProteinConservationFilter = 'variable';
         applyMode();
         return;
