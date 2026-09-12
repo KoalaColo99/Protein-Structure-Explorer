@@ -1,0 +1,42 @@
+{
+  "datasetId": "current_protein_1mbn_myoglobin_curated_v1",
+  "title": "1MBN Myoglobin curated conservation teaching set",
+  "status": "active",
+  "reference": {
+    "pdbId": "1MBN",
+    "chain": "A",
+    "entityId": "1",
+    "accession": "P02185",
+    "organism": "Physeter macrocephalus",
+    "sequenceLength": 154,
+    "sequenceHash": "fe026b8204820ec918b95f461790bcdba78587a956209f84c541f65e2ef268c0"
+  },
+  "classification": "straightforward single-protein reference; monomeric sperm-whale myoglobin with heme ligand",
+  "teachingQuestion": "Which myoglobin residues are conserved across vertebrate oxygen-storage globins, and how do they relate to the heme pocket?",
+  "alignment": {
+    "method": "EMBL-EBI Job Dispatcher Clustal Omega",
+    "jobId": "clustalo-R20260912-162655-0851-91987347-p2m",
+    "alignmentLength": 154,
+    "sequenceCount": 8,
+    "referenceContributesToScore": true,
+    "gapTreatment": "Gap columns are included in display; amino-acid conservation scoring excludes gaps from residue-frequency counts."
+  },
+  "files": {
+    "manifest": "manifest.json",
+    "candidates": "candidates.json",
+    "unalignedFasta": "unaligned.fasta",
+    "alignedFasta": "aligned.fasta",
+    "mapping": "mapping.json",
+    "report": "curation_report.md"
+  },
+  "studentContext": {
+    "whatIsCompared": "Full-length vertebrate myoglobin orthologs, not hemoglobin alpha or beta chains.",
+    "whySelected": "Reviewed UniProt records with compatible length, complete sequences, and useful vertebrate diversity.",
+    "whatConservationMeans": "Similarity within this curated myoglobin teaching set; it is evidence for conserved globin constraints, not proof that every invariant residue has the same function.",
+    "whatToNotice": "Look at proximal/distal heme-pocket residues, conserved histidines, and helix packing positions.",
+    "limitations": [
+      "Eight sequences are enough for teaching but not a full evolutionary-rate model.",
+      "Hemoglobin paralogs are excluded to keep the question focused on myoglobin."
+    ]
+  }
+}

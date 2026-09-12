@@ -1,0 +1,42 @@
+{
+  "datasetId": "current_protein_1ca2_carbonic_anhydrase_ii_curated_v1",
+  "title": "1CA2 Carbonic anhydrase II curated conservation teaching set",
+  "status": "active",
+  "reference": {
+    "pdbId": "1CA2",
+    "chain": "A",
+    "entityId": "1",
+    "accession": "P00918",
+    "organism": "Homo sapiens",
+    "sequenceLength": 260,
+    "sequenceHash": "e6a24c903c1ef211037c64a6835a8a484f48b17be1cae50d6998913f21acf7d4"
+  },
+  "classification": "straightforward single-protein reference; human carbonic anhydrase II with zinc cofactor",
+  "teachingQuestion": "Which CA II residues are conserved across vertebrate orthologs, and how do zinc binding and proton transfer constrain the active site?",
+  "alignment": {
+    "method": "EMBL-EBI Job Dispatcher Clustal Omega",
+    "jobId": "clustalo-R20260912-162717-0246-25154810-p1m",
+    "alignmentLength": 260,
+    "sequenceCount": 8,
+    "referenceContributesToScore": true,
+    "gapTreatment": "Gap columns are included in display; amino-acid conservation scoring excludes gaps from residue-frequency counts."
+  },
+  "files": {
+    "manifest": "manifest.json",
+    "candidates": "candidates.json",
+    "unalignedFasta": "unaligned.fasta",
+    "alignedFasta": "aligned.fasta",
+    "mapping": "mapping.json",
+    "report": "curation_report.md"
+  },
+  "studentContext": {
+    "whatIsCompared": "Vertebrate carbonic anhydrase II orthologs, not mixed beta/gamma carbonic anhydrases or distant alpha-CA paralogs.",
+    "whySelected": "Sequences are full-length CA II-like records with compatible 260-aa architecture and high reference coverage.",
+    "whatConservationMeans": "Similarity within this CA II ortholog set; conserved positions can suggest structural or catalytic constraints but need biochemical evidence for functional claims.",
+    "whatToNotice": "Zinc ligands, His64 proton-transfer context, and residues shaping the active-site pocket.",
+    "limitations": [
+      "The set emphasizes CA II orthologs; it is not a broad carbonic-anhydrase-family comparison.",
+      "Some non-mammalian CA II annotations are less experimentally characterized than human/mammalian records."
+    ]
+  }
+}

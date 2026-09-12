@@ -1,0 +1,940 @@
+{
+  "mappingId": "map_1mbn_chain_a_p02185_local_v1",
+  "pdbId": "1MBN",
+  "chain": "A",
+  "referenceAccession": "P02185",
+  "method": "local sequence-alignment fallback validated against canonical UniProt sequence",
+  "confidence": "high",
+  "mappedResidueCount": 153,
+  "coordinateResidueCount": 153,
+  "canonicalLength": 154,
+  "canonicalResiduesAbsentFromCoordinates": [
+    {
+      "start": 1,
+      "end": 1,
+      "reason": "initiator methionine absent from 1MBN coordinates"
+    }
+  ],
+  "coordinateToCanonical": [
+    {
+      "chain": "A",
+      "resi": 1,
+      "icode": "",
+      "canonicalPosition": 2
+    },
+    {
+      "chain": "A",
+      "resi": 2,
+      "icode": "",
+      "canonicalPosition": 3
+    },
+    {
+      "chain": "A",
+      "resi": 3,
+      "icode": "",
+      "canonicalPosition": 4
+    },
+    {
+      "chain": "A",
+      "resi": 4,
+      "icode": "",
+      "canonicalPosition": 5
+    },
+    {
+      "chain": "A",
+      "resi": 5,
+      "icode": "",
+      "canonicalPosition": 6
+    },
+    {
+      "chain": "A",
+      "resi": 6,
+      "icode": "",
+      "canonicalPosition": 7
+    },
+    {
+      "chain": "A",
+      "resi": 7,
+      "icode": "",
+      "canonicalPosition": 8
+    },
+    {
+      "chain": "A",
+      "resi": 8,
+      "icode": "",
+      "canonicalPosition": 9
+    },
+    {
+      "chain": "A",
+      "resi": 9,
+      "icode": "",
+      "canonicalPosition": 10
+    },
+    {
+      "chain": "A",
+      "resi": 10,
+      "icode": "",
+      "canonicalPosition": 11
+    },
+    {
+      "chain": "A",
+      "resi": 11,
+      "icode": "",
+      "canonicalPosition": 12
+    },
+    {
+      "chain": "A",
+      "resi": 12,
+      "icode": "",
+      "canonicalPosition": 13
+    },
+    {
+      "chain": "A",
+      "resi": 13,
+      "icode": "",
+      "canonicalPosition": 14
+    },
+    {
+      "chain": "A",
+      "resi": 14,
+      "icode": "",
+      "canonicalPosition": 15
+    },
+    {
+      "chain": "A",
+      "resi": 15,
+      "icode": "",
+      "canonicalPosition": 16
+    },
+    {
+      "chain": "A",
+      "resi": 16,
+      "icode": "",
+      "canonicalPosition": 17
+    },
+    {
+      "chain": "A",
+      "resi": 17,
+      "icode": "",
+      "canonicalPosition": 18
+    },
+    {
+      "chain": "A",
+      "resi": 18,
+      "icode": "",
+      "canonicalPosition": 19
+    },
+    {
+      "chain": "A",
+      "resi": 19,
+      "icode": "",
+      "canonicalPosition": 20
+    },
+    {
+      "chain": "A",
+      "resi": 20,
+      "icode": "",
+      "canonicalPosition": 21
+    },
+    {
+      "chain": "A",
+      "resi": 21,
+      "icode": "",
+      "canonicalPosition": 22
+    },
+    {
+      "chain": "A",
+      "resi": 22,
+      "icode": "",
+      "canonicalPosition": 23
+    },
+    {
+      "chain": "A",
+      "resi": 23,
+      "icode": "",
+      "canonicalPosition": 24
+    },
+    {
+      "chain": "A",
+      "resi": 24,
+      "icode": "",
+      "canonicalPosition": 25
+    },
+    {
+      "chain": "A",
+      "resi": 25,
+      "icode": "",
+      "canonicalPosition": 26
+    },
+    {
+      "chain": "A",
+      "resi": 26,
+      "icode": "",
+      "canonicalPosition": 27
+    },
+    {
+      "chain": "A",
+      "resi": 27,
+      "icode": "",
+      "canonicalPosition": 28
+    },
+    {
+      "chain": "A",
+      "resi": 28,
+      "icode": "",
+      "canonicalPosition": 29
+    },
+    {
+      "chain": "A",
+      "resi": 29,
+      "icode": "",
+      "canonicalPosition": 30
+    },
+    {
+      "chain": "A",
+      "resi": 30,
+      "icode": "",
+      "canonicalPosition": 31
+    },
+    {
+      "chain": "A",
+      "resi": 31,
+      "icode": "",
+      "canonicalPosition": 32
+    },
+    {
+      "chain": "A",
+      "resi": 32,
+      "icode": "",
+      "canonicalPosition": 33
+    },
+    {
+      "chain": "A",
+      "resi": 33,
+      "icode": "",
+      "canonicalPosition": 34
+    },
+    {
+      "chain": "A",
+      "resi": 34,
+      "icode": "",
+      "canonicalPosition": 35
+    },
+    {
+      "chain": "A",
+      "resi": 35,
+      "icode": "",
+      "canonicalPosition": 36
+    },
+    {
+      "chain": "A",
+      "resi": 36,
+      "icode": "",
+      "canonicalPosition": 37
+    },
+    {
+      "chain": "A",
+      "resi": 37,
+      "icode": "",
+      "canonicalPosition": 38
+    },
+    {
+      "chain": "A",
+      "resi": 38,
+      "icode": "",
+      "canonicalPosition": 39
+    },
+    {
+      "chain": "A",
+      "resi": 39,
+      "icode": "",
+      "canonicalPosition": 40
+    },
+    {
+      "chain": "A",
+      "resi": 40,
+      "icode": "",
+      "canonicalPosition": 41
+    },
+    {
+      "chain": "A",
+      "resi": 41,
+      "icode": "",
+      "canonicalPosition": 42
+    },
+    {
+      "chain": "A",
+      "resi": 42,
+      "icode": "",
+      "canonicalPosition": 43
+    },
+    {
+      "chain": "A",
+      "resi": 43,
+      "icode": "",
+      "canonicalPosition": 44
+    },
+    {
+      "chain": "A",
+      "resi": 44,
+      "icode": "",
+      "canonicalPosition": 45
+    },
+    {
+      "chain": "A",
+      "resi": 45,
+      "icode": "",
+      "canonicalPosition": 46
+    },
+    {
+      "chain": "A",
+      "resi": 46,
+      "icode": "",
+      "canonicalPosition": 47
+    },
+    {
+      "chain": "A",
+      "resi": 47,
+      "icode": "",
+      "canonicalPosition": 48
+    },
+    {
+      "chain": "A",
+      "resi": 48,
+      "icode": "",
+      "canonicalPosition": 49
+    },
+    {
+      "chain": "A",
+      "resi": 49,
+      "icode": "",
+      "canonicalPosition": 50
+    },
+    {
+      "chain": "A",
+      "resi": 50,
+      "icode": "",
+      "canonicalPosition": 51
+    },
+    {
+      "chain": "A",
+      "resi": 51,
+      "icode": "",
+      "canonicalPosition": 52
+    },
+    {
+      "chain": "A",
+      "resi": 52,
+      "icode": "",
+      "canonicalPosition": 53
+    },
+    {
+      "chain": "A",
+      "resi": 53,
+      "icode": "",
+      "canonicalPosition": 54
+    },
+    {
+      "chain": "A",
+      "resi": 54,
+      "icode": "",
+      "canonicalPosition": 55
+    },
+    {
+      "chain": "A",
+      "resi": 55,
+      "icode": "",
+      "canonicalPosition": 56
+    },
+    {
+      "chain": "A",
+      "resi": 56,
+      "icode": "",
+      "canonicalPosition": 57
+    },
+    {
+      "chain": "A",
+      "resi": 57,
+      "icode": "",
+      "canonicalPosition": 58
+    },
+    {
+      "chain": "A",
+      "resi": 58,
+      "icode": "",
+      "canonicalPosition": 59
+    },
+    {
+      "chain": "A",
+      "resi": 59,
+      "icode": "",
+      "canonicalPosition": 60
+    },
+    {
+      "chain": "A",
+      "resi": 60,
+      "icode": "",
+      "canonicalPosition": 61
+    },
+    {
+      "chain": "A",
+      "resi": 61,
+      "icode": "",
+      "canonicalPosition": 62
+    },
+    {
+      "chain": "A",
+      "resi": 62,
+      "icode": "",
+      "canonicalPosition": 63
+    },
+    {
+      "chain": "A",
+      "resi": 63,
+      "icode": "",
+      "canonicalPosition": 64
+    },
+    {
+      "chain": "A",
+      "resi": 64,
+      "icode": "",
+      "canonicalPosition": 65
+    },
+    {
+      "chain": "A",
+      "resi": 65,
+      "icode": "",
+      "canonicalPosition": 66
+    },
+    {
+      "chain": "A",
+      "resi": 66,
+      "icode": "",
+      "canonicalPosition": 67
+    },
+    {
+      "chain": "A",
+      "resi": 67,
+      "icode": "",
+      "canonicalPosition": 68
+    },
+    {
+      "chain": "A",
+      "resi": 68,
+      "icode": "",
+      "canonicalPosition": 69
+    },
+    {
+      "chain": "A",
+      "resi": 69,
+      "icode": "",
+      "canonicalPosition": 70
+    },
+    {
+      "chain": "A",
+      "resi": 70,
+      "icode": "",
+      "canonicalPosition": 71
+    },
+    {
+      "chain": "A",
+      "resi": 71,
+      "icode": "",
+      "canonicalPosition": 72
+    },
+    {
+      "chain": "A",
+      "resi": 72,
+      "icode": "",
+      "canonicalPosition": 73
+    },
+    {
+      "chain": "A",
+      "resi": 73,
+      "icode": "",
+      "canonicalPosition": 74
+    },
+    {
+      "chain": "A",
+      "resi": 74,
+      "icode": "",
+      "canonicalPosition": 75
+    },
+    {
+      "chain": "A",
+      "resi": 75,
+      "icode": "",
+      "canonicalPosition": 76
+    },
+    {
+      "chain": "A",
+      "resi": 76,
+      "icode": "",
+      "canonicalPosition": 77
+    },
+    {
+      "chain": "A",
+      "resi": 77,
+      "icode": "",
+      "canonicalPosition": 78
+    },
+    {
+      "chain": "A",
+      "resi": 78,
+      "icode": "",
+      "canonicalPosition": 79
+    },
+    {
+      "chain": "A",
+      "resi": 79,
+      "icode": "",
+      "canonicalPosition": 80
+    },
+    {
+      "chain": "A",
+      "resi": 80,
+      "icode": "",
+      "canonicalPosition": 81
+    },
+    {
+      "chain": "A",
+      "resi": 81,
+      "icode": "",
+      "canonicalPosition": 82
+    },
+    {
+      "chain": "A",
+      "resi": 82,
+      "icode": "",
+      "canonicalPosition": 83
+    },
+    {
+      "chain": "A",
+      "resi": 83,
+      "icode": "",
+      "canonicalPosition": 84
+    },
+    {
+      "chain": "A",
+      "resi": 84,
+      "icode": "",
+      "canonicalPosition": 85
+    },
+    {
+      "chain": "A",
+      "resi": 85,
+      "icode": "",
+      "canonicalPosition": 86
+    },
+    {
+      "chain": "A",
+      "resi": 86,
+      "icode": "",
+      "canonicalPosition": 87
+    },
+    {
+      "chain": "A",
+      "resi": 87,
+      "icode": "",
+      "canonicalPosition": 88
+    },
+    {
+      "chain": "A",
+      "resi": 88,
+      "icode": "",
+      "canonicalPosition": 89
+    },
+    {
+      "chain": "A",
+      "resi": 89,
+      "icode": "",
+      "canonicalPosition": 90
+    },
+    {
+      "chain": "A",
+      "resi": 90,
+      "icode": "",
+      "canonicalPosition": 91
+    },
+    {
+      "chain": "A",
+      "resi": 91,
+      "icode": "",
+      "canonicalPosition": 92
+    },
+    {
+      "chain": "A",
+      "resi": 92,
+      "icode": "",
+      "canonicalPosition": 93
+    },
+    {
+      "chain": "A",
+      "resi": 93,
+      "icode": "",
+      "canonicalPosition": 94
+    },
+    {
+      "chain": "A",
+      "resi": 94,
+      "icode": "",
+      "canonicalPosition": 95
+    },
+    {
+      "chain": "A",
+      "resi": 95,
+      "icode": "",
+      "canonicalPosition": 96
+    },
+    {
+      "chain": "A",
+      "resi": 96,
+      "icode": "",
+      "canonicalPosition": 97
+    },
+    {
+      "chain": "A",
+      "resi": 97,
+      "icode": "",
+      "canonicalPosition": 98
+    },
+    {
+      "chain": "A",
+      "resi": 98,
+      "icode": "",
+      "canonicalPosition": 99
+    },
+    {
+      "chain": "A",
+      "resi": 99,
+      "icode": "",
+      "canonicalPosition": 100
+    },
+    {
+      "chain": "A",
+      "resi": 100,
+      "icode": "",
+      "canonicalPosition": 101
+    },
+    {
+      "chain": "A",
+      "resi": 101,
+      "icode": "",
+      "canonicalPosition": 102
+    },
+    {
+      "chain": "A",
+      "resi": 102,
+      "icode": "",
+      "canonicalPosition": 103
+    },
+    {
+      "chain": "A",
+      "resi": 103,
+      "icode": "",
+      "canonicalPosition": 104
+    },
+    {
+      "chain": "A",
+      "resi": 104,
+      "icode": "",
+      "canonicalPosition": 105
+    },
+    {
+      "chain": "A",
+      "resi": 105,
+      "icode": "",
+      "canonicalPosition": 106
+    },
+    {
+      "chain": "A",
+      "resi": 106,
+      "icode": "",
+      "canonicalPosition": 107
+    },
+    {
+      "chain": "A",
+      "resi": 107,
+      "icode": "",
+      "canonicalPosition": 108
+    },
+    {
+      "chain": "A",
+      "resi": 108,
+      "icode": "",
+      "canonicalPosition": 109
+    },
+    {
+      "chain": "A",
+      "resi": 109,
+      "icode": "",
+      "canonicalPosition": 110
+    },
+    {
+      "chain": "A",
+      "resi": 110,
+      "icode": "",
+      "canonicalPosition": 111
+    },
+    {
+      "chain": "A",
+      "resi": 111,
+      "icode": "",
+      "canonicalPosition": 112
+    },
+    {
+      "chain": "A",
+      "resi": 112,
+      "icode": "",
+      "canonicalPosition": 113
+    },
+    {
+      "chain": "A",
+      "resi": 113,
+      "icode": "",
+      "canonicalPosition": 114
+    },
+    {
+      "chain": "A",
+      "resi": 114,
+      "icode": "",
+      "canonicalPosition": 115
+    },
+    {
+      "chain": "A",
+      "resi": 115,
+      "icode": "",
+      "canonicalPosition": 116
+    },
+    {
+      "chain": "A",
+      "resi": 116,
+      "icode": "",
+      "canonicalPosition": 117
+    },
+    {
+      "chain": "A",
+      "resi": 117,
+      "icode": "",
+      "canonicalPosition": 118
+    },
+    {
+      "chain": "A",
+      "resi": 118,
+      "icode": "",
+      "canonicalPosition": 119
+    },
+    {
+      "chain": "A",
+      "resi": 119,
+      "icode": "",
+      "canonicalPosition": 120
+    },
+    {
+      "chain": "A",
+      "resi": 120,
+      "icode": "",
+      "canonicalPosition": 121
+    },
+    {
+      "chain": "A",
+      "resi": 121,
+      "icode": "",
+      "canonicalPosition": 122
+    },
+    {
+      "chain": "A",
+      "resi": 122,
+      "icode": "",
+      "canonicalPosition": 123
+    },
+    {
+      "chain": "A",
+      "resi": 123,
+      "icode": "",
+      "canonicalPosition": 124
+    },
+    {
+      "chain": "A",
+      "resi": 124,
+      "icode": "",
+      "canonicalPosition": 125
+    },
+    {
+      "chain": "A",
+      "resi": 125,
+      "icode": "",
+      "canonicalPosition": 126
+    },
+    {
+      "chain": "A",
+      "resi": 126,
+      "icode": "",
+      "canonicalPosition": 127
+    },
+    {
+      "chain": "A",
+      "resi": 127,
+      "icode": "",
+      "canonicalPosition": 128
+    },
+    {
+      "chain": "A",
+      "resi": 128,
+      "icode": "",
+      "canonicalPosition": 129
+    },
+    {
+      "chain": "A",
+      "resi": 129,
+      "icode": "",
+      "canonicalPosition": 130
+    },
+    {
+      "chain": "A",
+      "resi": 130,
+      "icode": "",
+      "canonicalPosition": 131
+    },
+    {
+      "chain": "A",
+      "resi": 131,
+      "icode": "",
+      "canonicalPosition": 132
+    },
+    {
+      "chain": "A",
+      "resi": 132,
+      "icode": "",
+      "canonicalPosition": 133
+    },
+    {
+      "chain": "A",
+      "resi": 133,
+      "icode": "",
+      "canonicalPosition": 134
+    },
+    {
+      "chain": "A",
+      "resi": 134,
+      "icode": "",
+      "canonicalPosition": 135
+    },
+    {
+      "chain": "A",
+      "resi": 135,
+      "icode": "",
+      "canonicalPosition": 136
+    },
+    {
+      "chain": "A",
+      "resi": 136,
+      "icode": "",
+      "canonicalPosition": 137
+    },
+    {
+      "chain": "A",
+      "resi": 137,
+      "icode": "",
+      "canonicalPosition": 138
+    },
+    {
+      "chain": "A",
+      "resi": 138,
+      "icode": "",
+      "canonicalPosition": 139
+    },
+    {
+      "chain": "A",
+      "resi": 139,
+      "icode": "",
+      "canonicalPosition": 140
+    },
+    {
+      "chain": "A",
+      "resi": 140,
+      "icode": "",
+      "canonicalPosition": 141
+    },
+    {
+      "chain": "A",
+      "resi": 141,
+      "icode": "",
+      "canonicalPosition": 142
+    },
+    {
+      "chain": "A",
+      "resi": 142,
+      "icode": "",
+      "canonicalPosition": 143
+    },
+    {
+      "chain": "A",
+      "resi": 143,
+      "icode": "",
+      "canonicalPosition": 144
+    },
+    {
+      "chain": "A",
+      "resi": 144,
+      "icode": "",
+      "canonicalPosition": 145
+    },
+    {
+      "chain": "A",
+      "resi": 145,
+      "icode": "",
+      "canonicalPosition": 146
+    },
+    {
+      "chain": "A",
+      "resi": 146,
+      "icode": "",
+      "canonicalPosition": 147
+    },
+    {
+      "chain": "A",
+      "resi": 147,
+      "icode": "",
+      "canonicalPosition": 148
+    },
+    {
+      "chain": "A",
+      "resi": 148,
+      "icode": "",
+      "canonicalPosition": 149
+    },
+    {
+      "chain": "A",
+      "resi": 149,
+      "icode": "",
+      "canonicalPosition": 150
+    },
+    {
+      "chain": "A",
+      "resi": 150,
+      "icode": "",
+      "canonicalPosition": 151
+    },
+    {
+      "chain": "A",
+      "resi": 151,
+      "icode": "",
+      "canonicalPosition": 152
+    },
+    {
+      "chain": "A",
+      "resi": 152,
+      "icode": "",
+      "canonicalPosition": 153
+    },
+    {
+      "chain": "A",
+      "resi": 153,
+      "icode": "",
+      "canonicalPosition": 154
+    }
+  ],
+  "unmappedCoordinateResidues": [],
+  "notAnalyzedResidues": []
+}

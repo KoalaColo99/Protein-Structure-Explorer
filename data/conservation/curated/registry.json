@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-09-12",
+  "datasets": [
+    {
+      "datasetId": "current_protein_1mbn_myoglobin_curated_v1",
+      "folder": "1mbn_myoglobin",
+      "pdbId": "1MBN",
+      "chain": "A",
+      "recommended": true,
+      "status": "active",
+      "label": "Use curated myoglobin teaching set"
+    },
+    {
+      "datasetId": "current_protein_1ca2_carbonic_anhydrase_ii_curated_v1",
+      "folder": "1ca2_carbonic_anhydrase_ii",
+      "pdbId": "1CA2",
+      "chain": "A",
+      "recommended": true,
+      "status": "active",
+      "label": "Use curated CA II teaching set"
+    }
+  ],
+  "notApplicable": [
+    {
+      "pdbId": "1BNA",
+      "reason": "B-DNA reference; standard protein homolog conservation is not applicable."
+    }
+  ]
+}

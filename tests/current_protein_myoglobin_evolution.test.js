@@ -66,7 +66,8 @@ test('candidate table includes required inspection columns and fallback label', 
     'PDB structure',
     'Inclusion reason'
   ].forEach(label => assert(render.includes(label), `${label} missing`));
-  assert(render.includes('Using the validated teaching dataset because live homolog retrieval is unavailable.'));
+  assert(render.includes('Using validated teaching dataset'));
+  assert(!render.includes('live homolog retrieval is unavailable'));
   assert(render.includes('data-myoglobin-candidate'));
 });
 

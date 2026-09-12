@@ -6931,9 +6931,13 @@ END
         searchAbortController: null,
         alignmentAbortController: null,
         searchReferenceKey: '',
+        curatedDataset: null,
         provenance: null,
         cacheKey: ''
       },
+      curatedConservationRegistry: null,
+      curatedConservationRegistryStatus: 'not loaded',
+      curatedConservationRegistryError: '',
       conservationResult: {
         status: 'Not computed yet',
         reference: '1MBN',
@@ -15681,32 +15685,34 @@ END
         `;
       }).join('');
       panel.innerHTML = `
-        <h3>Candidate Myoglobin Sequence Set</h3>
-        <div class="button-row"><button type="button" data-homolog-action="start">Find homologs automatically</button></div>
+        <h3>Automatic Homolog Discovery and Sequence Import</h3>
         ${renderHomologImportWorkflow(dataset)}
-        <div class="chem-note"><strong>Using validated teaching dataset</strong>Using the validated teaching dataset because live homolog retrieval is unavailable. Records were retrieved from UniProtKB REST on ${escapeHtml(dataset.retrievalDate)} and filtered to full-length myoglobin orthologs.</div>
-        ${validation.valid ? '<div class="chem-note"><strong>Validation passed</strong>Eight verified myoglobin sequences are available for inspection.</div>' : `<div class="warning-text"><strong>Validation problem</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`}
-        <div class="table-wrap">
-          <table>
-            <caption>Candidate homolog set for current-protein myoglobin evolution checkpoint</caption>
-            <thead>
-              <tr>
-                <th>Use</th>
-                <th>UniProt accession</th>
-                <th>Protein name</th>
-                <th>Organism and group</th>
-                <th>Length</th>
-                <th>Status</th>
-                <th>Identity to P02185</th>
-                <th>Reference coverage</th>
-                <th>Family evidence</th>
-                <th>PDB structure</th>
-                <th>Inclusion reason</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
+        <details class="chem-note">
+          <summary>Legacy myoglobin checkpoint table</summary>
+          <p><strong>Using validated teaching dataset</strong>Records were retrieved from UniProtKB REST on ${escapeHtml(dataset.retrievalDate)} and filtered to full-length myoglobin orthologs.</p>
+          ${validation.valid ? '<p><strong>Validation passed</strong>Eight verified myoglobin sequences are available for inspection.</p>' : `<div class="warning-text"><strong>Validation problem</strong><ul>${validation.errors.map(error => `<li>${escapeHtml(error)}</li>`).join('')}</ul></div>`}
+          <div class="table-wrap">
+            <table>
+              <caption>Candidate homolog set for current-protein myoglobin evolution checkpoint</caption>
+              <thead>
+                <tr>
+                  <th>Use</th>
+                  <th>UniProt accession</th>
+                  <th>Protein name</th>
+                  <th>Organism and group</th>
+                  <th>Length</th>
+                  <th>Status</th>
+                  <th>Identity to P02185</th>
+                  <th>Reference coverage</th>
+                  <th>Family evidence</th>
+                  <th>PDB structure</th>
+                  <th>Inclusion reason</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>
+        </details>
       `;
     }
 
@@ -15750,6 +15756,7 @@ END
         searchAbortController: null,
         alignmentAbortController: null,
         searchReferenceKey: '',
+        curatedDataset: null,
         provenance: null,
         cacheKey: ''
       };
@@ -15972,6 +15979,234 @@ END
           <p>If the live search is unavailable, the atlas stops with a specific status and offers accession/prealigned FASTA import. It never substitutes unrelated bundled sequences.</p>
         </details>
       `;
+    }
+
+    async function fetchCuratedConservationJson(path) {
+      const response = await fetch(path, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      return response.json();
+    }
+
+    async function fetchCuratedConservationText(path) {
+      const response = await fetch(path, { cache: 'no-store' });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      return response.text();
+    }
+
+    async function loadCuratedConservationRegistry() {
+      if (state.curatedConservationRegistry) return state.curatedConservationRegistry;
+      if (state.curatedConservationRegistryStatus === 'loading') return null;
+      state.curatedConservationRegistryStatus = 'loading';
+      state.curatedConservationRegistryError = '';
+      try {
+        const registry = await fetchCuratedConservationJson(`${CURATED_CONSERVATION_BASE}/registry.json`);
+        state.curatedConservationRegistry = registry;
+        state.curatedConservationRegistryStatus = 'loaded';
+        return registry;
+      } catch (error) {
+        state.curatedConservationRegistryStatus = 'failed';
+        state.curatedConservationRegistryError = error.message;
+        return null;
+      }
+    }
+
+    function curatedConservationEntryForCurrentStructure() {
+      const registry = state.curatedConservationRegistry;
+      if (!registry?.datasets) return null;
+      const pdbId = safePdbId(state.structureId);
+      const chain = normalizeProteinChainId(state.activeChain || currentEvolutionChain());
+      return registry.datasets.find(item => safePdbId(item.pdbId) === pdbId && normalizeProteinChainId(item.chain) === chain && item.status === 'active') || null;
+    }
+
+    function curatedConservationNotApplicableForCurrentStructure() {
+      const registry = state.curatedConservationRegistry;
+      if (!registry?.notApplicable) return null;
+      const pdbId = safePdbId(state.structureId);
+      return registry.notApplicable.find(item => safePdbId(item.pdbId) === pdbId) || null;
+    }
+
+    function renderCuratedTeachingSetChoice() {
+      if (!state.curatedConservationRegistry && state.curatedConservationRegistryStatus === 'not loaded') {
+        loadCuratedConservationRegistry().then(() => renderCurrentProteinEvolution());
+        return '<div class="chem-note"><strong>Curated teaching set</strong>Checking bundled curated teaching sets for this structure...</div>';
+      }
+      if (state.curatedConservationRegistryStatus === 'failed') {
+        return `<div class="warning-text"><strong>Curated teaching set unavailable</strong>${escapeHtml(state.curatedConservationRegistryError || 'The curated registry could not be loaded.')} Live search and manual imports remain available.</div>`;
+      }
+      const notApplicable = curatedConservationNotApplicableForCurrentStructure();
+      if (notApplicable) {
+        return `<div class="chem-note"><strong>Protein conservation not applicable</strong>${escapeHtml(notApplicable.reason)} The structure remains available for non-protein structural activities.</div>`;
+      }
+      const entry = curatedConservationEntryForCurrentStructure();
+      if (!entry) {
+        return '<div class="chem-note"><strong>No curated teaching set yet</strong>Use live homolog discovery or manual accession/FASTA import for this protein. The atlas will not substitute another protein’s curated dataset.</div>';
+      }
+      return `
+        <div class="mini-card curated-conservation-choice">
+          <h4>Recommended classroom route</h4>
+          <p><strong>${escapeHtml(entry.label || 'Use curated teaching set')}</strong></p>
+          <p>Start immediately with a validated, instructor-ready sequence set. No email, BLAST job, or remote alignment wait is required.</p>
+          <div class="button-row">
+            <button type="button" data-homolog-action="load-curated">Use curated teaching set</button>
+            <button type="button" data-homolog-action="start">Find homologs automatically</button>
+          </div>
+          <p class="method-note">Live homolog discovery remains available as the advanced route for arbitrary proteins.</p>
+        </div>
+      `;
+    }
+
+    function mappingJsonToLocalMapping(mapping, referenceSequence = '') {
+      const canonicalToCoordinate = Array.from({ length: mapping.canonicalLength || referenceSequence.length }, (_, index) => ({
+        canonicalPosition: index + 1,
+        referenceResidue: referenceSequence[index] || '',
+        coordinateResidue: null,
+        coordinateIndex: null,
+        residueKey: '',
+        chain: '',
+        resi: null,
+        icode: '',
+        residueLabel: '',
+        identical: false,
+        status: 'reference residue absent from coordinates'
+      }));
+      (mapping.coordinateToCanonical || []).forEach((item, index) => {
+        const key = `${item.chain}:${item.resi}${item.icode || ''}`;
+        const residue = state.residueMap.get(key) || state.residues.find(candidate => candidate.chain === item.chain && candidate.resi === item.resi && (candidate.icode || '') === (item.icode || '')) || null;
+        const canonicalIndex = Number(item.canonicalPosition) - 1;
+        if (!residue || !canonicalToCoordinate[canonicalIndex]) return;
+        canonicalToCoordinate[canonicalIndex] = {
+          canonicalPosition: Number(item.canonicalPosition),
+          referenceResidue: referenceSequence[canonicalIndex] || aaOne[residue.resn] || '',
+          coordinateResidue: aaOne[residue.resn] || '',
+          coordinateIndex: index + 1,
+          residueKey: residue.key,
+          chain: residue.chain,
+          resi: residue.resi,
+          icode: residue.icode || '',
+          residueLabel: residue.label,
+          identical: !referenceSequence[canonicalIndex] || referenceSequence[canonicalIndex] === aaOne[residue.resn],
+          status: 'mapped to coordinate residue'
+        };
+      });
+      return {
+        method: mapping.method || 'curated residue mapping',
+        provenance: mapping.method || 'curated residue mapping',
+        chain: mapping.chain,
+        referenceAccession: mapping.referenceAccession,
+        referenceHash: sequenceHash(referenceSequence),
+        coordinateResidueCount: mapping.coordinateResidueCount,
+        canonicalLength: mapping.canonicalLength,
+        mappedCount: mapping.mappedResidueCount,
+        coordinateCoverage: mapping.coordinateResidueCount ? mapping.mappedResidueCount / mapping.coordinateResidueCount : 0,
+        referenceCoverage: mapping.canonicalLength ? mapping.mappedResidueCount / mapping.canonicalLength : 0,
+        identityAcrossMapped: 1,
+        missingNterminal: mapping.canonicalResiduesAbsentFromCoordinates?.find(item => item.start === 1)?.end || 0,
+        missingCterminal: mapping.canonicalResiduesAbsentFromCoordinates?.find(item => item.end === mapping.canonicalLength) ? 1 : 0,
+        internalMissing: 0,
+        extraCoordinateResidues: 0,
+        valid: mapping.confidence === 'high' || mapping.confidence === 'adequate',
+        confidence: mapping.confidence || 'curated',
+        reason: `${mapping.mappedResidueCount} of ${mapping.coordinateResidueCount} coordinate residues mapped from curated structure mapping.`,
+        canonicalToCoordinate,
+        coordinateToCanonical: canonicalToCoordinate.filter(item => item.residueKey).map(item => ({
+          residueKey: item.residueKey,
+          canonicalPosition: item.canonicalPosition,
+          referenceResidue: item.referenceResidue,
+          chain: item.chain,
+          resi: item.resi,
+          icode: item.icode
+        }))
+      };
+    }
+
+    async function loadCuratedTeachingSetForCurrentProtein() {
+      const registry = await loadCuratedConservationRegistry();
+      const entry = curatedConservationEntryForCurrentStructure();
+      if (!registry || !entry) {
+        state.homologWorkflow.status = 'No curated teaching set is available for the current protein and chain.';
+        return false;
+      }
+      const base = `${CURATED_CONSERVATION_BASE}/${entry.folder}`;
+      state.homologWorkflow.status = 'Loading curated teaching set.';
+      renderCurrentProteinEvolution();
+      const [manifest, candidates, mapping, alignedText] = await Promise.all([
+        fetchCuratedConservationJson(`${base}/manifest.json`),
+        fetchCuratedConservationJson(`${base}/candidates.json`),
+        fetchCuratedConservationJson(`${base}/mapping.json`),
+        fetchCuratedConservationText(`${base}/aligned.fasta`)
+      ]);
+      const referenceCandidate = candidates.find(candidate => candidate.accession === manifest.reference.accession);
+      if (!referenceCandidate) throw new Error('Curated dataset is missing its declared reference sequence.');
+      const alignedRows = parseFastaRecords(alignedText).map(row => {
+        const candidate = candidates.find(item => item.accession === row.accession);
+        if (!candidate) throw new Error(`Curated alignment contains unknown accession ${row.accession}.`);
+        const ungapped = row.sequence.replace(/-/g, '');
+        if (ungapped !== candidate.sequence) throw new Error(`Curated alignment row ${row.accession} does not reproduce its candidate sequence.`);
+        return {
+          ...candidate,
+          id: candidate.accession,
+          sequence: ungapped,
+          alignedSequence: row.sequence,
+          organism: candidate.organism,
+          proteinName: candidate.proteinName,
+          reason: candidate.inclusionRationale
+        };
+      });
+      if (new Set(alignedRows.map(row => row.alignedSequence.length)).size !== 1) throw new Error('Curated alignment rows have unequal lengths.');
+      resetHomologWorkflowForCurrentStructure('Curated teaching set loaded.');
+      state.homologWorkflow.active = true;
+      state.homologWorkflow.stage = 'map';
+      state.homologWorkflow.referenceChain = manifest.reference.chain;
+      state.homologWorkflow.querySequenceSource = 'canonical';
+      state.homologWorkflow.candidates = candidates.map(candidate => ({
+        ...candidate,
+        id: candidate.accession,
+        length: candidate.sequenceLength,
+        sequence: candidate.sequence,
+        identity: candidate.identityToReference,
+        queryCoverage: candidate.referenceCoverage,
+        domainArchitectureMatch: true,
+        evalue: candidate.eValue,
+        reason: candidate.inclusionRationale
+      }));
+      state.homologWorkflow.selectedAccessions = candidates.map(candidate => candidate.accession);
+      state.homologWorkflow.unalignedSequences = state.homologWorkflow.candidates;
+      state.homologWorkflow.alignmentRecords = alignedRows;
+      state.homologWorkflow.curatedDataset = { entry, manifest, mapping };
+      state.homologWorkflow.serviceStatus.search = 'curated teaching set; no live search used';
+      state.homologWorkflow.serviceStatus.alignment = `curated alignment loaded; ${alignedRows.length} aligned sequences`;
+      state.homologWorkflow.warnings = [];
+      state.evolutionIdentity.identity = {
+        ...(state.evolutionIdentity.identity || {}),
+        uniprotAccession: manifest.reference.accession,
+        proteinName: manifest.title,
+        chain: manifest.reference.chain,
+        modeledResidues: mapping.coordinateResidueCount,
+        sourceOrganism: manifest.reference.organism
+      };
+      state.evolutionIdentity.uniprot = {
+        ...(state.evolutionIdentity.uniprot || {}),
+        accession: manifest.reference.accession,
+        name: referenceCandidate.proteinName,
+        organism: referenceCandidate.organism,
+        reviewed: Boolean(referenceCandidate.reviewed),
+        sequence: referenceCandidate.sequence,
+        sequenceLength: referenceCandidate.sequenceLength
+      };
+      state.evolutionIdentity.mapping = mappingJsonToLocalMapping(mapping, referenceCandidate.sequence);
+      setEvolutionStage('mapping', 'success', `Curated mapping loaded: ${mapping.mappedResidueCount} of ${mapping.coordinateResidueCount} coordinate residues mapped.`, 'curated structure mapping');
+      setEvolutionStage('homologs', 'success', `${candidates.length} curated teaching sequences loaded.`);
+      setEvolutionStage('alignment', 'success', `Curated ${manifest.alignment.method} alignment loaded; ${manifest.alignment.alignmentLength} columns.`);
+      mapHomologAlignmentToStructure();
+      state.homologWorkflow.status = `Curated teaching set loaded: ${manifest.title}. Review the organisms and mapped alignment, then apply conservation coloring.`;
+      state.homologWorkflow.provenance = homologProvenanceRecord({
+        searchMethod: 'curated teaching set',
+        alignmentMethod: manifest.alignment.method,
+        alignmentJobId: manifest.alignment.jobId,
+        curatedDatasetId: manifest.datasetId,
+        mappingMethod: mapping.method
+      });
+      return true;
     }
 
     function homologReferenceReadyText(reference = buildHomologReference()) {
@@ -16267,7 +16502,8 @@ END
         return `
           <div class="mini-card homolog-workflow-card" id="homologImportWorkflow">
             <h3>Automatic Homolog Discovery and Sequence Import</h3>
-            <p>No validated candidate table is bundled for this current protein yet. The workflow will not substitute unrelated sequences.</p>
+            ${renderCuratedTeachingSetChoice()}
+            <p>No validated candidate table is bundled for this current protein unless a curated teaching set appears above. The workflow will not substitute unrelated sequences.</p>
             <div class="button-row"><button type="button" data-homolog-action="start">Find homologs automatically</button></div>
             <p class="warning-text">Homologs are evolutionarily related sequences. Conservation is calculated only after reviewed candidates have been aligned and mapped to the selected structure chain.</p>
           </div>
@@ -16277,6 +16513,7 @@ END
         <div class="mini-card homolog-workflow-card" id="homologImportWorkflow">
           <h3>Automatic Homolog Discovery and Sequence Import</h3>
           <p>Search retrieves candidate homologous sequences. Conservation is calculated only after selected homologs have a validated multiple-sequence alignment and a structure mapping.</p>
+          ${renderCuratedTeachingSetChoice()}
           ${homologWorkflowProgressMarkup()}
           <div class="chem-note" aria-live="polite"><strong>Status:</strong> ${escapeHtml(homologWorkflowStatusText())}</div>
           ${workflow.warnings?.length ? `<div class="warning-text"><strong>Warnings</strong><ul>${workflow.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('')}</ul></div>` : ''}
@@ -16505,9 +16742,23 @@ END
       const mapping = state.homologWorkflow.mapping;
       const metrics = state.homologWorkflow.mappedMetrics || [];
       const mapped = metrics.filter(metric => metric.pdbResidue).length;
+      const curated = state.homologWorkflow.curatedDataset;
+      const context = curated?.manifest?.studentContext;
+      const curatedRows = curated ? state.homologWorkflow.alignmentRecords.map(record => `<li><strong>${escapeHtml(record.accession || record.id)}</strong> — <em>${escapeHtml(record.organism || 'not reported')}</em>; ${escapeHtml(record.reason || record.inclusionRationale || 'included in curated teaching set')}</li>`).join('') : '';
       return `
         <fieldset>
           <legend>5. Map and color</legend>
+          ${curated ? `
+            <div class="chem-note">
+              <strong>Curated teaching set:</strong> ${escapeHtml(curated.manifest.title)}
+              ${context ? `
+                <p><strong>What is being compared?</strong> ${escapeHtml(context.whatIsCompared)}</p>
+                <p><strong>Why these sequences?</strong> ${escapeHtml(context.whySelected)}</p>
+                <p><strong>What should I notice?</strong> ${escapeHtml(context.whatToNotice)}</p>
+              ` : ''}
+              <details><summary>Included organisms and rationale</summary><ul>${curatedRows}</ul></details>
+            </div>
+          ` : ''}
           <p><strong>Mapping method:</strong> ${escapeHtml(mapping?.method || 'not mapped yet')}</p>
           <p><strong>Mapping coverage:</strong> ${mapping ? `${mapped} / ${metrics.length} alignment positions mapped to coordinate residues` : 'not available'}</p>
           ${mapping?.segmentSpecific ? `<p class="warning-text"><strong>Segment-specific analysis:</strong> ${mapping.structuralResiduesOutsideAnalyzedSegment} structural residue${mapping.structuralResiduesOutsideAnalyzedSegment === 1 ? '' : 's'} outside the analyzed reference segment remain neutral and are labeled not analyzed.</p>` : ''}
@@ -18001,6 +18252,8 @@ END
         includeReference: true
       }
     };
+
+    const CURATED_CONSERVATION_BASE = './data/conservation/curated';
 
     function cloneEvolutionStages() {
       return EVOLUTION_STAGE_TEMPLATE.map(stage => ({ ...stage, status: 'waiting', message: '' }));
@@ -21246,6 +21499,16 @@ END
       }
       if (action === 'run-search') {
         runAutomaticHomologSearch().finally(() => {
+          renderCurrentProteinEvolution();
+        });
+        return;
+      }
+      if (action === 'load-curated') {
+        loadCuratedTeachingSetForCurrentProtein().catch(error => {
+          state.homologWorkflow.active = true;
+          state.homologWorkflow.status = `Curated teaching set could not be loaded: ${error.message}`;
+          state.homologWorkflow.warnings = [...(state.homologWorkflow.warnings || []), 'Live homolog discovery and manual FASTA/accession import remain available.'];
+        }).finally(() => {
           renderCurrentProteinEvolution();
         });
         return;

@@ -1,0 +1,774 @@
+{
+  "schemaVersion": 1,
+  "generatedOn": "2026-09-12",
+  "scope": "Phase A inventory for exact Atlas gallery registry",
+  "items": [
+    {
+      "pdbId": "1MBN",
+      "title": "The stereochemistry of the protein myoglobin",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "MYOGLOBIN",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P02185"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 153
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "oxygen",
+      "galleryLabel": "Myoglobin",
+      "classification": "straightforward single-protein reference",
+      "curationConsequence": "Prototype complete: curated myoglobin ortholog set maps P02185 positions 2-154 to 1MBN residues 1-153."
+    },
+    {
+      "pdbId": "1HHO",
+      "title": "STRUCTURE OF HUMAN OXYHAEMOGLOBIN AT 2.1 ANGSTROMS RESOLUTION",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "HEMOGLOBIN A (OXY) (ALPHA CHAIN)",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P69905"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 141
+        },
+        {
+          "entityId": "2",
+          "description": "HEMOGLOBIN A (OXY) (BETA CHAIN)",
+          "type": "Protein",
+          "chains": "B",
+          "uniprotAccessions": [
+            "P68871"
+          ],
+          "authAsymIds": [
+            "B"
+          ],
+          "referenceSequenceLength": 146
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "oxygen",
+      "galleryLabel": "Oxyhemoglobin",
+      "classification": "heteromer requiring separate subunit sets",
+      "curationConsequence": "Requires separate alpha-globin and beta-globin datasets; do not concatenate chains."
+    },
+    {
+      "pdbId": "2HHB",
+      "title": "THE CRYSTAL STRUCTURE OF HUMAN DEOXYHAEMOGLOBIN AT 1.74 ANGSTROMS RESOLUTION",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "HEMOGLOBIN (DEOXY) (ALPHA CHAIN)",
+          "type": "Protein",
+          "chains": "A,C",
+          "uniprotAccessions": [
+            "P69905"
+          ],
+          "authAsymIds": [
+            "A",
+            "C"
+          ],
+          "referenceSequenceLength": 141
+        },
+        {
+          "entityId": "2",
+          "description": "HEMOGLOBIN (DEOXY) (BETA CHAIN)",
+          "type": "Protein",
+          "chains": "B,D",
+          "uniprotAccessions": [
+            "P68871"
+          ],
+          "authAsymIds": [
+            "B",
+            "D"
+          ],
+          "referenceSequenceLength": 146
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "oxygen",
+      "galleryLabel": "Deoxyhemoglobin",
+      "classification": "heteromer requiring separate subunit sets",
+      "curationConsequence": "Can likely reuse validated alpha/beta globin sequence sets from 1HHO, with separate structure mappings."
+    },
+    {
+      "pdbId": "1CA2",
+      "title": "REFINED STRUCTURE OF HUMAN CARBONIC ANHYDRASE II AT 2.0 ANGSTROMS RESOLUTION",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "CARBONIC ANHYDRASE II",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P00918"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 259
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "enzyme",
+      "galleryLabel": "Carbonic anhydrase",
+      "classification": "straightforward single-protein reference",
+      "curationConsequence": "Prototype complete: curated vertebrate CA II ortholog set maps P00918 canonical sequence to 1CA2 chain A."
+    },
+    {
+      "pdbId": "1AKE",
+      "title": "STRUCTURE OF THE COMPLEX BETWEEN ADENYLATE KINASE FROM ESCHERICHIA COLI AND THE INHIBITOR AP5A REFINED AT 1.9 ANGSTROMS RESOLUTION: A MODEL FOR A CATALYTIC TRANSITION STATE",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "ADENYLATE KINASE",
+          "type": "Protein",
+          "chains": "A,B",
+          "uniprotAccessions": [
+            "P69441"
+          ],
+          "authAsymIds": [
+            "A",
+            "B"
+          ],
+          "referenceSequenceLength": 214
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "enzyme",
+      "galleryLabel": "Adenylate kinase",
+      "classification": "straightforward single-protein reference",
+      "curationConsequence": "Needs adenylate kinase homologs with compatible domain architecture; exclude unrelated P-loop NTPases."
+    },
+    {
+      "pdbId": "1LAC",
+      "title": "THREE-DIMENSIONAL STRUCTURE OF THE LIPOYL DOMAIN FROM BACILLUS STEAROTHERMOPHILUS PYRUVATE DEHYDROGENASE MULTIENZYME COMPLEX",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "DIHYDROLIPOAMIDE ACETYLTRANSFERASE",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P11961"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 80
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "enzyme",
+      "galleryLabel": "Lactate dehydrogenase",
+      "classification": "straightforward single-protein reference pending exact LDH class verification",
+      "curationConsequence": "Must identify represented LDH class; exclude MDH and unrelated dehydrogenase families."
+    },
+    {
+      "pdbId": "1AFQ",
+      "title": "CRYSTAL STRUCTURE OF BOVINE GAMMA-CHYMOTRYPSIN COMPLEXED WITH A SYNTHETIC INHIBITOR",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "BOVINE GAMMA-CHYMOTRYPSIN",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P00766"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 13
+        },
+        {
+          "entityId": "2",
+          "description": "BOVINE GAMMA-CHYMOTRYPSIN",
+          "type": "Protein",
+          "chains": "B",
+          "uniprotAccessions": [
+            "P00766"
+          ],
+          "authAsymIds": [
+            "B"
+          ],
+          "referenceSequenceLength": 131
+        },
+        {
+          "entityId": "3",
+          "description": "BOVINE GAMMA-CHYMOTRYPSIN",
+          "type": "Protein",
+          "chains": "C",
+          "uniprotAccessions": [
+            "P00766"
+          ],
+          "authAsymIds": [
+            "C"
+          ],
+          "referenceSequenceLength": 96
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "protease",
+      "galleryLabel": "Chymotrypsin",
+      "classification": "processed protein represented by multiple coordinate segments",
+      "curationConsequence": "Needs mature chymotrypsin mapping across processed/disulfide-linked segments; precursor boundaries must be explicit."
+    },
+    {
+      "pdbId": "2PTN",
+      "title": "ON THE DISORDERED ACTIVATION DOMAIN IN TRYPSINOGEN. CHEMICAL LABELLING AND LOW-TEMPERATURE CRYSTALLOGRAPHY",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "TRYPSIN",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P00760"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 223
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "protease",
+      "galleryLabel": "Trypsin",
+      "classification": "processed protein represented by multiple coordinate segments",
+      "curationConsequence": "Needs mature trypsin mapping; signal/propeptide/activation boundaries must be explicit."
+    },
+    {
+      "pdbId": "1HNE",
+      "title": "Structure of human neutrophil elastase in complex with a peptide chloromethyl ketone inhibitor at 1.84-angstroms resolution",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "HUMAN LEUCOCYTE ELASTASE",
+          "type": "Protein",
+          "chains": "E",
+          "uniprotAccessions": [
+            "P08246"
+          ],
+          "authAsymIds": [
+            "E"
+          ],
+          "referenceSequenceLength": 218
+        },
+        {
+          "entityId": "2",
+          "description": "METHOXYSUCCINYL-ALA-ALA-PRO-ALA CHLOROMETHYL KETONE INHIBITOR",
+          "type": "Protein",
+          "chains": "I",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "I"
+          ],
+          "referenceSequenceLength": 6
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "protease",
+      "galleryLabel": "Elastase",
+      "classification": "processed protein represented by multiple coordinate segments",
+      "curationConsequence": "Needs mature elastase mapping; signal/propeptide/activation boundaries must be explicit."
+    },
+    {
+      "pdbId": "1LMB",
+      "title": "REFINED 1.8 ANGSTROM CRYSTAL STRUCTURE OF THE LAMBDA REPRESSOR-OPERATOR COMPLEX",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "DNA (5'-D(*AP*AP*TP*AP*CP*CP*AP*CP*TP*GP*GP*CP*GP*GP*TP*GP*A P*TP*AP*T)-3')",
+          "type": "DNA",
+          "chains": "1",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "1"
+          ],
+          "referenceSequenceLength": 20
+        },
+        {
+          "entityId": "2",
+          "description": "DNA (5'-D(*TP*AP*TP*AP*TP*CP*AP*CP*CP*GP*CP*CP*AP*GP*TP*GP*G P*TP*AP*T)-3')",
+          "type": "DNA",
+          "chains": "2",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "2"
+          ],
+          "referenceSequenceLength": 20
+        },
+        {
+          "entityId": "3",
+          "description": "PROTEIN (LAMBDA REPRESSOR)",
+          "type": "Protein",
+          "chains": "3,4",
+          "uniprotAccessions": [
+            "P03034"
+          ],
+          "authAsymIds": [
+            "3",
+            "4"
+          ],
+          "referenceSequenceLength": 92
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "dna",
+      "galleryLabel": "Lambda repressor",
+      "classification": "domain-containing DNA-binding protein reference",
+      "curationConsequence": "Needs lambdoid-phage repressor homologs; exclude unrelated HTH proteins."
+    },
+    {
+      "pdbId": "1AAY",
+      "title": "ZIF268 ZINC FINGER-DNA COMPLEX",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "DNA (5'-D(*AP*GP*CP*GP*TP*GP*GP*GP*CP*GP*T)-3')",
+          "type": "DNA",
+          "chains": "B",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "B"
+          ],
+          "referenceSequenceLength": 11
+        },
+        {
+          "entityId": "2",
+          "description": "DNA (5'-D(*TP*AP*CP*GP*CP*CP*CP*AP*CP*GP*C)-3')",
+          "type": "DNA",
+          "chains": "C",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "C"
+          ],
+          "referenceSequenceLength": 11
+        },
+        {
+          "entityId": "3",
+          "description": "PROTEIN (ZIF268 ZINC FINGER PEPTIDE)",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P08046"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 90
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "dna",
+      "galleryLabel": "GCN4",
+      "classification": "domain-only construct",
+      "curationConsequence": "Treat as bZIP DNA-binding/leucine-zipper domain conservation, not full-length GCN4 conservation."
+    },
+    {
+      "pdbId": "1BNA",
+      "title": "STRUCTURE OF A B-DNA DODECAMER. CONFORMATION AND DYNAMICS",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "DNA (5'-D(*CP*GP*CP*GP*AP*AP*TP*TP*CP*GP*CP*G)-3')",
+          "type": "DNA",
+          "chains": "A,B",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "A",
+            "B"
+          ],
+          "referenceSequenceLength": 12
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "dna",
+      "galleryLabel": "B-DNA reference",
+      "classification": "nucleotide-only reference; unsuitable for protein conservation",
+      "curationConsequence": "Protein Conservation not applicable; do not invent nucleotide conservation for generic B-DNA."
+    },
+    {
+      "pdbId": "1BL8",
+      "title": "POTASSIUM CHANNEL (KCSA) FROM STREPTOMYCES LIVIDANS",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "PROTEIN (POTASSIUM CHANNEL PROTEIN)",
+          "type": "Protein",
+          "chains": "A,B,C,D",
+          "uniprotAccessions": [
+            "P0A334"
+          ],
+          "authAsymIds": [
+            "A",
+            "B",
+            "C",
+            "D"
+          ],
+          "referenceSequenceLength": 97
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "membrane",
+      "galleryLabel": "Potassium channel",
+      "classification": "homooligomer with equivalent chains",
+      "curationConsequence": "Use one potassium-channel family reference, not duplicate oligomer chains as homologs; preserve selectivity-filter context."
+    },
+    {
+      "pdbId": "2RH1",
+      "title": "High resolution crystal structure of human B2-adrenergic G protein-coupled receptor.",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "beta-2-adrenergic receptor/T4-lysozyme chimera",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P00720",
+            "P07550"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 500
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "membrane",
+      "galleryLabel": "Beta-2 adrenergic receptor",
+      "classification": "engineered membrane-protein construct",
+      "curationConsequence": "Use beta-2 adrenergic receptor orthologs; exclude fusion partners/stabilizing constructs/antibody partners."
+    },
+    {
+      "pdbId": "3GD8",
+      "title": "Crystal Structure of Human Aquaporin 4 at 1.8 and its Mechanism of Conductance",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "Aquaporin-4",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P55087"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 223
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "membrane",
+      "galleryLabel": "Aquaporin",
+      "classification": "homooligomer or membrane-channel reference requiring subfamily verification",
+      "curationConsequence": "Identify aquaporin subfamily and use matching orthologs; preserve NPA/selectivity-filter context."
+    },
+    {
+      "pdbId": "5P21",
+      "title": "REFINED CRYSTAL STRUCTURE OF THE TRIPHOSPHATE CONFORMATION OF H-RAS P21 AT 1.35 ANGSTROMS RESOLUTION: IMPLICATIONS FOR THE MECHANISM OF GTP HYDROLYSIS",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "C-H-RAS P21 PROTEIN",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P01112"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 166
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "signaling",
+      "galleryLabel": "Ras",
+      "classification": "straightforward single-protein reference",
+      "curationConsequence": "Use Ras orthologs or defined Ras-subfamily comparison; exclude broad small-GTPase mixing."
+    },
+    {
+      "pdbId": "1ATP",
+      "title": "2.2 angstrom refined crystal structure of the catalytic subunit of cAMP-dependent protein kinase complexed with MNATP and a peptide inhibitor",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "cAMP-DEPENDENT PROTEIN KINASE",
+          "type": "Protein",
+          "chains": "E",
+          "uniprotAccessions": [
+            "P05132"
+          ],
+          "authAsymIds": [
+            "E"
+          ],
+          "referenceSequenceLength": 350
+        },
+        {
+          "entityId": "2",
+          "description": "PEPTIDE INHIBITOR PKI(5-24)",
+          "type": "Protein",
+          "chains": "I",
+          "uniprotAccessions": [
+            "P63248"
+          ],
+          "authAsymIds": [
+            "I"
+          ],
+          "referenceSequenceLength": 20
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "signaling",
+      "galleryLabel": "Protein kinase",
+      "classification": "protein kinase construct with bound partners/inhibitors",
+      "curationConsequence": "Identify exact kinase, chains, and regulatory/inhibitor partners; default to ortholog/subfamily kinase-domain set."
+    },
+    {
+      "pdbId": "1G4U",
+      "title": "CRYSTAL STRUCTURE OF THE SALMONELLA TYROSINE PHOSPHATASE AND GTPASE ACTIVATING PROTEIN SPTP BOUND TO RAC1",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "PROTEIN TYROSINE PHOSPHATASE SPTP",
+          "type": "Protein",
+          "chains": "S",
+          "uniprotAccessions": [
+            "P74873"
+          ],
+          "authAsymIds": [
+            "S"
+          ],
+          "referenceSequenceLength": 383
+        },
+        {
+          "entityId": "2",
+          "description": "RAS-RELATED C3 BOTULINUM TOXIN SUBSTRATE 1",
+          "type": "Protein",
+          "chains": "R",
+          "uniprotAccessions": [
+            "P63000"
+          ],
+          "authAsymIds": [
+            "R"
+          ],
+          "referenceSequenceLength": 184
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "signaling",
+      "galleryLabel": "SH2 domain",
+      "classification": "domain-only construct",
+      "curationConsequence": "Treat as SH2-domain conservation, not full-length multidomain-protein conservation."
+    },
+    {
+      "pdbId": "1CAG",
+      "title": "CRYSTAL AND MOLECULAR STRUCTURE OF A COLLAGEN-LIKE PEPTIDE AT 1.9 ANGSTROM RESOLUTION",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "COLLAGEN-LIKE PEPTIDE",
+          "type": "Protein",
+          "chains": "A,B,C",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "A",
+            "B",
+            "C"
+          ],
+          "referenceSequenceLength": 30
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "structural",
+      "galleryLabel": "Collagen-like triple helix",
+      "classification": "synthetic peptide/model",
+      "curationConsequence": "Standard residue-conservation analysis likely not appropriate; teach Gly-X-Y constraints instead."
+    },
+    {
+      "pdbId": "1TUB",
+      "title": "TUBULIN ALPHA-BETA DIMER, ELECTRON DIFFRACTION",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "TUBULIN",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P02550"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 440
+        },
+        {
+          "entityId": "2",
+          "description": "TUBULIN",
+          "type": "Protein",
+          "chains": "B",
+          "uniprotAccessions": [
+            "P02554"
+          ],
+          "authAsymIds": [
+            "B"
+          ],
+          "referenceSequenceLength": 427
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "structural",
+      "galleryLabel": "Tubulin",
+      "classification": "heteromer requiring separate subunit sets",
+      "curationConsequence": "Separate alpha- and beta-tubulin datasets and mappings; do not mix subunits."
+    },
+    {
+      "pdbId": "3B8Q",
+      "title": "Crystal structure of the VEGFR2 kinase domain in complex with a naphthamide inhibitor",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "Vascular endothelial growth factor receptor 2",
+          "type": "Protein",
+          "chains": "A,B",
+          "uniprotAccessions": [
+            "P35968"
+          ],
+          "authAsymIds": [
+            "A",
+            "B"
+          ],
+          "referenceSequenceLength": 314
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "structural",
+      "galleryLabel": "Actin",
+      "classification": "straightforward single-protein reference",
+      "curationConsequence": "Use actin orthologs or defined actin subfamily; exclude distant actin-related proteins unless explicitly scoped."
+    },
+    {
+      "pdbId": "1HVR",
+      "title": "RATIONAL DESIGN OF POTENT, BIOAVAILABLE, NONPEPTIDE CYCLIC UREAS AS HIV PROTEASE INHIBITORS",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "HIV-1 PROTEASE",
+          "type": "Protein",
+          "chains": "A,B",
+          "uniprotAccessions": [
+            "P04585"
+          ],
+          "authAsymIds": [
+            "A",
+            "B"
+          ],
+          "referenceSequenceLength": 99
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "disease",
+      "galleryLabel": "HIV protease",
+      "classification": "viral homodimer/drug-target reference",
+      "curationConsequence": "Use HIV protease variation/drug-resistance teaching set; one-sequence-per-species rule does not apply; do not count two monomers as homologs."
+    },
+    {
+      "pdbId": "6LU7",
+      "title": "The crystal structure of COVID-19 main protease in complex with an inhibitor N3",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "3C-like proteinase",
+          "type": "Protein",
+          "chains": "A",
+          "uniprotAccessions": [
+            "P0DTD1"
+          ],
+          "authAsymIds": [
+            "A"
+          ],
+          "referenceSequenceLength": 306
+        },
+        {
+          "entityId": "2",
+          "description": "N-[(5-METHYLISOXAZOL-3-YL)CARBONYL]ALANYL-L-VALYL-N~1~-((1R,2Z)-4-(BENZYLOXY)-4-OXO-1-{[(3R)-2-OXOPYRROLIDIN-3-YL]METHYL}BUT-2-ENYL)-L-LEUCINAMIDE",
+          "type": "Protein",
+          "chains": "C",
+          "uniprotAccessions": [],
+          "authAsymIds": [
+            "C"
+          ],
+          "referenceSequenceLength": 6
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "disease",
+      "galleryLabel": "SARS-CoV-2 main protease",
+      "classification": "processed viral protease/domain from polyprotein",
+      "curationConsequence": "Use defined coronavirus Mpro range and mature protease boundaries; exclude non-Mpro polyprotein regions."
+    },
+    {
+      "pdbId": "1IEP",
+      "title": "CRYSTAL STRUCTURE OF THE C-ABL KINASE DOMAIN IN COMPLEX WITH STI-571.",
+      "polymerEntities": [
+        {
+          "entityId": "1",
+          "description": "PROTO-ONCOGENE TYROSINE-PROTEIN KINASE ABL",
+          "type": "Protein",
+          "chains": "A,B",
+          "uniprotAccessions": [
+            "P00520"
+          ],
+          "authAsymIds": [
+            "A",
+            "B"
+          ],
+          "referenceSequenceLength": 293
+        }
+      ],
+      "source": "RCSB Data API",
+      "retrieved": "2026-09-12",
+      "galleryGroup": "disease",
+      "galleryLabel": "Abl kinase",
+      "classification": "engineered/domain drug-target construct",
+      "curationConsequence": "Identify Abl construct and exclude tags/binding partners; use Abl orthologs or Abl-family kinase-domain set."
+    }
+  ]
+}
