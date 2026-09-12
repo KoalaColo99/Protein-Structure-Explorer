@@ -16,9 +16,12 @@ function test(name, fn) {
 }
 
 function bodyOf(functionName) {
-  const start = html.indexOf(`function ${functionName}(`);
+  let start = html.indexOf(`function ${functionName}(`);
+  if (start < 0) start = html.indexOf(`async function ${functionName}(`);
   assert(start >= 0, `${functionName} missing`);
-  const next = html.indexOf('\n    function ', start + 1);
+  const nextFunction = html.indexOf('\n    function ', start + 1);
+  const nextAsyncFunction = html.indexOf('\n    async function ', start + 1);
+  const next = [nextFunction, nextAsyncFunction].filter(index => index >= 0).sort((a, b) => a - b)[0];
   return html.slice(start, next >= 0 ? next : start + 6000);
 }
 
@@ -40,6 +43,7 @@ test('homolog import workflow exposes required stages and conservative presets',
   assert(html.includes('minCoverage'));
   assert(html.includes('onePerSpecies'));
   assert(html.includes('requireDomainArchitecture'));
+  assert(html.includes('homologServiceEmail'));
 });
 
 test('reference-chain detection avoids silent concatenation and reports missing coordinates', () => {
@@ -74,9 +78,14 @@ test('ordinary loaded structures refresh active chain and homolog reference with
 test('reference stage status is based on reference validity, not stale workflow warnings', () => {
   const status = bodyOf('homologStageStatus');
   const complete = bodyOf('homologReferenceComplete');
+  const display = bodyOf('homologWorkflowStatusText');
+  const ready = bodyOf('homologReferenceReadyText');
   assert(status.includes("stageId === 'reference' && !homologReferenceComplete()"));
   assert(!status.includes("state.homologWorkflow.warnings?.length ? 'error' : 'current'"));
   assert(complete.includes("buildHomologReference().validationStatus === 'valid'"));
+  assert(display.includes('homologReferenceReadyText'));
+  assert(ready.includes('Reference ready:'));
+  assert(ready.includes('UniProt'));
 });
 
 test('candidate review distinguishes search hits from conservation and supports fallback imports', () => {
@@ -86,9 +95,11 @@ test('candidate review distinguishes search hits from conservation and supports 
   assert(review.includes('Select recommended set'));
   assert(review.includes('Select all visible'));
   assert(review.includes('Restore recommended selection'));
+  assert(fasta.includes('Cannot use automatic search?'));
   assert(fasta.includes('Paste UniProt accessions'));
   assert(fasta.includes('Paste FASTA or prealigned FASTA'));
   assert(fasta.includes('Raw FASTA still requires a genuine multiple-sequence alignment'));
+  assert(!fasta.includes('<details class="chem-note" open>'));
 });
 
 test('stage gates prevent empty candidate review and explain locked stages', () => {
@@ -148,16 +159,50 @@ test('candidate filtering and recommended set use quality thresholds before dive
   assert(recommend.includes("!reason.includes('warning:')"));
 });
 
-test('live service limitations are explicit and do not substitute unrelated sequences', () => {
+test('automatic homolog search submits an official EMBL-EBI BLAST job and never substitutes unrelated sequences', () => {
   const search = bodyOf('runAutomaticHomologSearch');
+  const searchAsync = bodyOf('runAutomaticHomologSearchAsync');
+  const params = bodyOf('homologSearchParameters');
+  const submit = bodyOf('submitEbiBlastSearch');
+  const poll = bodyOf('pollEbiBlastJob');
+  const normalize = bodyOf('normalizeEbiBlastResults');
+  const validate = bodyOf('validateAutomaticHomologCandidates');
   const align = bodyOf('alignSelectedHomologs');
-  assert(search.includes('Automatic search not connected. No sequences have been retrieved.'));
-  assert(search.includes("state.homologWorkflow.stage = 'criteria'"));
-  assert(search.includes('EMBL-EBI BLASTp/FASTA candidate homolog search'));
-  assert(search.includes('No unrelated bundled sequences were substituted'));
-  assert(search.includes('serverless proxy'));
+  assert(search.includes('runAutomaticHomologSearchAsync'));
+  assert(params.includes('URLSearchParams'));
+  assert(params.includes('serviceContactEmail'));
+  assert(html.includes('homologServiceEmail'));
+  assert(params.includes('uniprotkb_swissprot'));
+  assert(submit.includes(`${'${EVOLUTION_ENDPOINTS.ebiBlast}/run'}`));
+  assert(poll.includes(`${'${EVOLUTION_ENDPOINTS.ebiBlast}/status/'}`));
+  assert(poll.includes('timed out'));
+  assert(searchAsync.includes('EMBL-EBI Job Dispatcher NCBI BLAST'));
+  assert(searchAsync.includes("state.homologWorkflow.stage = 'candidates'"));
+  assert(searchAsync.includes('No unrelated bundled sequences were substituted'));
+  assert(searchAsync.includes('serverless proxy'));
+  assert(normalize.includes('parseEbiBlastTsv'));
+  assert(normalize.includes('fetchUniprotCandidate'));
+  assert(validate.includes('searchReferenceKey'));
+  assert(validate.includes('identity == null'));
+  assert(validate.includes('queryCoverage == null'));
   assert(align.includes('does not pad sequences or fake an MSA'));
   assert(align.includes('Select at least three total sequences'));
+});
+
+test('automatic homolog search has cancel, timeout, retry, and stale-reference boundaries', () => {
+  const cancel = bodyOf('cancelHomologSearch');
+  const criteria = bodyOf('homologCriteriaMarkup');
+  const events = html.slice(html.indexOf("document.getElementById('evolutionCandidatePanel').addEventListener('click'"));
+  const chainChange = html.slice(html.indexOf("const chain = event.target.closest('input[name=\"homologReferenceChain\"]')"), html.indexOf("const checkbox = event.target.closest('input[data-myoglobin-candidate]')"));
+  assert(cancel.includes('abort'));
+  assert(criteria.includes('Cancel Search'));
+  assert(criteria.includes('Search for Homologs'));
+  assert(events.includes("action === 'cancel-search'"));
+  assert(events.includes('runAutomaticHomologSearch().finally'));
+  assert(chainChange.includes('homologSearchIsRunning()'));
+  assert(chainChange.includes('candidates = []'));
+  assert(chainChange.includes('searchReferenceKey ='));
+  assert(bodyOf('pollEbiBlastJob').includes('Search result ignored because the reference sequence changed.'));
 });
 
 test('prealigned FASTA, mapping, and conservation activation are separate stages', () => {

@@ -287,11 +287,12 @@ The **Find homologs automatically** workflow under Candidate Homolog Set is a st
 1. Choose one reference chain. Chains are not concatenated.
 2. Review whether the query is the coordinate-derived chain sequence or a strongly mapped UniProt canonical sequence.
 3. Choose conservative homolog-search criteria.
-4. Review candidate homologous sequences before alignment.
-5. Load a genuine multiple-sequence alignment, currently through pasted prealigned FASTA or imported accessions when live service retrieval is available.
-6. Map the reference alignment row back to coordinate residues before conservation coloring.
+4. Search EMBL-EBI Job Dispatcher NCBI BLAST against UniProtKB/Swiss-Prot.
+5. Review candidate homologous sequences before alignment. Search hits are candidate homologs, not conservation scores.
+6. Load a genuine multiple-sequence alignment, currently through pasted prealigned FASTA or imported accessions when live alignment service retrieval is unavailable.
+7. Map the reference alignment row back to coordinate residues before conservation coloring.
 
-Important limitation: the static GitHub Pages build does not silently run or fake BLAST/Clustal jobs when an official browser-accessible service stage is unavailable. It reports the blocked service stage, keeps manual accession and FASTA import available, and never substitutes unrelated bundled sequences for a failed homolog search.
+Important limitation: the static GitHub Pages build can attempt the official EMBL-EBI BLAST route directly from the browser, but official services may time out, enforce fair-use contact requirements, or change response details. When that happens, the app reports the exact failed stage, keeps manual UniProt accession and FASTA import available under **Cannot use automatic search?**, and never substitutes unrelated bundled sequences for a failed homolog search. A serverless proxy may be needed later for reliable classroom deployment of live search and alignment jobs.
 
 The course list includes a validation check that flags duplicate PDB IDs or important code/name mismatches for review. In the current list, `1LYZ` is Lysozyme and `1BNA` is DNA Double Helix.
 

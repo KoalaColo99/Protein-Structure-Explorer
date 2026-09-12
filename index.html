@@ -6892,6 +6892,7 @@ END
         removedAccessions: [],
         importedFasta: '',
         importedAccessions: '',
+        serviceContactEmail: 'biochemistry.visual.atlas@example.org',
         alignmentRecords: [],
         mapping: null,
         mappedMetrics: [],
@@ -6901,8 +6902,12 @@ END
           search: 'not run',
           alignment: 'not run',
           lastError: '',
-          blockedReason: ''
+          blockedReason: '',
+          jobId: '',
+          pollCount: 0
         },
+        searchAbortController: null,
+        searchReferenceKey: '',
         provenance: null,
         cacheKey: ''
       },
@@ -15643,6 +15648,7 @@ END
         candidates: [],
         selectedAccessions: [],
         removedAccessions: [],
+        serviceContactEmail: state.homologWorkflow.serviceContactEmail || 'biochemistry.visual.atlas@example.org',
         alignmentRecords: [],
         mapping: null,
         mappedMetrics: [],
@@ -15652,8 +15658,12 @@ END
           search: 'not run',
           alignment: 'not run',
           lastError: '',
-          blockedReason: ''
+          blockedReason: '',
+          jobId: '',
+          pollCount: 0
         },
+        searchAbortController: null,
+        searchReferenceKey: '',
         provenance: null,
         cacheKey: ''
       };
@@ -15825,11 +15835,25 @@ END
       return `
         <details class="chem-note">
           <summary>Live-service and static-hosting limits</summary>
-          <p><strong>Homolog search service:</strong> EMBL-EBI Job Dispatcher NCBI BLAST/FASTA or an equivalent official sequence-similarity service. <strong>Alignment service:</strong> EMBL-EBI Clustal Omega.</p>
-          <p>These official job services use asynchronous submission and polling, have fair-use limits, and may require a contact email or reject browser-origin requests depending on service CORS policy. This static GitHub Pages app does not include credentials, private API keys, or a proxy.</p>
-          <p>If the live stage is unavailable, the atlas stops with a specific status and offers accession/prealigned FASTA import. It never substitutes unrelated bundled sequences.</p>
+          <p><strong>Homolog search service:</strong> EMBL-EBI Job Dispatcher NCBI BLAST against UniProtKB/Swiss-Prot. <strong>Alignment service:</strong> EMBL-EBI Clustal Omega or user-supplied prealigned FASTA.</p>
+          <p>Official job services use asynchronous submission and polling, have fair-use limits, and require a contact email for responsible use. This static GitHub Pages app does not include credentials, private API keys, or a proxy.</p>
+          <p>If the live search is unavailable, the atlas stops with a specific status and offers accession/prealigned FASTA import. It never substitutes unrelated bundled sequences.</p>
         </details>
       `;
+    }
+
+    function homologReferenceReadyText(reference = buildHomologReference()) {
+      const accession = reference.resolvedUniprotAccession ? `, UniProt ${reference.resolvedUniprotAccession}` : '';
+      return `Reference ready: ${reference.structureId || state.structureId || 'current structure'} chain ${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()}, ${reference.coordinateResidueCount} coordinate residues${accession}.`;
+    }
+
+    function homologWorkflowStatusText() {
+      const workflow = state.homologWorkflow;
+      if (workflow.stage === 'reference' && homologReferenceComplete()) {
+        const staleStart = /^Workflow started\. Select the reference chain before searching\./.test(workflow.status || '');
+        if (staleStart || !workflow.status || workflow.status === 'ready') return homologReferenceReadyText();
+      }
+      return workflow.status || 'ready';
     }
 
     function renderHomologImportWorkflow(dataset = null) {
@@ -15850,7 +15874,7 @@ END
           <h3>Automatic Homolog Discovery and Sequence Import</h3>
           <p>Search retrieves candidate homologous sequences. Conservation is calculated only after selected homologs have a validated multiple-sequence alignment and a structure mapping.</p>
           ${homologWorkflowProgressMarkup()}
-          <div class="chem-note" aria-live="polite"><strong>Status:</strong> ${escapeHtml(workflow.status || 'ready')}</div>
+          <div class="chem-note" aria-live="polite"><strong>Status:</strong> ${escapeHtml(homologWorkflowStatusText())}</div>
           ${workflow.warnings?.length ? `<div class="warning-text"><strong>Warnings</strong><ul>${workflow.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('')}</ul></div>` : ''}
           ${homologStageMarkup(dataset)}
           ${homologServiceLimitationsMarkup()}
@@ -15876,8 +15900,9 @@ END
           <p>Select one protein chain as the structure-mapping reference. Chains are never silently concatenated.</p>
           <div class="${reference.validationStatus === 'valid' ? 'chem-note' : 'warning-text'}">
             <strong>${reference.validationStatus === 'valid' ? 'Reference ready' : 'Reference needs attention'}</strong>
-            ${reference.error ? escapeHtml(reference.error) : `Detected ${reference.coordinateResidueCount} coordinate-derived amino-acid residues for chain ${escapeHtml(reference.selectedChain)}.`}
+            ${reference.error ? escapeHtml(reference.error) : escapeHtml(homologReferenceReadyText(reference))}
             ${reference.warnings.length ? `<ul>${reference.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>` : ''}
+            ${reference.validationStatus === 'valid' ? '<div class="button-row"><button type="button" data-homolog-action="criteria">Continue to Search Criteria</button></div>' : ''}
           </div>
           <div class="table-wrap">
             <table>
@@ -15905,7 +15930,6 @@ END
           <p class="warning-text">Current query choice: ${escapeHtml(reference.sourceLabel)}. Coordinate-derived sequences omit unresolved residues; canonical sequences may include positions absent from the experimental structure.</p>
         </fieldset>
         <div class="button-row">
-          <button type="button" data-homolog-action="criteria" ${reference.validationStatus === 'valid' ? '' : 'disabled'}>Continue to Search Criteria</button>
           <button type="button" data-homolog-action="retry-reference">Retry Reference Detection</button>
           <button type="button" data-homolog-action="help-reference">I'm not sure</button>
         </div>
@@ -15940,16 +15964,19 @@ END
           <label class="check-row"><input id="homologExcludeSynthetic" type="checkbox" ${criteria.excludeSynthetic ? 'checked' : ''}> Exclude synthetic constructs</label>
           <label class="check-row"><input id="homologRequireDomain" type="checkbox" ${criteria.requireDomainArchitecture ? 'checked' : ''}> Require compatible domain architecture or warn</label>
           <label class="check-row"><input id="homologIncludeReference" type="checkbox" ${criteria.includeReference ? 'checked' : ''}> Include reference sequence in final alignment</label>
+          <label for="homologServiceEmail">Service contact email for EMBL-EBI fair use</label>
+          <input id="homologServiceEmail" type="email" value="${escapeHtml(state.homologWorkflow.serviceContactEmail || '')}" autocomplete="email">
         </fieldset>
         <details class="chem-note"><summary>Why these defaults?</summary><p>A diverse but clearly homologous set is usually more informative than many nearly identical sequences. Low coverage can mean only one domain matches, especially for multidomain proteins.</p></details>
         ${homologManualImportMarkup()}
         <div class="button-row">
-          <button type="button" data-homolog-action="run-search">Search for Homologs</button>
+          <button type="button" data-homolog-action="run-search" ${/running|queued|submitting|retrieving|preparing/.test(state.homologWorkflow.serviceStatus.search || '') ? 'disabled' : ''}>Search for Homologs</button>
+          ${/running|queued|submitting|retrieving|preparing/.test(state.homologWorkflow.serviceStatus.search || '') ? '<button type="button" data-homolog-action="cancel-search">Cancel Search</button>' : ''}
           <button type="button" data-homolog-action="validate-imported">Validate Imported Sequences</button>
           <button type="button" data-homolog-action="help-criteria">I'm not sure</button>
           <button type="button" data-homolog-action="reference">Back</button>
         </div>
-        <p class="warning-text">Automatic search is not connected in this static build until official job submission and polling are verified. Manual accession or FASTA import can still produce candidate records.</p>
+        <p class="warning-text">Automatic search submits the current query sequence to EMBL-EBI NCBI BLAST and polls the official job result. If the service is unavailable, manual accession or FASTA import remains available below.</p>
       `;
     }
 
@@ -16019,8 +16046,8 @@ END
 
     function homologManualImportMarkup() {
       return `
-        <details class="chem-note" open>
-          <summary>Fallback import paths</summary>
+        <details class="chem-note">
+          <summary>Cannot use automatic search?</summary>
           <label for="homologAccessions">Paste UniProt accessions</label>
           <textarea id="homologAccessions" rows="2" placeholder="Enter one UniProt accession per line">${escapeHtml(state.homologWorkflow.importedAccessions || '')}</textarea>
           <label for="homologFasta">Paste FASTA or prealigned FASTA</label>
@@ -16148,6 +16175,7 @@ END
         requireDomainArchitecture: Boolean(get('homologRequireDomain')?.checked),
         includeReference: Boolean(get('homologIncludeReference')?.checked)
       };
+      state.homologWorkflow.serviceContactEmail = String(get('homologServiceEmail')?.value || state.homologWorkflow.serviceContactEmail || '').trim();
       return state.homologWorkflow.criteria;
     }
 
@@ -16397,30 +16425,376 @@ END
       }
     }
 
-    async function runAutomaticHomologSearch() {
+    function homologSearchReferenceKey(reference = selectedHomologReference()) {
+      return sequenceHash(JSON.stringify({
+        pdb: reference.structureId || state.structureId,
+        model: reference.model || state.structureModel || '1',
+        chain: reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain(),
+        source: reference.source,
+        sequenceHash: sequenceHash(reference.sequence || '')
+      }));
+    }
+
+    function homologSearchIsRunning() {
+      return /running|queued|submitting|retrieving|preparing/.test(state.homologWorkflow.serviceStatus.search || '');
+    }
+
+    function cancelHomologSearch(message = 'Search cancelled.') {
+      if (state.homologWorkflow.searchAbortController) {
+        state.homologWorkflow.searchAbortController.abort();
+      }
+      state.homologWorkflow.searchAbortController = null;
+      state.homologWorkflow.serviceStatus.search = 'cancelled';
+      state.homologWorkflow.status = message;
+    }
+
+    function homologSearchParameters(reference, criteria) {
+      const fasta = `>${reference.structureId || state.structureId}_${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()}\n${reference.sequence}`;
+      const params = new URLSearchParams();
+      params.set('email', state.homologWorkflow.serviceContactEmail || 'biochemistry.visual.atlas@example.org');
+      params.set('title', `BVA_${reference.structureId || state.structureId}_${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()}`);
+      params.set('sequence', fasta);
+      params.set('program', 'blastp');
+      params.set('database', 'uniprotkb_swissprot');
+      params.set('stype', 'protein');
+      params.set('matrix', 'BLOSUM62');
+      params.set('exp', String(criteria.maxEvalue || '1e-5'));
+      params.set('scores', '50');
+      params.set('alignments', '50');
+      params.set('filter', 'F');
+      return params;
+    }
+
+    async function fetchJsonWithExternalSignal(url, options = {}, timeoutMs = 20000) {
+      const timeoutController = new AbortController();
+      const timer = window.setTimeout(() => timeoutController.abort(), timeoutMs);
+      const external = options.signal;
+      const onExternalAbort = () => timeoutController.abort();
+      if (external) external.addEventListener('abort', onExternalAbort, { once: true });
+      const fetchOptions = { ...options, signal: timeoutController.signal };
+      delete fetchOptions.timeoutMs;
+      try {
+        const response = await fetch(url, fetchOptions);
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        const text = await response.text();
+        if (!text) return {};
+        try {
+          return JSON.parse(text);
+        } catch (error) {
+          return text;
+        }
+      } finally {
+        if (external) external.removeEventListener('abort', onExternalAbort);
+        window.clearTimeout(timer);
+      }
+    }
+
+    async function submitEbiBlastSearch(reference, criteria, signal) {
+      state.homologWorkflow.serviceStatus.search = 'submitting EMBL-EBI BLAST job';
+      state.homologWorkflow.status = 'Submitting the current protein sequence to EMBL-EBI NCBI BLAST.';
+      renderCurrentProteinEvolution();
+      const payload = homologSearchParameters(reference, criteria);
+      const result = await fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiBlast}/run`, {
+        method: 'POST',
+        headers: { Accept: 'text/plain, application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: payload,
+        signal
+      }, 25000);
+      const jobId = typeof result === 'string' ? result.trim() : (result?.jobId || result?.jobID || result?.id || result?.job || '');
+      if (!jobId) throw new Error('EMBL-EBI BLAST did not return a job id.');
+      state.homologWorkflow.serviceStatus.jobId = jobId;
+      return jobId;
+    }
+
+    async function pollEbiBlastJob(jobId, referenceKey, signal) {
+      const terminalReady = /FINISHED|COMPLETE|COMPLETED|READY|DONE|SUCCESS/i;
+      const terminalFailure = /ERROR|FAIL|FAILED|NOT_FOUND|EXPIRED/i;
+      for (let poll = 1; poll <= 24; poll++) {
+        if (state.homologWorkflow.searchReferenceKey !== referenceKey) throw new Error('Search result ignored because the reference sequence changed.');
+        state.homologWorkflow.serviceStatus.search = `running EMBL-EBI BLAST job (${poll}/24)`;
+        state.homologWorkflow.serviceStatus.pollCount = poll;
+        state.homologWorkflow.status = `Searching UniProtKB/Swiss-Prot for homologs. EBI job ${jobId}; poll ${poll} of 24.`;
+        renderCurrentProteinEvolution();
+        const statusPayload = await fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiBlast}/status/${encodeURIComponent(jobId)}`, {
+          headers: { Accept: 'text/plain, application/json' },
+          signal
+        }, 15000);
+        const statusText = String(statusPayload?.jobStatus || statusPayload?.status || statusPayload?.state || statusPayload || '');
+        if (terminalReady.test(statusText)) return statusText || 'FINISHED';
+        if (terminalFailure.test(statusText)) throw new Error(`EMBL-EBI BLAST job ended with status ${statusText}.`);
+        await new Promise((resolve, reject) => {
+          const timer = window.setTimeout(resolve, 2500);
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              window.clearTimeout(timer);
+              reject(new DOMException('Search cancelled', 'AbortError'));
+            }, { once: true });
+          }
+        });
+      }
+      throw new Error('EMBL-EBI BLAST search timed out before results were ready.');
+    }
+
+    async function fetchEbiBlastResults(jobId, signal) {
+      state.homologWorkflow.serviceStatus.search = 'retrieving EMBL-EBI BLAST results';
+      state.homologWorkflow.status = `Retrieving EMBL-EBI BLAST TSV results for job ${jobId}.`;
+      renderCurrentProteinEvolution();
+      return fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiBlast}/result/${encodeURIComponent(jobId)}/tsv`, {
+        headers: { Accept: 'text/tab-separated-values, text/plain' },
+        signal
+      }, 25000);
+    }
+
+    function collectBlastHitObjects(value, hits = []) {
+      if (!value || hits.length > 200) return hits;
+      if (Array.isArray(value)) {
+        value.forEach(item => collectBlastHitObjects(item, hits));
+        return hits;
+      }
+      if (typeof value !== 'object') return hits;
+      const accession = extractUniprotAccession(value);
+      if (accession) hits.push(value);
+      Object.entries(value).forEach(([key, child]) => {
+        if (/sequence|description/i.test(key) && typeof child === 'string') return;
+        if (child && typeof child === 'object') collectBlastHitObjects(child, hits);
+      });
+      return hits;
+    }
+
+    function collectPrimitiveText(value, parts = [], depth = 0) {
+      if (value == null || depth > 4 || parts.length > 80) return parts;
+      if (typeof value === 'string' || typeof value === 'number') {
+        parts.push(String(value));
+        return parts;
+      }
+      if (Array.isArray(value)) {
+        value.forEach(item => collectPrimitiveText(item, parts, depth + 1));
+        return parts;
+      }
+      if (typeof value === 'object') {
+        Object.values(value).forEach(item => collectPrimitiveText(item, parts, depth + 1));
+      }
+      return parts;
+    }
+
+    function extractUniprotAccession(hit) {
+      const values = [
+        hit?.accession,
+        hit?.primaryAccession,
+        hit?.from,
+        hit?.to,
+        hit?.id,
+        hit?.entry,
+        hit?.target,
+        hit?.subject,
+        hit?.hit?.id,
+        hit?.hit?.accession,
+        hit?.metadata?.accession
+      ];
+      const text = values.filter(Boolean).join(' ') || collectPrimitiveText(hit).join(' ');
+      const match = text.match(/\b(?:[OPQ][0-9][A-Z0-9]{3}[0-9]|[A-NR-Z][0-9][A-Z][A-Z0-9]{2}[0-9])(?:-\d+)?\b/);
+      return match ? match[0].replace(/-\d+$/, '') : '';
+    }
+
+    function numericBlastMetric(hit, names) {
+      const stack = [hit];
+      while (stack.length) {
+        const current = stack.pop();
+        if (!current || typeof current !== 'object') continue;
+        for (const name of names) {
+          if (current[name] != null && Number.isFinite(Number(current[name]))) return Number(current[name]);
+        }
+        Object.values(current).forEach(value => {
+          if (value && typeof value === 'object') stack.push(value);
+        });
+      }
+      return null;
+    }
+
+    function evalueFromBlastHit(hit) {
+      const evalue = numericBlastMetric(hit, ['evalue', 'eValue', 'expect', 'expectation']);
+      return evalue == null ? 'reported by BLAST result' : String(evalue);
+    }
+
+    function parseEbiBlastTsv(payload) {
+      const text = typeof payload === 'string' ? payload : '';
+      const lines = text.split(/\r?\n/).filter(line => line.trim() && !line.startsWith('#'));
+      const header = lines.shift()?.split('\t') || [];
+      const indexOf = label => header.findIndex(item => item.toLowerCase() === label.toLowerCase());
+      const index = {
+        accession: indexOf('Accession'),
+        description: indexOf('Description'),
+        organism: indexOf('Organism'),
+        length: indexOf('Length'),
+        identity: indexOf('Identities(%)'),
+        evalue: indexOf('E()')
+      };
+      return lines.map(line => {
+        const cells = line.split('\t');
+        return {
+          accession: (cells[index.accession] || '').replace(/^[A-Z]{2}:/, ''),
+          description: cells[index.description] || '',
+          organism: cells[index.organism] || '',
+          length: Number(cells[index.length]) || null,
+          identity: Number(cells[index.identity]),
+          evalue: cells[index.evalue] || 'reported by EMBL-EBI BLAST'
+        };
+      }).filter(hit => hit.accession);
+    }
+
+    async function normalizeEbiBlastResults(payload, reference, referenceKey) {
+      const tsvHits = parseEbiBlastTsv(payload);
+      if (tsvHits.length) {
+        const candidates = [];
+        const warnings = [];
+        for (const hit of tsvHits.slice(0, 50)) {
+          if (state.homologWorkflow.searchReferenceKey !== referenceKey) throw new Error('Search result ignored because the reference sequence changed.');
+          try {
+            const candidate = await fetchUniprotCandidate(hit.accession);
+            candidates.push({
+              ...candidate,
+              proteinName: candidate.proteinName || hit.description || hit.accession,
+              organism: candidate.organism || hit.organism,
+              identity: Number.isFinite(hit.identity) ? hit.identity : candidate.identity,
+              evalue: hit.evalue,
+              reason: 'retrieved by EMBL-EBI NCBI BLAST against UniProtKB/Swiss-Prot; validate identity, coverage, and domain compatibility before alignment'
+            });
+          } catch (error) {
+            warnings.push(`${hit.accession}: ${error.message}`);
+          }
+        }
+        return { candidates, warnings };
+      }
+      return normalizeUniprotBlastResults(payload, reference, referenceKey);
+    }
+
+    async function normalizeUniprotBlastResults(payload, reference, referenceKey) {
+      const hits = collectBlastHitObjects(payload);
+      const accessions = [...new Set(hits.map(extractUniprotAccession).filter(Boolean))].slice(0, 50);
+      const byAccession = new Map(hits.map(hit => [extractUniprotAccession(hit), hit]).filter(([accession]) => accession));
+      const candidates = [];
+      const warnings = [];
+      for (const accession of accessions) {
+        if (state.homologWorkflow.searchReferenceKey !== referenceKey) throw new Error('Search result ignored because the reference sequence changed.');
+        try {
+          const candidate = await fetchUniprotCandidate(accession);
+          const hit = byAccession.get(accession) || {};
+          const blastIdentity = numericBlastMetric(hit, ['identity', 'identityPercent', 'percentIdentity', 'pident']);
+          const blastCoverage = numericBlastMetric(hit, ['queryCoverage', 'queryCoveragePercent', 'coverage']);
+          candidates.push({
+            ...candidate,
+            identity: blastIdentity != null && blastIdentity <= 1 ? blastIdentity * 100 : (blastIdentity ?? candidate.identity),
+            queryCoverage: blastCoverage != null && blastCoverage <= 1 ? blastCoverage * 100 : (blastCoverage ?? candidate.queryCoverage),
+            evalue: evalueFromBlastHit(hit),
+            reason: 'retrieved by BLAST result; validate identity, coverage, and domain compatibility before alignment'
+          });
+        } catch (error) {
+          warnings.push(`${accession}: ${error.message}`);
+        }
+      }
+      return { candidates, warnings };
+    }
+
+    function validateAutomaticHomologCandidates(candidates, referenceKey) {
+      if (state.homologWorkflow.searchReferenceKey !== referenceKey) return [];
+      const criteria = homologCriteria();
+      return candidates.filter(candidate => {
+        if (!candidate?.accession || !candidate.sequence) return false;
+        if (candidate.identity == null || candidate.queryCoverage == null) return false;
+        return usableHomologCandidate(candidate, criteria);
+      });
+    }
+
+    function runAutomaticHomologSearch() {
+      return runAutomaticHomologSearchAsync();
+    }
+
+    async function runAutomaticHomologSearchAsync() {
       updateHomologCriteriaFromControls();
       const reference = selectedHomologReference();
+      const criteria = homologCriteria();
+      if (reference.validationStatus !== 'valid') {
+        state.homologWorkflow.status = reference.error || 'Select a valid reference chain before searching.';
+        state.homologWorkflow.stage = 'reference';
+        return;
+      }
+      if (homologSearchIsRunning()) cancelHomologSearch('Previous search cancelled before starting a new one.');
+      const referenceKey = homologSearchReferenceKey(reference);
+      const controller = new AbortController();
+      state.homologWorkflow.searchAbortController = controller;
+      state.homologWorkflow.searchReferenceKey = referenceKey;
       state.homologWorkflow.cacheKey = homologCacheKey();
-      state.homologWorkflow.status = 'Automatic search not connected. No sequences have been retrieved.';
-      state.homologWorkflow.serviceStatus.search = 'blocked in static browser until service submission is configured and verified';
-      state.homologWorkflow.serviceStatus.blockedReason = 'EMBL-EBI BLAST/FASTA Job Dispatcher requires asynchronous job submission/polling and may require a contact email and CORS-compatible browser submission. This static GitHub Pages build does not embed credentials, private keys, or an instructor contact email.';
-      state.homologWorkflow.warnings = [
-        'Automatic live homolog search was not completed in this static build. No unrelated bundled sequences were substituted.',
-        'Use pasted UniProt accessions, pasted prealigned FASTA, uploaded FASTA, or add a small serverless proxy that submits and polls official jobs.'
-      ];
+      state.homologWorkflow.serviceStatus.search = 'preparing EMBL-EBI BLAST search';
+      state.homologWorkflow.serviceStatus.lastError = '';
+      state.homologWorkflow.serviceStatus.blockedReason = '';
+      state.homologWorkflow.serviceStatus.jobId = '';
+      state.homologWorkflow.serviceStatus.pollCount = 0;
+      state.homologWorkflow.warnings = [];
+      state.homologWorkflow.status = 'Preparing EMBL-EBI BLAST search for the selected reference sequence.';
+      state.homologWorkflow.stage = 'criteria';
       state.homologWorkflow.provenance = homologProvenanceRecord({
         queryHash: sequenceHash(reference.sequence),
-        searchMethod: 'EMBL-EBI BLASTp/FASTA candidate homolog search (configured endpoint, not submitted)',
-        database: 'Recognized protein sequence database such as UniProtKB/Swiss-Prot/reference proteomes',
-        blockedRequest: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
-        blockedCause: state.homologWorkflow.serviceStatus.blockedReason,
-        proxyRequirement: {
-          request: { sequence: 'FASTA string', criteria: 'serialized search filters', contact: 'server-owned service contact if required' },
-          response: { candidates: 'metadata table with accessions, identity, coverage, E-value, and warnings', job: 'service job id and status' },
-          privacy: 'Only protein sequence/search parameters should be sent; no student names or responses.'
-        }
+        searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
+        database: 'UniProtKB/Swiss-Prot',
+        searchEndpoint: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
+        searchReferenceKey: referenceKey
       });
-      state.homologWorkflow.stage = 'criteria';
+      try {
+        const jobId = await submitEbiBlastSearch(reference, criteria, controller.signal);
+        await pollEbiBlastJob(jobId, referenceKey, controller.signal);
+        const payload = await fetchEbiBlastResults(jobId, controller.signal);
+        const normalized = await normalizeEbiBlastResults(payload, reference, referenceKey);
+        const validated = validateAutomaticHomologCandidates(normalized.candidates, referenceKey);
+        state.homologWorkflow.searchAbortController = null;
+        state.homologWorkflow.warnings = normalized.warnings;
+        state.homologWorkflow.serviceStatus.search = validated.length ? `complete; ${validated.length} validated candidate homologs` : 'complete; no validated candidate homologs';
+        state.homologWorkflow.provenance = homologProvenanceRecord({
+          queryHash: sequenceHash(reference.sequence),
+          searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
+          database: 'UniProtKB/Swiss-Prot',
+          searchEndpoint: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
+          searchJobId: jobId,
+          searchReferenceKey: referenceKey,
+          rawHitsReturned: normalized.candidates.length,
+          validatedCandidates: validated.length
+        });
+        if (!validated.length) {
+          state.homologWorkflow.status = 'Search completed, but no validated homolog candidates passed the current identity, coverage, and sequence checks.';
+          state.homologWorkflow.stage = 'criteria';
+          return;
+        }
+        mergeHomologCandidates(validated);
+        state.homologWorkflow.selectedAccessions = selectRecommendedHomologSet(state.homologWorkflow.candidates).map(candidate => candidate.accession);
+        state.homologWorkflow.status = `Search complete: ${validated.length} validated candidate homolog${validated.length === 1 ? '' : 's'} retrieved from EMBL-EBI BLAST. Review candidates before alignment.`;
+        state.homologWorkflow.stage = 'candidates';
+      } catch (error) {
+        state.homologWorkflow.searchAbortController = null;
+        const aborted = error?.name === 'AbortError';
+        state.homologWorkflow.serviceStatus.search = aborted ? 'cancelled' : 'blocked or failed in static browser';
+        state.homologWorkflow.serviceStatus.lastError = error.message || String(error);
+        state.homologWorkflow.serviceStatus.blockedReason = aborted ? '' : 'The official EMBL-EBI BLAST route could not be completed from this static browser context. A small serverless proxy may be required if this is due to CORS, fair-use contact, or service submission policy.';
+        state.homologWorkflow.warnings = aborted
+          ? ['Automatic search was cancelled. No candidate records were imported.']
+          : [
+              'Automatic live homolog search did not produce candidates. No unrelated bundled sequences were substituted.',
+              'Use accession/FASTA import now, or add a small serverless proxy that submits and polls the official EMBL-EBI BLAST job.'
+            ];
+        state.homologWorkflow.status = aborted ? 'Search cancelled.' : `Automatic search failed: ${state.homologWorkflow.serviceStatus.lastError}`;
+        state.homologWorkflow.provenance = homologProvenanceRecord({
+          queryHash: sequenceHash(reference.sequence),
+          searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
+          database: 'UniProtKB/Swiss-Prot',
+          searchEndpoint: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
+          blockedCause: state.homologWorkflow.serviceStatus.blockedReason,
+          failure: state.homologWorkflow.serviceStatus.lastError,
+          proxyRequirement: {
+            request: { sequence: 'FASTA string', criteria: 'serialized search filters' },
+            response: { candidates: 'metadata table with accessions, identity, coverage, E-value, and warnings', job: 'official service job id and status' },
+            privacy: 'Only protein sequence/search parameters should be sent; no student names or responses.'
+          }
+        });
+        state.homologWorkflow.stage = 'criteria';
+      }
     }
 
     function selectedHomologCandidates() {
@@ -19817,15 +20191,29 @@ END
     document.getElementById('evolutionCandidatePanel').addEventListener('change', event => {
       const chain = event.target.closest('input[name="homologReferenceChain"]');
       if (chain) {
+        if (homologSearchIsRunning()) cancelHomologSearch('Search cancelled because the reference chain changed.');
         state.homologWorkflow.referenceChain = chain.value;
+        state.homologWorkflow.candidates = [];
+        state.homologWorkflow.selectedAccessions = [];
+        state.homologWorkflow.alignmentRecords = [];
         state.homologWorkflow.mapping = null;
         state.homologWorkflow.mappedMetrics = [];
+        state.homologWorkflow.searchReferenceKey = '';
+        state.homologWorkflow.status = homologReferenceReadyText();
         renderCurrentProteinEvolution();
         return;
       }
       const source = event.target.closest('input[name="homologQuerySource"]');
       if (source) {
+        if (homologSearchIsRunning()) cancelHomologSearch('Search cancelled because the query sequence source changed.');
         state.homologWorkflow.querySequenceSource = source.value;
+        state.homologWorkflow.candidates = [];
+        state.homologWorkflow.selectedAccessions = [];
+        state.homologWorkflow.alignmentRecords = [];
+        state.homologWorkflow.mapping = null;
+        state.homologWorkflow.mappedMetrics = [];
+        state.homologWorkflow.searchReferenceKey = '';
+        state.homologWorkflow.status = 'Query sequence source changed. Continue to Search Criteria when the reference is correct.';
         renderCurrentProteinEvolution();
         return;
       }
@@ -19860,6 +20248,7 @@ END
     document.getElementById('evolutionCandidatePanel').addEventListener('input', event => {
       if (event.target.id === 'homologAccessions') state.homologWorkflow.importedAccessions = event.target.value;
       if (event.target.id === 'homologFasta') state.homologWorkflow.importedFasta = event.target.value;
+      if (event.target.id === 'homologServiceEmail') state.homologWorkflow.serviceContactEmail = event.target.value.trim();
     });
 
     document.getElementById('evolutionCandidatePanel').addEventListener('click', event => {
@@ -19909,6 +20298,11 @@ END
         runAutomaticHomologSearch().finally(() => {
           renderCurrentProteinEvolution();
         });
+        return;
+      }
+      if (action === 'cancel-search') {
+        cancelHomologSearch();
+        renderCurrentProteinEvolution();
         return;
       }
       if (action === 'import-fasta' || action === 'criteria-accessions' || action === 'criteria-fasta') {
