@@ -127,6 +127,25 @@ test('Building Protein Structure uses eight focused guided steps', () => {
   assert(!sequenceBlock.includes("label: 'Amino acids', mode: 'ph'"));
 });
 
+test('Structure Function and Evolution scaffold exposes conservation workflow steps', () => {
+  const block = html.slice(html.indexOf('structure_function:'), html.indexOf('protein_evolution:', html.indexOf('structure_function:')));
+  [
+    'Meet Myoglobin',
+    'Examine the Heme Pocket',
+    'Investigate Functional Interactions',
+    'Confirm Protein Identity',
+    'Compare Homologous Sequences',
+    'Map Conservation onto Structure',
+    'Predict the Effect of a Mutation',
+    'Build a Structure-Function-Evolution Explanation'
+  ].forEach(label => assert(block.includes(`label: '${label}'`), `${label} scaffold step missing`));
+  assert(block.includes('candidate myoglobin sequences'));
+  assert(block.includes('conservation coloring'));
+  assert(html.includes('Open the complete Conservation Analysis workspace'));
+  assert(html.includes('Open advanced Protein Evolution pathway'));
+  assert(html.includes('data-guided-advanced-evolution="protein_evolution"'));
+});
+
 test('non-viewer guided steps render focused activities without booting the workspace', () => {
   const render = bodyOf('renderGuidedPathway');
   const visual = bodyOf('guidedVisualizationMarkup');
@@ -158,17 +177,20 @@ test('non-sequence guided pathways use honest placeholders mapped to existing to
     'pH & Charge protein/peptide accounting',
     'Charge Surface',
     'Orientation/Structure',
+    'Ligand Explorer',
     'Active-Site Explorer',
-    'Side-chain Interactions/Chemistry Lens',
+    'Chemistry Lens',
+    'Molecular Evidence Card/CER scaffold',
     'Mutation Sandbox',
     'Conservation Analysis'
   ].forEach(label => assert(html.includes(label), `${label} tool mapping missing`));
   assert(placeholder.includes('Guided activity coming next'));
   assert(placeholder.includes('does not substitute an unrelated activity'));
   assert(placeholder.includes('data-open-guided-tool'));
+  assert(placeholder.includes('data-open-guided-student-mode'));
   assert(html.includes("event.target.closest('button[data-open-guided-tool]')"));
   assert(openTool.includes("ensureAtlasStarted({ readRoute: false, viewerTargetId: 'viewer' })"));
-  assert(openTool.includes('setStudentMode(studentModeForWorkspaceTool(mode)'));
+  assert(openTool.includes('setStudentMode(studentModeForWorkspaceTool(mode, preferredStudentMode)'));
 });
 
 test('Step 4 peptide-bond rigidity uses chemically correct prediction and diagram labels', () => {
@@ -328,6 +350,9 @@ test('direct links into pathways are parsed without needing server routing', () 
   assert(read.includes("state.studentMode = 'learn'"));
   assert(read.includes('state.activePathwayStep'));
   assert(read.includes('state.mode = pathwaySteps[state.activePathwayStep].mode'));
+  assert(read.includes("if (['learn', 'explore', 'analyze'].includes(studentMode)) state.studentMode = studentMode"));
+  assert(read.includes("if (!hasPathway && mode && mode !== 'sequence' && document.getElementById(`${mode}Panel`))"));
+  assert(html.includes('<button data-mode="conservation">Conservation Analysis</button>'));
 });
 
 test('student navigation supports Enter and Space keyboard activation', () => {
