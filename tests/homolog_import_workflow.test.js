@@ -45,13 +45,38 @@ test('homolog import workflow exposes required stages and conservative presets',
 test('reference-chain detection avoids silent concatenation and reports missing coordinates', () => {
   const chains = bodyOf('homologChainSummaries');
   const reference = bodyOf('homologReferenceMarkup');
+  const builder = bodyOf('buildHomologReference');
   assert(chains.includes('const chains = new Map()'));
   assert(chains.includes('sequenceFromResidues(residues)'));
   assert(chains.includes('numbering gap'));
+  assert(chains.includes('normalizeProteinChainId'));
+  assert(builder.includes('availableChains'));
+  assert(builder.includes('coordinateSequence'));
+  assert(builder.includes('coordinateResidueCount'));
+  assert(builder.includes('validationStatus'));
+  assert(builder.includes('The selected chain does not contain a usable amino-acid sequence.'));
   assert(reference.includes('Chains are never silently concatenated'));
   assert(reference.includes('homologReferenceChain'));
   assert(reference.includes('coordinate-derived chain sequence'));
   assert(reference.includes('UniProt canonical sequence'));
+  assert(reference.includes('Retry Reference Detection'));
+});
+
+test('ordinary loaded structures refresh active chain and homolog reference without special cases', () => {
+  const apply = bodyOf('applyParsedStructure');
+  const builder = bodyOf('buildHomologReference');
+  assert(apply.includes('parsedProteinChains'));
+  assert(apply.includes('state.activeChain = parsedProteinChains[0]'));
+  assert(!builder.includes('1CA2'));
+  assert(!html.includes("if (state.structureId === '1CA2')"));
+});
+
+test('reference stage status is based on reference validity, not stale workflow warnings', () => {
+  const status = bodyOf('homologStageStatus');
+  const complete = bodyOf('homologReferenceComplete');
+  assert(status.includes("stageId === 'reference' && !homologReferenceComplete()"));
+  assert(!status.includes("state.homologWorkflow.warnings?.length ? 'error' : 'current'"));
+  assert(complete.includes("buildHomologReference().validationStatus === 'valid'"));
 });
 
 test('candidate review distinguishes search hits from conservation and supports fallback imports', () => {
@@ -70,6 +95,7 @@ test('stage gates prevent empty candidate review and explain locked stages', () 
   const requirement = bodyOf('homologStageRequirement');
   const setStage = bodyOf('setHomologWorkflowStage');
   const sanitize = bodyOf('sanitizeHomologWorkflowState');
+  assert(requirement.includes("stageId === 'criteria' && !homologReferenceComplete()"));
   assert(requirement.includes("stageId === 'candidates' && homologCandidateCount() === 0"));
   assert(requirement.includes('No candidate homologs are available yet'));
   assert(requirement.includes("stageId === 'alignment' && homologSelectedCount() < 3"));
@@ -77,6 +103,15 @@ test('stage gates prevent empty candidate review and explain locked stages', () 
   assert(setStage.includes('state.homologWorkflow.status = requirement'));
   assert(setStage.includes('return false'));
   assert(sanitize.includes("state.homologWorkflow.stage = 'criteria'"));
+});
+
+test('UniProt literature identifiers are collapsed without being discarded', () => {
+  const collapse = bodyOf('functionTextWithCollapsedReferences');
+  const render = bodyOf('renderCurrentProteinEvolution');
+  assert(collapse.includes('PubMed'));
+  assert(collapse.includes('references'));
+  assert(render.includes('Supporting references'));
+  assert(render.includes('functionText.references.length'));
 });
 
 test('zero-candidate state has no misleading selection controls or success status', () => {

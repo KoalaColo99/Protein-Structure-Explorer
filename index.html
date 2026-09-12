@@ -15664,11 +15664,17 @@ END
       return residues.length ? residues : state.residues;
     }
 
+    function normalizeProteinChainId(chain) {
+      const text = String(chain ?? '').trim();
+      return text || 'A';
+    }
+
     function homologChainSummaries() {
       const chains = new Map();
       state.residues.forEach(residue => {
-        if (!chains.has(residue.chain)) chains.set(residue.chain, []);
-        chains.get(residue.chain).push(residue);
+        const chain = normalizeProteinChainId(residue.chain);
+        if (!chains.has(chain)) chains.set(chain, []);
+        chains.get(chain).push(residue);
       });
       return [...chains.entries()].map(([chain, residues]) => {
         const sequence = sequenceFromResidues(residues);
@@ -15688,21 +15694,51 @@ END
       });
     }
 
-    function selectedHomologReference() {
+    function buildHomologReference() {
       const chains = homologChainSummaries();
-      if (!state.homologWorkflow.referenceChain && chains[0]) state.homologWorkflow.referenceChain = chains[0].chain;
-      const chain = chains.find(item => item.chain === state.homologWorkflow.referenceChain) || chains[0] || null;
+      const warnings = [];
+      let error = '';
+      if (!chains.length) error = state.structureStatus === APP_STATES.COORDINATES_LOADING ? 'The structure is still being parsed. Please wait.' : 'No protein residues were detected in this model.';
+      const validChainIds = new Set(chains.map(item => item.chain));
+      if (chains.length === 1 && (!state.homologWorkflow.referenceChain || !validChainIds.has(state.homologWorkflow.referenceChain))) {
+        state.homologWorkflow.referenceChain = chains[0].chain;
+      }
+      const selectedChain = normalizeProteinChainId(state.homologWorkflow.referenceChain || state.activeChain || chains[0]?.chain || '');
+      const chain = chains.find(item => item.chain === selectedChain) || null;
+      if (!error && chains.length > 1 && !state.homologWorkflow.referenceChain) error = 'More than one protein chain was detected. Select a reference chain.';
+      if (!error && !chain) error = 'The selected chain does not contain a usable amino-acid sequence.';
       const canonical = state.evolutionIdentity.uniprot?.sequence || '';
       const hasStrongCanonical = Boolean(chain?.uniprotAccession && canonical && Math.abs(canonical.length - chain.length) <= Math.max(3, chain.length * 0.08));
       const requested = state.homologWorkflow.querySequenceSource;
       const source = (requested === 'canonical' || requested === 'auto') && hasStrongCanonical ? 'canonical' : 'coordinate';
+      const sequence = source === 'canonical' ? canonical : chain?.sequence || '';
+      const usableLength = sequence.replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '').length;
+      if (!error && usableLength < 10) error = 'The selected chain does not contain a usable amino-acid sequence.';
+      if (chain && canonical && !hasStrongCanonical) warnings.push('Canonical UniProt sequence is available, but the length differs enough that the coordinate-derived chain sequence is safer by default.');
       return {
+        structureId: state.structureId || '',
+        model: state.structureModel || '1',
+        availableChains: chains,
+        selectedChain: chain?.chain || '',
         chain,
-        sequence: source === 'canonical' ? canonical : chain?.sequence || '',
+        coordinateSequence: chain?.sequence || '',
+        coordinateResidueCount: chain?.length || 0,
+        residueNumberMapping: (chain ? coordinateResiduesForChain(chain.chain) : []).map((residue, index) => ({ referencePosition: index + 1, chain: residue.chain, resi: residue.resi, key: residue.key })),
+        resolvedUniprotAccession: chain?.uniprotAccession || state.evolutionIdentity.identity?.uniprotAccession || '',
+        canonicalSequence: canonical,
+        mappingStatus: hasStrongCanonical ? 'strong canonical-coordinate length agreement' : canonical ? 'canonical available but coordinate sequence used by default' : 'coordinate-derived sequence only',
+        validationStatus: error ? 'invalid' : 'valid',
+        error,
+        warnings,
+        sequence,
         source,
         sourceLabel: source === 'canonical' ? 'UniProt canonical sequence' : 'coordinate-derived chain sequence',
         canonicalAvailable: hasStrongCanonical
       };
+    }
+
+    function selectedHomologReference() {
+      return buildHomologReference();
     }
 
     function homologWorkflowProgressMarkup() {
@@ -15719,8 +15755,7 @@ END
     }
 
     function homologReferenceComplete() {
-      const reference = selectedHomologReference();
-      return Boolean(reference.chain?.chain && reference.sequence && reference.sequence.replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '').length >= 10);
+      return buildHomologReference().validationStatus === 'valid';
     }
 
     function homologCandidateCount() {
@@ -15749,7 +15784,12 @@ END
     }
 
     function homologStageStatus(stageId) {
-      if (stageId === state.homologWorkflow.stage) return state.homologWorkflow.warnings?.length ? 'error' : 'current';
+      if (stageId === state.homologWorkflow.stage) {
+        if (stageId === 'reference' && !homologReferenceComplete()) return 'error';
+        if (stageId === 'candidates' && homologCandidateCount() === 0) return 'error';
+        if (stageId === 'alignment' && state.homologWorkflow.serviceStatus.alignment?.includes('blocked')) return 'error';
+        return 'current';
+      }
       const order = HOMOLOG_WORKFLOW_STAGES.map(stage => stage.id);
       const currentIndex = order.indexOf(state.homologWorkflow.stage);
       const stageIndex = order.indexOf(stageId);
@@ -15827,13 +15867,18 @@ END
     }
 
     function homologReferenceMarkup() {
-      const chains = homologChainSummaries();
-      const reference = selectedHomologReference();
+      const reference = buildHomologReference();
+      const chains = reference.availableChains;
       const multiple = chains.length > 1;
       return `
         <fieldset>
           <legend>1. Reference chain</legend>
           <p>Select one protein chain as the structure-mapping reference. Chains are never silently concatenated.</p>
+          <div class="${reference.validationStatus === 'valid' ? 'chem-note' : 'warning-text'}">
+            <strong>${reference.validationStatus === 'valid' ? 'Reference ready' : 'Reference needs attention'}</strong>
+            ${reference.error ? escapeHtml(reference.error) : `Detected ${reference.coordinateResidueCount} coordinate-derived amino-acid residues for chain ${escapeHtml(reference.selectedChain)}.`}
+            ${reference.warnings.length ? `<ul>${reference.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>` : ''}
+          </div>
           <div class="table-wrap">
             <table>
               <caption>Coordinate-derived protein chains</caption>
@@ -15860,9 +15905,11 @@ END
           <p class="warning-text">Current query choice: ${escapeHtml(reference.sourceLabel)}. Coordinate-derived sequences omit unresolved residues; canonical sequences may include positions absent from the experimental structure.</p>
         </fieldset>
         <div class="button-row">
-          <button type="button" data-homolog-action="criteria">Continue to search criteria</button>
+          <button type="button" data-homolog-action="criteria" ${reference.validationStatus === 'valid' ? '' : 'disabled'}>Continue to Search Criteria</button>
+          <button type="button" data-homolog-action="retry-reference">Retry Reference Detection</button>
           <button type="button" data-homolog-action="help-reference">I'm not sure</button>
         </div>
+        ${reference.validationStatus !== 'valid' ? '<p class="warning-text">Search Criteria remains locked until the reference chain and query sequence are valid.</p>' : ''}
       `;
     }
 
@@ -17038,6 +17085,22 @@ END
       return '';
     }
 
+    function functionTextWithCollapsedReferences(text = '') {
+      const ids = [...new Set(String(text).match(/\b(?:PubMed:)?\d{6,9}\b/g) || [])];
+      let summary = String(text).trim();
+      if (ids.length) {
+        ids.forEach(id => {
+          summary = summary.replace(new RegExp(`\\s*;?\\s*(?:PubMed:)?${id}\\b`, 'g'), '');
+        });
+        summary = summary.replace(/\s{2,}/g, ' ').replace(/\s*;\s*$/, '').trim();
+      }
+      if (summary.length > 520) summary = `${summary.slice(0, 520).replace(/\s+\S*$/, '')}...`;
+      return {
+        summary,
+        references: ids
+      };
+    }
+
     function renderCurrentProteinEvolution() {
       ensureEvolutionStateFresh();
       const context = document.getElementById('currentProteinEvolutionContext');
@@ -17075,10 +17138,11 @@ END
       `).join('');
       const featureRows = (uniprot?.features || []).map(feature => `<li>${escapeHtml(feature.type)} ${escapeHtml(String(feature.start || ''))}${feature.end ? `-${escapeHtml(String(feature.end))}` : ''}: ${escapeHtml(feature.description || 'no description')}</li>`).join('');
       const interproRows = (state.evolutionIdentity.interpro || []).map(item => `<li>${escapeHtml(item.name)} (${escapeHtml(item.type)}; ${escapeHtml(item.source)})</li>`).join('');
+      const functionText = functionTextWithCollapsedReferences(uniprot?.functionText || '');
       familyPanel.innerHTML = `
         <h3>Family and Domain Evidence</h3>
         <p><strong>UniProt record:</strong> ${uniprot ? `${escapeHtml(uniprot.name)} (${uniprot.reviewed ? 'reviewed' : 'unreviewed'})` : 'not available yet'}</p>
-        ${uniprot?.functionText ? `<p><strong>UniProt function:</strong> ${escapeHtml(uniprot.functionText)}</p>` : ''}
+        ${uniprot?.functionText ? `<p><strong>UniProt function:</strong> ${escapeHtml(functionText.summary || uniprot.functionText)}</p>${functionText.references.length ? `<details><summary>Supporting references (${functionText.references.length})</summary><p>${functionText.references.map(id => escapeHtml(id)).join(', ')}</p></details>` : ''}` : ''}
         <p><strong>UniProt features:</strong></p>
         ${featureRows ? `<ul>${featureRows}</ul>` : '<p>No feature annotations are available for this chain yet.</p>'}
         <p><strong>InterPro annotations:</strong></p>
@@ -18412,6 +18476,10 @@ END
         const parsed = parsePdb(state.pdb);
         if (!parsed.residues.length) throw new Error('No standard amino-acid residues were found in this coordinate file.');
         Object.assign(state, parsed);
+        const parsedProteinChains = [...new Set(state.residues.map(residue => normalizeProteinChainId(residue.chain)))];
+        if (!parsedProteinChains.includes(normalizeProteinChainId(state.activeChain))) {
+          state.activeChain = parsedProteinChains[0] || 'A';
+        }
         state.hbonds = computeBackboneHbonds(state.residues);
         state.torsions = computeTorsions(state.residues);
         state.contacts = computeContacts(state.residues, state.atoms);
@@ -19827,6 +19895,12 @@ END
       if (['reference', 'criteria', 'candidates', 'alignment', 'map'].includes(action)) setHomologWorkflowStage(action);
       if (action === 'help-reference') {
         state.homologWorkflow.status = 'Choose the chain you want to interpret structurally. Use canonical sequence only when the PDB-to-UniProt mapping is strong and unambiguous.';
+      }
+      if (action === 'retry-reference') {
+        const wasActive = state.homologWorkflow.active;
+        resetHomologWorkflowForCurrentStructure('Reference detection retried from the current parsed structure.');
+        state.homologWorkflow.active = wasActive;
+        state.homologWorkflow.stage = 'reference';
       }
       if (action === 'help-criteria') {
         state.homologWorkflow.status = 'Recommended teaching-set defaults favor high coverage, compatible length/domain architecture, taxonomic diversity, and at most one sequence per species.';
