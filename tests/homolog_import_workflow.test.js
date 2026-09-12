@@ -58,11 +58,16 @@ test('reference-chain detection avoids silent concatenation and reports missing 
   assert(builder.includes('coordinateSequence'));
   assert(builder.includes('coordinateResidueCount'));
   assert(builder.includes('validationStatus'));
+  assert(builder.includes("requested === 'canonical' && canonical"));
+  assert(builder.includes('strongCanonicalMapping'));
+  assert(builder.includes('coordinate-derived chain sequence is safer by default'));
+  assert(builder.includes('complete UniProt canonical sequence'));
   assert(builder.includes('The selected chain does not contain a usable amino-acid sequence.'));
   assert(reference.includes('Chains are never silently concatenated'));
   assert(reference.includes('homologReferenceChain'));
   assert(reference.includes('coordinate-derived chain sequence'));
   assert(reference.includes('UniProt canonical sequence'));
+  assert(reference.includes('mapping review required'));
   assert(reference.includes('Retry Reference Detection'));
 });
 
@@ -156,22 +161,32 @@ test('candidate filtering and recommended set use quality thresholds before dive
   assert(recommend.includes('onePerSpecies'));
   assert(recommend.includes('onePerGenus'));
   assert(recommend.includes('preferReviewed'));
-  assert(recommend.includes("!reason.includes('warning:')"));
+  assert(recommend.includes('strictEligible'));
+  assert(recommend.includes('strictEligible.length ? strictEligible : usableCandidates'));
+  assert(recommend.includes('candidate.accession !== referenceAccession'));
 });
 
 test('automatic homolog search submits an official EMBL-EBI BLAST job and never substitutes unrelated sequences', () => {
   const search = bodyOf('runAutomaticHomologSearch');
   const searchAsync = bodyOf('runAutomaticHomologSearchAsync');
   const params = bodyOf('homologSearchParameters');
+  const manifest = bodyOf('homologQueryManifest');
   const submit = bodyOf('submitEbiBlastSearch');
   const poll = bodyOf('pollEbiBlastJob');
   const results = bodyOf('fetchEbiBlastResults');
   const normalize = bodyOf('normalizeEbiBlastResults');
   const validate = bodyOf('validateAutomaticHomologCandidates');
   const align = bodyOf('alignSelectedHomologs');
+  const submitAlignment = bodyOf('submitClustalOmegaAlignment');
+  const pollAlignment = bodyOf('pollClustalOmegaAlignment');
+  const fetchAlignment = bodyOf('fetchClustalOmegaAlignment');
   assert(search.includes('runAutomaticHomologSearchAsync'));
   assert(params.includes('URLSearchParams'));
   assert(params.includes('serviceContactEmail'));
+  assert(params.includes('homologQueryManifest(reference)'));
+  assert(params.includes('manifest.sequence'));
+  assert(params.includes('manifest.normalizedHash'));
+  assert(manifest.includes('displayedLength === expectedLength'));
   assert(html.includes('homologServiceEmail'));
   assert(params.includes('uniprotkb_swissprot'));
   assert(submit.includes(`${'${EVOLUTION_ENDPOINTS.ebiBlast}/run'}`));
@@ -187,8 +202,45 @@ test('automatic homolog search submits an official EMBL-EBI BLAST job and never 
   assert(validate.includes('searchReferenceKey'));
   assert(validate.includes('identity == null'));
   assert(validate.includes('queryCoverage == null'));
-  assert(align.includes('does not pad sequences or fake an MSA'));
+  assert(align.includes('retrieveSelectedHomologSequences'));
+  assert(align.includes('submitClustalOmegaAlignment'));
+  assert(align.includes('validateAlignedFastaPackage'));
+  assert(submitAlignment.includes(`${'${EVOLUTION_ENDPOINTS.ebiClustalOmega}/run'}`));
+  assert(pollAlignment.includes(`${'${EVOLUTION_ENDPOINTS.ebiClustalOmega}/status/'}`));
+  assert(fetchAlignment.includes(`${'${EVOLUTION_ENDPOINTS.ebiClustalOmega}/result/'}`));
+  assert(fetchAlignment.includes('/fa'));
   assert(align.includes('Select at least three total sequences'));
+});
+
+test('query manifest preserves displayed query identity before live submission', () => {
+  const compare = bodyOf('compareCoordinateAndCanonicalSequences');
+  const normalize = bodyOf('normalizeQuerySequenceWithReport');
+  const manifest = bodyOf('homologQueryManifest');
+  const criteria = bodyOf('homologCriteriaMarkup');
+  const searchAsync = bodyOf('runAutomaticHomologSearchAsync');
+  assert(compare.includes('alignedOverlap'));
+  assert(compare.includes('missingNterminal'));
+  assert(compare.includes('missingCterminal'));
+  assert(normalize.includes('removedCharacters'));
+  assert(normalize.includes('normalizedHash'));
+  assert(manifest.includes('expectedLength'));
+  assert(manifest.includes('displayedLength'));
+  assert(manifest.includes('referenceKey'));
+  assert(criteria.includes('homologQueryManifestMarkup(reference)'));
+  assert(criteria.includes('!queryManifest.valid'));
+  assert(searchAsync.includes('Search was not submitted: the displayed query length and submitted payload length do not match.'));
+  assert(searchAsync.includes('serviceStatus.queryManifest = manifest'));
+});
+
+test('known sequence-length discrepancy is documented as a diagnostic bug, not a structure parser rule', () => {
+  const diagnostic = fs.readFileSync(path.join(root, 'diagnostics/homolog_search_live_diagnostic.js'), 'utf8');
+  assert(diagnostic.includes('coordinateSequenceFromPdb'));
+  assert(diagnostic.includes('resolveSequences'));
+  assert(diagnostic.includes('1CA2'));
+  assert(diagnostic.includes('1AFQ'));
+  assert(!diagnostic.includes('SHHWGYGKHNGPEHWHKDFPIAKGERQSPVDIDTHTAKYDPSLKPLSVSYDQATSLRILNNGHAFNVEFDDSQDKAVLKGGPLDGTYRLIQFHFHWGSSDDQGSEHTVDKKSFPSEHTADRIQYVQELGHHYSPDVVLPAGPLDGGLTYHVQGTVHGQEVVLSN'));
+  assert(diagnostic.includes('sequenceInfo.querySequence.length'));
+  assert(diagnostic.includes('sequenceInfo.hash'));
 });
 
 test('invalid email and invalid query prevent submission with specific visible messages', () => {
@@ -247,14 +299,33 @@ test('automatic homolog search has cancel, timeout, retry, and stale-reference b
   assert(bodyOf('pollEbiBlastJob').includes('Search result ignored because the reference sequence changed.'));
 });
 
+test('reference/query candidates are not counted as external homologs', () => {
+  const validate = bodyOf('validateAutomaticHomologCandidates');
+  const merge = bodyOf('mergeHomologCandidates');
+  const reference = bodyOf('referenceHomologCandidate');
+  assert(validate.includes('referenceAccession'));
+  assert(validate.includes('candidate.accession === referenceAccession'));
+  assert(merge.includes('referenceHomologCandidate()'));
+  assert(reference.includes('reference sequence included for alignment mapping'));
+});
+
 test('prealigned FASTA, mapping, and conservation activation are separate stages', () => {
   const load = bodyOf('loadHomologFasta');
   const map = bodyOf('mapHomologAlignmentToStructure');
   const ready = bodyOf('importedHomologWorkflowReady');
+  const validateAlignment = bodyOf('validateAlignedFastaPackage');
+  const retrieve = bodyOf('retrieveSelectedHomologSequences');
   assert(load.includes('user-supplied prealigned FASTA loaded'));
   assert(load.includes('candidates.length >= 3'));
+  assert(retrieve.includes('Sequence retrieval failed'));
+  assert(retrieve.includes('uniqueSequencePackage'));
+  assert(validateAlignment.includes('Alignment rows have unequal lengths'));
+  assert(validateAlignment.includes('Reference row does not exactly reproduce the submitted reference sequence'));
+  assert(validateAlignment.includes('Reference row hash does not match the submitted query hash'));
   assert(map.includes('reference alignment row to selected coordinate-derived chain sequence'));
   assert(map.includes('confidence'));
+  assert(map.includes('segmentSpecific'));
+  assert(map.includes('structuralResiduesOutsideAnalyzedSegment'));
   assert(map.includes('state.conservation = metrics.filter'));
   assert(ready.includes("state.homologWorkflow.mapping?.confidence === 'adequate'"));
 });

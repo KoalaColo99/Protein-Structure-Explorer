@@ -6893,6 +6893,7 @@ END
         importedFasta: '',
         importedAccessions: '',
         serviceContactEmail: 'biochemistry.visual.atlas@example.org',
+        unalignedSequences: [],
         alignmentRecords: [],
         mapping: null,
         mappedMetrics: [],
@@ -6904,9 +6905,12 @@ END
           lastError: '',
           blockedReason: '',
           jobId: '',
-          pollCount: 0
+          alignmentJobId: '',
+          pollCount: 0,
+          queryManifest: null
         },
         searchAbortController: null,
+        alignmentAbortController: null,
         searchReferenceKey: '',
         provenance: null,
         cacheKey: ''
@@ -15532,6 +15536,9 @@ END
       if (!importedHomologWorkflowReady() || !canRenderStructure()) return;
       const metricsByResidue = importedMetricsByResidue();
       state.viewer.setStyle({ hetflag: false }, { cartoon: { color: '#d1d5db', opacity: 0.86 } });
+      if (state.homologWorkflow.mapping?.segmentSpecific && document.getElementById('conservationMapNote')) {
+        document.getElementById('conservationMapNote').innerHTML = `<strong>Segment-specific imported conservation map</strong>Only chain ${escapeHtml(state.homologWorkflow.referenceChain || currentEvolutionChain())} residues represented by the analyzed reference segment are colored. Other structural residues remain neutral and are not analyzed.`;
+      }
       coordinateResiduesForChain(state.homologWorkflow.referenceChain).forEach(residue => {
         const metric = metricsByResidue.get(residue.key);
         if (!metric && ['conservation', 'identity'].includes(state.currentProteinColorBy)) return;
@@ -15557,7 +15564,9 @@ END
         addResidueLabel(selectedMetric.residue, '#00ffff');
       }
       zoomViewerSafely({ hetflag: false });
-      document.getElementById('conservationMapNote').innerHTML = '<strong>Imported conservation map</strong>Colors come from the reviewed imported alignment and selected structure-chain mapping. Not mapped, insufficient evidence, and variable positions are treated separately.';
+      if (!state.homologWorkflow.mapping?.segmentSpecific && document.getElementById('conservationMapNote')) {
+        document.getElementById('conservationMapNote').innerHTML = '<strong>Imported conservation map</strong>Colors come from the reviewed imported alignment and selected structure-chain mapping. Not mapped, insufficient evidence, and variable positions are treated separately.';
+      }
     }
 
     function ensureMyoglobinCandidateSelection(dataset) {
@@ -15649,6 +15658,7 @@ END
         selectedAccessions: [],
         removedAccessions: [],
         serviceContactEmail: state.homologWorkflow.serviceContactEmail || 'biochemistry.visual.atlas@example.org',
+        unalignedSequences: [],
         alignmentRecords: [],
         mapping: null,
         mappedMetrics: [],
@@ -15660,9 +15670,12 @@ END
           lastError: '',
           blockedReason: '',
           jobId: '',
-          pollCount: 0
+          alignmentJobId: '',
+          pollCount: 0,
+          queryManifest: null
         },
         searchAbortController: null,
+        alignmentAbortController: null,
         searchReferenceKey: '',
         provenance: null,
         cacheKey: ''
@@ -15720,11 +15733,13 @@ END
       const canonical = state.evolutionIdentity.uniprot?.sequence || '';
       const hasStrongCanonical = Boolean(chain?.uniprotAccession && canonical && Math.abs(canonical.length - chain.length) <= Math.max(3, chain.length * 0.08));
       const requested = state.homologWorkflow.querySequenceSource;
-      const source = (requested === 'canonical' || requested === 'auto') && hasStrongCanonical ? 'canonical' : 'coordinate';
+      const source = requested === 'canonical' && canonical ? 'canonical' : requested === 'auto' && hasStrongCanonical ? 'canonical' : 'coordinate';
       const sequence = source === 'canonical' ? canonical : chain?.sequence || '';
       const usableLength = sequence.replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '').length;
       if (!error && usableLength < 10) error = 'The selected chain does not contain a usable amino-acid sequence.';
       if (chain && canonical && !hasStrongCanonical) warnings.push('Canonical UniProt sequence is available, but the length differs enough that the coordinate-derived chain sequence is safer by default.');
+      if (source === 'canonical' && canonical && !hasStrongCanonical) warnings.push('You selected the complete UniProt canonical sequence even though it differs substantially from the experimentally represented coordinate segment. Use this for precursor/family searches, not direct residue mapping without a validated alignment.');
+      const comparison = compareCoordinateAndCanonicalSequences(chain?.sequence || '', canonical);
       return {
         structureId: state.structureId || '',
         model: state.structureModel || '1',
@@ -15733,6 +15748,8 @@ END
         chain,
         coordinateSequence: chain?.sequence || '',
         coordinateResidueCount: chain?.length || 0,
+        canonicalLength: canonical.length,
+        sequenceComparison: comparison,
         residueNumberMapping: (chain ? coordinateResiduesForChain(chain.chain) : []).map((residue, index) => ({ referencePosition: index + 1, chain: residue.chain, resi: residue.resi, key: residue.key })),
         resolvedUniprotAccession: chain?.uniprotAccession || state.evolutionIdentity.identity?.uniprotAccession || '',
         canonicalSequence: canonical,
@@ -15743,7 +15760,8 @@ END
         sequence,
         source,
         sourceLabel: source === 'canonical' ? 'UniProt canonical sequence' : 'coordinate-derived chain sequence',
-        canonicalAvailable: hasStrongCanonical
+        canonicalAvailable: Boolean(canonical),
+        strongCanonicalMapping: hasStrongCanonical
       };
     }
 
@@ -15847,6 +15865,108 @@ END
       return `Reference ready: ${reference.structureId || state.structureId || 'current structure'} chain ${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()}, ${reference.coordinateResidueCount} coordinate residues${accession}.`;
     }
 
+    function compareCoordinateAndCanonicalSequences(coordinate = '', canonical = '') {
+      const coord = String(coordinate || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+      const canon = String(canonical || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+      if (!coord || !canon) {
+        return {
+          coordinateLength: coord.length,
+          canonicalLength: canon.length,
+          alignedOverlap: 0,
+          identityAcrossMapped: null,
+          coordinateCoverage: null,
+          missingNterminal: null,
+          missingCterminal: null,
+          internalDifferenceCount: null,
+          summary: canon ? 'Canonical sequence is available, but coordinate sequence is not available for comparison.' : 'No canonical sequence is available for comparison.'
+        };
+      }
+      const mappedCoordinate = alignToReference(canon, coord);
+      const overlapping = mappedCoordinate.filter(char => char && char !== '-');
+      const same = mappedCoordinate.filter((char, index) => char && char !== '-' && char === canon[index]).length;
+      const first = mappedCoordinate.findIndex(char => char && char !== '-');
+      const last = mappedCoordinate.length - 1 - [...mappedCoordinate].reverse().findIndex(char => char && char !== '-');
+      const missingNterminal = first < 0 ? canon.length : first;
+      const missingCterminal = last < 0 ? canon.length : canon.length - last - 1;
+      const internalDifferenceCount = mappedCoordinate.reduce((count, char, index) => {
+        if (!char || char === '-') return count;
+        return count + (char === canon[index] ? 0 : 1);
+      }, 0);
+      return {
+        coordinateLength: coord.length,
+        canonicalLength: canon.length,
+        alignedOverlap: overlapping.length,
+        identityAcrossMapped: overlapping.length ? same / overlapping.length : null,
+        coordinateCoverage: canon.length ? overlapping.length / canon.length : null,
+        missingNterminal,
+        missingCterminal,
+        internalDifferenceCount,
+        summary: `${overlapping.length}/${canon.length} canonical positions represented; ${same}/${overlapping.length || 1} mapped residues identical.`
+      };
+    }
+
+    function normalizeQuerySequenceWithReport(sequence = '') {
+      const raw = String(sequence || '');
+      const upper = raw.toUpperCase();
+      const normalized = upper.replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+      const removed = [...upper].filter(char => !/[ACDEFGHIKLMNPQRSTVWY]/.test(char));
+      return {
+        raw,
+        normalized,
+        rawHash: sequenceHash(raw),
+        normalizedHash: sequenceHash(normalized),
+        rawLength: raw.length,
+        normalizedLength: normalized.length,
+        removedCharacters: removed,
+        removedCount: removed.length
+      };
+    }
+
+    function homologQueryManifest(reference = selectedHomologReference()) {
+      const normalization = normalizeQuerySequenceWithReport(reference.sequence);
+      const expectedLength = reference.source === 'canonical' ? reference.canonicalSequence.length : reference.coordinateSequence.length;
+      const displayedLength = normalization.normalizedLength;
+      const chain = reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain();
+      const warnings = [...(reference.warnings || [])];
+      if (normalization.removedCount) warnings.push(`${normalization.removedCount} unsupported character${normalization.removedCount === 1 ? '' : 's'} would be removed during query normalization.`);
+      if (expectedLength !== displayedLength) warnings.push(`Displayed ${reference.sourceLabel} length (${expectedLength}) differs from sanitized payload length (${displayedLength}).`);
+      return {
+        structureId: reference.structureId || state.structureId || '',
+        chain,
+        source: reference.source,
+        sourceLabel: reference.sourceLabel,
+        sequence: normalization.normalized,
+        displayedLength,
+        expectedLength,
+        rawHash: normalization.rawHash,
+        normalizedHash: normalization.normalizedHash,
+        removedCount: normalization.removedCount,
+        removedCharacters: normalization.removedCharacters,
+        referenceKey: homologSearchReferenceKey(reference),
+        valid: reference.validationStatus === 'valid'
+          && displayedLength > 0
+          && displayedLength === expectedLength
+          && normalization.removedCount === 0,
+        warnings
+      };
+    }
+
+    function homologQueryManifestMarkup(reference = selectedHomologReference()) {
+      const manifest = homologQueryManifest(reference);
+      const removed = manifest.removedCount
+        ? `<p class="warning-text">Removed during normalization: ${escapeHtml([...new Set(manifest.removedCharacters)].join(' ') || 'unsupported symbols')}.</p>`
+        : '';
+      return `
+        <div class="${manifest.valid ? 'chem-note' : 'warning-text'}" id="homologQueryManifest">
+          <strong>Searching with:</strong> ${escapeHtml(manifest.sourceLabel)}, ${manifest.displayedLength} aa, ${escapeHtml(manifest.structureId || 'current structure')} chain ${escapeHtml(manifest.chain || 'not selected')}.
+          <br><strong>Sequence hash:</strong> ${escapeHtml(manifest.normalizedHash)}.
+          ${reference.canonicalSequence ? `<br><strong>Coordinate vs canonical:</strong> ${reference.sequenceComparison.alignedOverlap}/${reference.sequenceComparison.canonicalLength} canonical positions overlap; identity across mapped residues ${reference.sequenceComparison.identityAcrossMapped === null ? 'not available' : percentText(reference.sequenceComparison.identityAcrossMapped)}; coordinate coverage ${reference.sequenceComparison.coordinateCoverage === null ? 'not available' : percentText(reference.sequenceComparison.coordinateCoverage)}; missing N-term ${reference.sequenceComparison.missingNterminal ?? 'n/a'}, C-term ${reference.sequenceComparison.missingCterminal ?? 'n/a'}.` : ''}
+          ${removed}
+          ${manifest.warnings.length ? `<ul>${manifest.warnings.map(warning => `<li>${escapeHtml(warning)}</li>`).join('')}</ul>` : ''}
+        </div>
+      `;
+    }
+
     function homologWorkflowStatusText() {
       const workflow = state.homologWorkflow;
       if (workflow.stage === 'reference' && homologReferenceComplete()) {
@@ -15926,7 +16046,7 @@ END
           <legend>Query sequence source</legend>
           <label class="check-row"><input type="radio" name="homologQuerySource" value="auto" ${state.homologWorkflow.querySequenceSource === 'auto' ? 'checked' : ''}> Choose automatically from mapping strength</label>
           <label class="check-row"><input type="radio" name="homologQuerySource" value="coordinate" ${state.homologWorkflow.querySequenceSource === 'coordinate' ? 'checked' : ''}> Use coordinate-derived chain sequence</label>
-          <label class="check-row"><input type="radio" name="homologQuerySource" value="canonical" ${state.homologWorkflow.querySequenceSource === 'canonical' ? 'checked' : ''} ${reference.canonicalAvailable ? '' : 'disabled'}> Use UniProt canonical sequence when strong mapping is available</label>
+          <label class="check-row"><input type="radio" name="homologQuerySource" value="canonical" ${state.homologWorkflow.querySequenceSource === 'canonical' ? 'checked' : ''} ${reference.canonicalAvailable ? '' : 'disabled'}> Use UniProt canonical sequence${reference.strongCanonicalMapping ? ' (strong coordinate agreement)' : ' (complete precursor/reference; mapping review required)'}</label>
           <p class="warning-text">Current query choice: ${escapeHtml(reference.sourceLabel)}. Coordinate-derived sequences omit unresolved residues; canonical sequences may include positions absent from the experimental structure.</p>
         </fieldset>
         <div class="button-row">
@@ -15939,6 +16059,8 @@ END
 
     function homologCriteriaMarkup() {
       const criteria = homologCriteria();
+      const reference = selectedHomologReference();
+      const queryManifest = homologQueryManifest(reference);
       const emailValid = validServiceContactEmail();
       const searchBusy = homologSearchIsRunning();
       const showCancel = homologSearchHasJob();
@@ -15973,10 +16095,12 @@ END
         </fieldset>
         <details class="chem-note"><summary>Why these defaults?</summary><p>A diverse but clearly homologous set is usually more informative than many nearly identical sequences. Low coverage can mean only one domain matches, especially for multidomain proteins.</p></details>
         ${homologManualImportMarkup()}
+        ${homologQueryManifestMarkup(reference)}
         <div class="button-row">
-          <button type="button" data-homolog-action="run-search" ${searchBusy || !emailValid ? 'disabled' : ''}>Search for Homologs</button>
+          <button type="button" data-homolog-action="run-search" ${searchBusy || !emailValid || !queryManifest.valid ? 'disabled' : ''}>Search for Homologs</button>
           ${showCancel ? '<button type="button" data-homolog-action="cancel-search">Cancel Search</button>' : ''}
           <button type="button" data-homolog-action="validate-imported">Validate Imported Sequences</button>
+          <button type="button" data-homolog-action="clear-email">Clear service email</button>
           <button type="button" data-homolog-action="help-criteria">I'm not sure</button>
           <button type="button" data-homolog-action="reference">Back</button>
         </div>
@@ -15988,6 +16112,7 @@ END
       const rows = state.homologWorkflow.candidates;
       const selected = new Set(state.homologWorkflow.selectedAccessions);
       const criteria = homologCriteria();
+      const alignmentBusy = /running|queued|submitting|retrieving|preparing|validating/.test(state.homologWorkflow.serviceStatus.alignment || '');
       if (!rows.length) {
         return `
           <fieldset>
@@ -16041,7 +16166,8 @@ END
           </div>
         </fieldset>
         <div class="button-row">
-          <button type="button" data-homolog-action="align-selected" ${selectedCount < 3 ? 'disabled' : ''}>Align Selected Homologs</button>
+          <button type="button" data-homolog-action="align-selected" ${selectedCount < 3 || alignmentBusy ? 'disabled' : ''}>Align Selected Homologs</button>
+          ${alignmentBusy ? '<button type="button" data-homolog-action="cancel-alignment">Cancel Alignment</button>' : ''}
           <button type="button" data-homolog-action="criteria">Back to criteria</button>
         </div>
         ${selectedCount < 3 ? '<p class="warning-text">Select at least three total sequences, including the reference, before alignment.</p>' : ''}
@@ -16099,6 +16225,7 @@ END
           <legend>5. Map and color</legend>
           <p><strong>Mapping method:</strong> ${escapeHtml(mapping?.method || 'not mapped yet')}</p>
           <p><strong>Mapping coverage:</strong> ${mapping ? `${mapped} / ${metrics.length} alignment positions mapped to coordinate residues` : 'not available'}</p>
+          ${mapping?.segmentSpecific ? `<p class="warning-text"><strong>Segment-specific analysis:</strong> ${mapping.structuralResiduesOutsideAnalyzedSegment} structural residue${mapping.structuralResiduesOutsideAnalyzedSegment === 1 ? '' : 's'} outside the analyzed reference segment remain neutral and are labeled not analyzed.</p>` : ''}
           <p><strong>Scoring:</strong> Existing normalized Shannon/exact-identity visual model. Gaps are reported separately and excluded from amino-acid frequency counts; N &lt; 3 is insufficient evidence.</p>
           ${renderHomologMappedAlignmentPreview()}
           <div class="button-row">
@@ -16226,11 +16353,16 @@ END
 
     function selectRecommendedHomologSet(candidates = state.homologWorkflow.candidates, criteria = homologCriteria()) {
       const query = selectedHomologReference().sequence;
-      const eligible = candidates
+      const referenceAccession = state.evolutionIdentity.identity?.uniprotAccession || `${state.structureId}_${state.homologWorkflow.referenceChain || currentEvolutionChain()}`;
+      const usableCandidates = candidates
         .filter(candidate => {
           const reason = candidateQualityReason(candidate, criteria);
-          return usableHomologCandidate(candidate, criteria) && !reason.includes('warning:');
+          return candidate.accession !== referenceAccession && usableHomologCandidate(candidate, criteria);
         })
+        .map(candidate => ({ candidate, reason: candidateQualityReason(candidate, criteria) }));
+      const strictEligible = usableCandidates.filter(item => !item.reason.includes('warning:'));
+      const eligible = (strictEligible.length ? strictEligible : usableCandidates)
+        .map(item => item.candidate)
         .sort((a, b) => {
           if (criteria.preferReviewed && a.reviewed !== b.reviewed) return a.reviewed ? -1 : 1;
           const aDistance = Math.abs((a.identity ?? 50) - 70);
@@ -16249,7 +16381,6 @@ END
         if (selected.length >= criteria.targetCount) break;
       }
       if (criteria.includeReference) {
-        const referenceAccession = state.evolutionIdentity.identity?.uniprotAccession || `${state.structureId}_${state.homologWorkflow.referenceChain || currentEvolutionChain()}`;
         if (!selected.some(candidate => candidate.accession === referenceAccession)) {
           selected.unshift({
             accession: referenceAccession,
@@ -16488,7 +16619,8 @@ END
     }
 
     function homologSearchParameters(reference, criteria) {
-      const fasta = `>${reference.structureId || state.structureId}_${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()}\n${reference.sequence}`;
+      const manifest = homologQueryManifest(reference);
+      const fasta = `>${reference.structureId || state.structureId}_${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()} ${manifest.sourceLabel}; ${manifest.displayedLength} aa; hash ${manifest.normalizedHash}\n${manifest.sequence}`;
       const params = new URLSearchParams();
       params.set('email', state.homologWorkflow.serviceContactEmail || 'biochemistry.visual.atlas@example.org');
       params.set('title', `BVA_${reference.structureId || state.structureId}_${reference.selectedChain || state.homologWorkflow.referenceChain || currentEvolutionChain()}`);
@@ -16746,8 +16878,10 @@ END
     function validateAutomaticHomologCandidates(candidates, referenceKey) {
       if (state.homologWorkflow.searchReferenceKey !== referenceKey) return [];
       const criteria = homologCriteria();
+      const referenceAccession = state.evolutionIdentity.identity?.uniprotAccession || '';
       return candidates.filter(candidate => {
         if (!candidate?.accession || !candidate.sequence) return false;
+        if (referenceAccession && candidate.accession === referenceAccession) return false;
         if (candidate.identity == null || candidate.queryCoverage == null) return false;
         return usableHomologCandidate(candidate, criteria);
       });
@@ -16784,6 +16918,15 @@ END
         state.homologWorkflow.stage = 'criteria';
         return;
       }
+      const manifest = homologQueryManifest(reference);
+      if (!manifest.valid || manifest.sequence.length !== reference.sequence.length || manifest.sequence.length !== manifest.displayedLength) {
+        state.homologWorkflow.serviceStatus.search = 'not submitted';
+        state.homologWorkflow.serviceStatus.lastError = 'Query manifest mismatch';
+        state.homologWorkflow.serviceStatus.queryManifest = manifest;
+        state.homologWorkflow.status = 'Search was not submitted: the displayed query length and submitted payload length do not match.';
+        state.homologWorkflow.stage = 'criteria';
+        return;
+      }
       if (homologSearchIsRunning()) cancelHomologSearch('Previous search cancelled before starting a new one.');
       const referenceKey = homologSearchReferenceKey(reference);
       const controller = new AbortController();
@@ -16795,10 +16938,12 @@ END
       state.homologWorkflow.serviceStatus.blockedReason = '';
       state.homologWorkflow.serviceStatus.jobId = '';
       state.homologWorkflow.serviceStatus.pollCount = 0;
+      state.homologWorkflow.serviceStatus.queryManifest = manifest;
       state.homologWorkflow.warnings = [];
       state.homologWorkflow.status = 'Validating query.';
       state.homologWorkflow.provenance = homologProvenanceRecord({
         queryHash: sequenceHash(reference.sequence),
+        queryManifest: manifest,
         searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
         database: 'UniProtKB/Swiss-Prot',
         searchEndpoint: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
@@ -16823,6 +16968,7 @@ END
           searchEndpoint: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
           searchJobId: jobId,
           searchReferenceKey: referenceKey,
+          queryManifest: manifest,
           rawHitsReturned: normalized.candidates.length,
           validatedCandidates: validated.length
         });
@@ -16851,6 +16997,7 @@ END
         state.homologWorkflow.status = aborted ? 'Search cancelled.' : searchFailureMessage(error, failedStage);
         state.homologWorkflow.provenance = homologProvenanceRecord({
           queryHash: sequenceHash(reference.sequence),
+          queryManifest: manifest,
           searchMethod: 'EMBL-EBI Job Dispatcher NCBI BLAST',
           database: 'UniProtKB/Swiss-Prot',
           searchEndpoint: `${EVOLUTION_ENDPOINTS.ebiBlast}/run`,
@@ -16871,7 +17018,198 @@ END
       return state.homologWorkflow.candidates.filter(candidate => selected.has(candidate.accession));
     }
 
-    function alignSelectedHomologs() {
+    function cancelHomologAlignment(message = 'Alignment cancelled.') {
+      if (state.homologWorkflow.alignmentAbortController) {
+        state.homologWorkflow.alignmentAbortController.abort();
+      }
+      state.homologWorkflow.alignmentAbortController = null;
+      state.homologWorkflow.serviceStatus.alignment = 'cancelled';
+      state.homologWorkflow.status = message;
+    }
+
+    function selectedHomologReferenceAccession() {
+      return state.evolutionIdentity.identity?.uniprotAccession || `${state.structureId}_${state.homologWorkflow.referenceChain || currentEvolutionChain()}`;
+    }
+
+    function fastaSafeId(accession = '') {
+      return String(accession || '').replace(/[^A-Za-z0-9_.:-]/g, '_');
+    }
+
+    function uniqueSequencePackage(records) {
+      const byAccession = new Map();
+      const seenSequences = new Set();
+      const unique = [];
+      for (const record of records) {
+        const accession = record.accession || record.id;
+        const cleanSequence = String(record.sequence || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+        if (!accession || !cleanSequence) continue;
+        if (byAccession.has(accession)) continue;
+        const sequenceKey = sequenceHash(cleanSequence);
+        if (seenSequences.has(sequenceKey) && accession !== selectedHomologReferenceAccession()) continue;
+        byAccession.set(accession, record);
+        seenSequences.add(sequenceKey);
+        unique.push({ ...record, accession, id: accession, sequence: cleanSequence, length: cleanSequence.length, sequenceHash: sequenceKey });
+      }
+      return unique;
+    }
+
+    async function retrieveSelectedHomologSequences(reference, referenceKey, signal) {
+      state.homologWorkflow.serviceStatus.alignment = 'preparing sequences';
+      state.homologWorkflow.status = 'Preparing sequences.';
+      renderCurrentProteinEvolution();
+      const selected = selectedHomologCandidates();
+      const referenceAccession = selectedHomologReferenceAccession();
+      const manifest = homologQueryManifest(reference);
+      const records = [{
+        accession: referenceAccession,
+        id: referenceAccession,
+        proteinName: `${state.structureLabel || state.structureId} reference`,
+        organism: state.evolutionIdentity.identity?.sourceOrganism || 'reference structure',
+        taxonomicGroup: 'reference',
+        reviewed: Boolean(state.evolutionIdentity.identity?.uniprotAccession),
+        sequence: manifest.sequence,
+        identity: 100,
+        queryCoverage: 100,
+        evalue: 'reference',
+        reason: 'exact submitted reference sequence; included once for alignment and mapping'
+      }];
+      const failures = [];
+      for (const candidate of selected) {
+        if (state.homologWorkflow.searchReferenceKey && state.homologWorkflow.searchReferenceKey !== referenceKey) throw new Error('Alignment ignored because the reference sequence changed.');
+        if (candidate.accession === referenceAccession) continue;
+        try {
+          const fresh = await fetchUniprotCandidate(candidate.accession);
+          const selectedClean = String(candidate.sequence || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+          const freshClean = String(fresh.sequence || '').replace(/[^ACDEFGHIKLMNPQRSTVWY]/g, '');
+          if (!freshClean) throw new Error('UniProt record did not include a protein sequence.');
+          if (selectedClean && selectedClean !== freshClean) throw new Error('Retrieved sequence no longer matches the selected candidate record.');
+          records.push({
+            ...candidate,
+            ...fresh,
+            accession: candidate.accession,
+            identity: candidate.identity ?? fresh.identity,
+            queryCoverage: candidate.queryCoverage ?? fresh.queryCoverage,
+            evalue: candidate.evalue || fresh.evalue,
+            reason: candidate.reason || fresh.reason
+          });
+        } catch (error) {
+          failures.push(`${candidate.accession}: ${error.message}`);
+        }
+      }
+      const unique = uniqueSequencePackage(records);
+      state.homologWorkflow.unalignedSequences = unique;
+      if (failures.length) state.homologWorkflow.warnings = [...(state.homologWorkflow.warnings || []), ...failures.map(item => `Sequence retrieval failed: ${item}`)];
+      if (unique.length < 3) throw new Error(`Only ${unique.length} validated sequence${unique.length === 1 ? '' : 's'} could be prepared. Remove failed candidates or select more sequences.`);
+      return { records: unique, failures };
+    }
+
+    function fastaForAlignment(records) {
+      return records.map(record => `>${fastaSafeId(record.accession)} ${record.organism || ''}\n${record.sequence.replace(/(.{70})/g, '$1\n')}`).join('\n');
+    }
+
+    async function submitClustalOmegaAlignment(records, signal) {
+      state.homologWorkflow.serviceStatus.alignment = 'submitting Clustal Omega job';
+      state.homologWorkflow.status = 'Submitting alignment.';
+      renderCurrentProteinEvolution();
+      const body = new URLSearchParams({
+        email: state.homologWorkflow.serviceContactEmail || 'biochemistry.visual.atlas@example.org',
+        title: `BVA_${state.structureId || 'structure'}_${state.homologWorkflow.referenceChain || currentEvolutionChain()}_alignment`,
+        stype: 'protein',
+        sequence: fastaForAlignment(records)
+      });
+      const result = await fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiClustalOmega}/run`, {
+        method: 'POST',
+        headers: { Accept: 'text/plain, application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+        signal
+      }, 25000);
+      const jobId = typeof result === 'string' ? result.trim() : (result?.jobId || result?.jobID || result?.id || result?.job || '');
+      if (!jobId) throw new Error('EMBL-EBI Clustal Omega did not return a job id.');
+      state.homologWorkflow.serviceStatus.alignmentJobId = jobId;
+      state.homologWorkflow.serviceStatus.alignment = 'queued Clustal Omega job';
+      state.homologWorkflow.status = `Alignment queued: ${jobId}.`;
+      renderCurrentProteinEvolution();
+      return jobId;
+    }
+
+    async function pollClustalOmegaAlignment(jobId, referenceKey, signal) {
+      const terminalReady = /FINISHED|COMPLETE|COMPLETED|READY|DONE|SUCCESS/i;
+      const terminalFailure = /ERROR|FAIL|FAILED|NOT_FOUND|EXPIRED/i;
+      for (let poll = 1; poll <= 30; poll++) {
+        if (state.homologWorkflow.searchReferenceKey && state.homologWorkflow.searchReferenceKey !== referenceKey) throw new Error('Alignment ignored because the reference sequence changed.');
+        state.homologWorkflow.serviceStatus.alignment = `running Clustal Omega job (${poll}/30)`;
+        state.homologWorkflow.status = `Alignment running. EBI job ${jobId}; poll ${poll} of 30.`;
+        renderCurrentProteinEvolution();
+        const statusPayload = await fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiClustalOmega}/status/${encodeURIComponent(jobId)}`, {
+          headers: { Accept: 'text/plain, application/json' },
+          signal
+        }, 15000);
+        const statusText = String(statusPayload?.jobStatus || statusPayload?.status || statusPayload?.state || statusPayload || '');
+        if (terminalReady.test(statusText)) return statusText || 'FINISHED';
+        if (terminalFailure.test(statusText)) throw new Error(`EMBL-EBI Clustal Omega job ended with status ${statusText}.`);
+        await new Promise((resolve, reject) => {
+          const timer = window.setTimeout(resolve, 2500);
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              window.clearTimeout(timer);
+              reject(new DOMException('Alignment cancelled', 'AbortError'));
+            }, { once: true });
+          }
+        });
+      }
+      throw new Error('EMBL-EBI Clustal Omega alignment timed out before results were ready.');
+    }
+
+    async function fetchClustalOmegaAlignment(jobId, signal) {
+      state.homologWorkflow.serviceStatus.alignment = 'retrieving Clustal Omega alignment';
+      state.homologWorkflow.status = `Retrieving alignment for job ${jobId}.`;
+      renderCurrentProteinEvolution();
+      return fetchJsonWithExternalSignal(`${EVOLUTION_ENDPOINTS.ebiClustalOmega}/result/${encodeURIComponent(jobId)}/fa`, {
+        headers: { Accept: 'text/x-fasta, text/plain' },
+        signal
+      }, 30000);
+    }
+
+    function validateAlignedFastaPackage(alignedText, expectedRecords, reference, referenceKey) {
+      const parsed = parseFastaRecords(alignedText).map(record => ({ ...record, alignedSequence: record.sequence, sequence: record.sequence.replace(/-/g, '') }));
+      const expectedById = new Map(expectedRecords.map(record => [record.accession, record]));
+      const seen = new Set();
+      const warnings = [];
+      const records = parsed.map(record => {
+        const accession = String(record.accession || '').replace(/^.*?\|([^|]+)\|.*$/, '$1');
+        const expected = expectedById.get(accession) || expectedRecords.find(item => fastaSafeId(item.accession) === fastaSafeId(accession));
+        if (!expected) throw new Error(`Alignment returned unexpected sequence row ${accession}.`);
+        if (seen.has(expected.accession)) throw new Error(`Alignment returned duplicate row for ${expected.accession}.`);
+        seen.add(expected.accession);
+        const ungapped = record.alignedSequence.replace(/-/g, '');
+        if (ungapped !== expected.sequence) throw new Error(`Alignment row ${expected.accession} does not reproduce the submitted sequence.`);
+        const gapPercent = record.alignedSequence.length ? record.alignedSequence.split('').filter(char => char === '-').length / record.alignedSequence.length : 1;
+        if (gapPercent > 0.65) warnings.push(`${expected.accession}: alignment row is ${percentText(gapPercent)} gaps; inspect before interpreting conservation.`);
+        return { ...expected, alignedSequence: record.alignedSequence, gapPercent };
+      });
+      for (const expected of expectedRecords) {
+        if (!seen.has(expected.accession)) throw new Error(`Alignment did not return expected row ${expected.accession}.`);
+      }
+      const lengths = new Set(records.map(record => record.alignedSequence.length));
+      if (lengths.size !== 1) throw new Error('Alignment rows have unequal lengths.');
+      const referenceAccession = selectedHomologReferenceAccession();
+      const referenceRecord = records.find(record => record.accession === referenceAccession)
+        || records.find(record => record.sequence === reference.sequence);
+      if (!referenceRecord) throw new Error('The reference row could not be identified in the alignment.');
+      const referenceUngapped = referenceRecord.alignedSequence.replace(/-/g, '');
+      if (referenceUngapped !== reference.sequence) throw new Error('Reference row does not exactly reproduce the submitted reference sequence.');
+      if (sequenceHash(referenceUngapped) !== sequenceHash(reference.sequence)) throw new Error('Reference row hash does not match the submitted query hash.');
+      return {
+        records,
+        referenceAccession: referenceRecord.accession,
+        alignmentLength: records[0]?.alignedSequence.length || 0,
+        referenceHash: sequenceHash(referenceUngapped),
+        warnings,
+        referenceKey
+      };
+    }
+
+    async function alignSelectedHomologs() {
       const selected = selectedHomologCandidates();
       if (selected.length < 3) {
         state.homologWorkflow.status = 'Select at least three total sequences, including the reference, before calculating conservation.';
@@ -16887,14 +17225,57 @@ END
         state.homologWorkflow.status = 'Prealigned FASTA loaded. Review gap percentages and mapping before coloring.';
         return;
       }
-      state.homologWorkflow.serviceStatus.alignment = 'blocked in static browser until Clustal Omega job submission is configured and verified';
-      state.homologWorkflow.serviceStatus.lastError = 'Raw selected sequences require a genuine multiple-sequence alignment. This build does not pad sequences or fake an MSA.';
-      state.homologWorkflow.warnings = [
-        'Alignment did not run. Paste a real prealigned FASTA alignment, or add the serverless Clustal Omega proxy described in provenance.',
-        'Conservation coloring remains disabled until a valid MSA is loaded.'
-      ];
-      state.homologWorkflow.stage = 'alignment';
-      state.homologWorkflow.status = 'Alignment required.';
+      if (!validServiceContactEmail()) {
+        state.homologWorkflow.status = 'Alignment was not submitted: the contact email is invalid.';
+        state.homologWorkflow.serviceStatus.alignment = 'not submitted';
+        return;
+      }
+      const reference = selectedHomologReference();
+      const referenceKey = homologSearchReferenceKey(reference);
+      const controller = new AbortController();
+      state.homologWorkflow.alignmentAbortController = controller;
+      state.homologWorkflow.searchReferenceKey = referenceKey;
+      state.homologWorkflow.alignmentRecords = [];
+      state.homologWorkflow.mapping = null;
+      state.homologWorkflow.mappedMetrics = [];
+      state.conservation = [];
+      state.conservationSources = [];
+      try {
+        const prepared = await retrieveSelectedHomologSequences(reference, referenceKey, controller.signal);
+        const jobId = await submitClustalOmegaAlignment(prepared.records, controller.signal);
+        await pollClustalOmegaAlignment(jobId, referenceKey, controller.signal);
+        const alignedText = await fetchClustalOmegaAlignment(jobId, controller.signal);
+        state.homologWorkflow.serviceStatus.alignment = 'validating Clustal Omega alignment';
+        state.homologWorkflow.status = 'Validating alignment.';
+        renderCurrentProteinEvolution();
+        const validated = validateAlignedFastaPackage(alignedText, prepared.records, reference, referenceKey);
+        state.homologWorkflow.alignmentAbortController = null;
+        state.homologWorkflow.alignmentRecords = validated.records;
+        state.homologWorkflow.serviceStatus.alignment = `complete; ${validated.records.length} aligned sequences`;
+        state.homologWorkflow.stage = 'alignment';
+        state.homologWorkflow.status = `Alignment complete: ${validated.records.length} sequences, ${validated.alignmentLength} columns. Review quality, then map to the structure.`;
+        state.homologWorkflow.warnings = [...(state.homologWorkflow.warnings || []), ...validated.warnings];
+        state.homologWorkflow.provenance = homologProvenanceRecord({
+          alignmentMethod: 'EMBL-EBI Job Dispatcher Clustal Omega',
+          alignmentEndpoint: `${EVOLUTION_ENDPOINTS.ebiClustalOmega}/run`,
+          alignmentJobId: jobId,
+          alignmentLength: validated.alignmentLength,
+          referenceSequenceHash: validated.referenceHash,
+          unalignedSequenceCount: prepared.records.length,
+          alignedSequenceCount: validated.records.length
+        });
+      } catch (error) {
+        state.homologWorkflow.alignmentAbortController = null;
+        const aborted = error?.name === 'AbortError';
+        state.homologWorkflow.serviceStatus.alignment = aborted ? 'cancelled' : 'blocked or failed in static browser';
+        state.homologWorkflow.serviceStatus.lastError = sanitizedServiceMessage(error.body || error.message || String(error));
+        state.homologWorkflow.status = aborted ? 'Alignment cancelled.' : `Alignment failed: ${state.homologWorkflow.serviceStatus.lastError}`;
+        state.homologWorkflow.warnings = [
+          ...(state.homologWorkflow.warnings || []),
+          aborted ? 'Alignment was cancelled. Existing candidate selections were preserved.' : 'No conservation coloring was enabled because a validated MSA was not produced.'
+        ];
+        state.homologWorkflow.stage = 'candidates';
+      }
     }
 
     function mapHomologAlignmentToStructure() {
@@ -16953,6 +17334,8 @@ END
         chain: state.homologWorkflow.referenceChain,
         mappedCount,
         coordinateResidueCount: residues.length,
+        structuralResiduesOutsideAnalyzedSegment: Math.max(0, state.residues.length - residues.length),
+        segmentSpecific: residues.length < state.residues.length || reference.source === 'coordinate',
         confidence,
         warnings: confidence === 'adequate' ? [] : ['Mapping coverage is inadequate; structure coloring remains disabled.']
       };
@@ -20332,9 +20715,12 @@ END
       if (removeAlignment) {
         const id = removeAlignment.dataset.homologRemoveAlignment;
         state.homologWorkflow.alignmentRecords = state.homologWorkflow.alignmentRecords.filter(record => (record.accession || record.id) !== id);
+        state.homologWorkflow.unalignedSequences = state.homologWorkflow.unalignedSequences.filter(record => (record.accession || record.id) !== id);
+        state.homologWorkflow.selectedAccessions = state.homologWorkflow.selectedAccessions.filter(accession => accession !== id);
         state.homologWorkflow.mapping = null;
         state.homologWorkflow.mappedMetrics = [];
-        state.homologWorkflow.status = `${id} removed. A new genuine MSA is required unless the remaining rows are still a valid prealigned FASTA.`;
+        state.homologWorkflow.stage = 'candidates';
+        state.homologWorkflow.status = `${id} removed from the selected set. Choose Align Selected Homologs to run a new genuine MSA.`;
         renderCurrentProteinEvolution();
         return;
       }
@@ -20370,11 +20756,27 @@ END
         });
         return;
       }
-      if (action === 'cancel-search') {
-        cancelHomologSearch();
+      if (action === 'align-selected') {
+        alignSelectedHomologs().finally(() => {
+          renderCurrentProteinEvolution();
+        });
+        return;
+      }
+      if (action === 'cancel-alignment') {
+        cancelHomologAlignment();
         renderCurrentProteinEvolution();
         return;
       }
+        if (action === 'cancel-search') {
+          cancelHomologSearch();
+          renderCurrentProteinEvolution();
+          return;
+        }
+        if (action === 'clear-email') {
+          state.homologWorkflow.serviceContactEmail = '';
+          renderCurrentProteinEvolution();
+          return;
+        }
       if (action === 'import-fasta' || action === 'criteria-accessions' || action === 'criteria-fasta') {
         state.homologWorkflow.stage = 'criteria';
         state.homologWorkflow.status = action === 'criteria-accessions'
@@ -20414,7 +20816,6 @@ END
         state.homologWorkflow.selectedAccessions = [];
         state.homologWorkflow.status = 'Candidate selection cleared.';
       }
-      if (action === 'align-selected') alignSelectedHomologs();
       if (action === 'map-alignment') mapHomologAlignmentToStructure();
       if (action === 'color-imported') {
         state.currentProteinConservationFilter = 'all';
